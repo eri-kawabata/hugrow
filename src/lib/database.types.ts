@@ -90,6 +90,30 @@ export interface Database {
           earned_at?: string
         }
       }
+      profiles: {
+        Row: {
+          id: string
+          user_id: string
+          username: string
+          avatar_url: string | null
+          role: 'parent' | 'child'
+          created_at: string
+          updated_at: string
+          birthday: string | null
+          parent_id: string | null
+          child_number: number | null
+        }
+      }
+      sel_responses: {
+        Row: {
+          id: string
+          user_id: string
+          emotion: string
+          quest_id: string
+          intensity: number
+          created_at: string
+        }
+      }
     }
   }
 }

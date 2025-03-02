@@ -1,18 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { Home, PlusSquare, BarChart2, LogOut, Heart, Users, BookOpen, Image, User } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Outlet, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { useAuth } from '../hooks/useAuth';
 
 type Profile = {
   username: string | null;
   role: 'parent' | 'child';
 };
 
-export function Layout({ children }: { children: React.ReactNode }) {
+type LayoutProps = {
+  children: React.ReactNode | ((props: { isParentMode: boolean }) => React.ReactNode);
+};
+
+export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isParentMode, setIsParentMode] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const [isParentMode, setIsParentMode] = useState(() => {
+    // ローカルストレージから保護者モードの状態を復元
+    const saved = localStorage.getItem('parentMode');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -26,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        navigate('/');
+        navigate('/auth/login');
         return;
       }
 
@@ -38,15 +48,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
         .eq('role', 'parent')
         .maybeSingle();
 
-      const isParent = !!parentProfile;
-      setIsParentMode(isParent);
+      // 親プロフィールが存在する場合のみ保護者モードを有効にできる
+      if (!parentProfile && isParentMode) {
+        setIsParentMode(false);
+        localStorage.setItem('parentMode', 'false');
+      }
 
       // 現在のモードに応じたプロフィールを取得
       const { data: currentProfile } = await supabase
         .from('profiles')
         .select('username, role')
         .eq('user_id', user.id)
-        .eq('role', isParent ? 'parent' : 'child')
+        .eq('role', isParentMode ? 'parent' : 'child')
         .maybeSingle();
 
       setProfile(currentProfile);
@@ -61,7 +74,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (!supabase) return;
     await supabase.auth.signOut();
     toast.success('ログアウトしました');
-    navigate('/');
+    navigate('/auth/login');
   };
 
   const handleModeChange = async (checked: boolean) => {
@@ -72,7 +85,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       if (!user) return;
 
       if (checked) {
-        // 親モードに切り替え - プロフィールが存在しない場合のみ作成
+        // 親プロフィールの存在確認
         const { data: existingProfile } = await supabase
           .from('profiles')
           .select('id')
@@ -81,32 +94,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
           .maybeSingle();
 
         if (!existingProfile) {
-          const { error } = await supabase
-            .from('profiles')
-            .insert({
-              user_id: user.id,
-              role: 'parent',
-              updated_at: new Date().toISOString()
-            });
-
-          if (error) throw error;
+          toast.error('保護者モードの権限がありません');
+          return;
         }
 
         setIsParentMode(true);
-        navigate('/report');
+        localStorage.setItem('parentMode', 'true');
+        navigate('/parent/dashboard');
       } else {
-        // 子供モードに切り替え - 親プロフィールを削除
-        const { error } = await supabase
-          .from('profiles')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('role', 'parent');
-
-        if (error) throw error;
         setIsParentMode(false);
-        if (['/report', '/works', '/parent/profile'].includes(location.pathname)) {
-          navigate('/home');
-        }
+        localStorage.setItem('parentMode', 'false');
+        navigate('/child/home');
       }
 
       // プロフィールを再取得
@@ -126,6 +124,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => location.pathname === path;
 
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/login" replace />;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -135,100 +137,141 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to={isParentMode ? '/report' : '/home'} className="text-2xl font-bold text-indigo-600">
-              Hugrow
-            </Link>
-            {!isParentMode && profile?.username && (
-              <span className="text-gray-600">
-                ようこそ、<span className="font-medium">{profile.username}</span>さん
-              </span>
-            )}
-          </div>
-          <div className="flex items-center space-x-6">
-            {/* Parent Mode Toggle */}
-            <div className="flex items-center space-x-2">
-              <Users className={`h-5 w-5 ${isParentMode ? 'text-indigo-600' : 'text-gray-400'}`} />
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={isParentMode}
-                  onChange={(e) => handleModeChange(e.target.checked)}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                <span className="ms-2 text-sm font-medium text-gray-600">
-                  {isParentMode ? '保護者モード' : '子どもモード'}
-                </span>
-              </label>
-            </div>
-            {isParentMode && (
-              <Link
-                to="/parent/profile"
-                className={`text-gray-500 hover:text-gray-700 flex items-center space-x-1 ${
-                  isActive('/parent/profile') ? 'text-indigo-600' : ''
-                }`}
+      <header className="bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-16 flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <Link 
+                to={isParentMode ? '/parent/dashboard' : '/child/home'} 
+                className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
               >
-                <User className="h-5 w-5" />
-                <span>プロフィール</span>
+                Hugrow
               </Link>
-            )}
-            <button
-              onClick={handleLogout}
-              className="text-gray-500 hover:text-gray-700 flex items-center space-x-1"
-            >
-              <LogOut className="h-5 w-5" />
-              <span>ログアウト</span>
-            </button>
+              {!isParentMode && profile?.username && (
+                <div className="hidden sm:flex items-center gap-2 py-1 px-3 bg-indigo-50 rounded-full">
+                  <span className="text-gray-600">ようこそ、</span>
+                  <span className="font-medium text-indigo-700">{profile.username}</span>
+                  <span className="text-gray-600">さん</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center space-x-6">
+              {/* Parent Mode Toggle */}
+              <div className="flex items-center space-x-3 bg-gray-50 py-2 px-4 rounded-full">
+                <Users className={`h-5 w-5 ${isParentMode ? 'text-indigo-600' : 'text-gray-400'}`} />
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={isParentMode}
+                    onChange={(e) => handleModeChange(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  <span className="ms-2 text-sm font-medium text-gray-700">
+                    {isParentMode ? '保護者モード' : '子どもモード'}
+                  </span>
+                </label>
+              </div>
+              {isParentMode && (
+                <Link
+                  to="/parent/profile"
+                  className={`hidden sm:flex items-center gap-2 py-2 px-4 rounded-full transition-colors ${
+                    isActive('/parent/profile')
+                      ? 'bg-indigo-50 text-indigo-600'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <User className="h-5 w-5" />
+                  <span>プロフィール</span>
+                </Link>
+              )}
+              <button
+                onClick={handleLogout}
+                className="hidden sm:flex items-center gap-2 py-2 px-4 rounded-full text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                <LogOut className="h-5 w-5" />
+                <span>ログアウト</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mb-24">
+        <Outlet />
       </main>
 
       {/* Footer Navigation */}
-      <footer className="fixed bottom-0 w-full bg-white border-t border-gray-200">
+      <footer className="fixed bottom-0 w-full bg-white border-t border-gray-100 shadow-lg">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ul className="h-16 flex items-center justify-around">
             {isParentMode ? (
               <>
                 <li>
                   <Link
-                    to="/report"
+                    to="/parent/dashboard"
                     className={`flex flex-col items-center space-y-1 ${
-                      isActive('/report') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                      isActive('/parent/dashboard') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     <BarChart2 className="h-6 w-6" />
-                    <span className="text-xs">レポート</span>
+                    <span className="text-xs">ダッシュボード</span>
                   </Link>
                 </li>
                 <li>
                   <Link
-                    to="/works"
+                    to="/parent/analytics/sel"
                     className={`flex flex-col items-center space-y-1 ${
-                      isActive('/works') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                      isActive('/parent/analytics/sel') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <Heart className="h-6 w-6" />
+                    <span className="text-xs">感情分析</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/parent/works"
+                    className={`flex flex-col items-center space-y-1 ${
+                      isActive('/parent/works') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     <Image className="h-6 w-6" />
                     <span className="text-xs">作品一覧</span>
                   </Link>
                 </li>
+                {/* Mobile only buttons */}
+                <li className="sm:hidden">
+                  <Link
+                    to="/parent/profile"
+                    className={`flex flex-col items-center space-y-1 ${
+                      isActive('/parent/profile') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <User className="h-6 w-6" />
+                    <span className="text-xs">プロフィール</span>
+                  </Link>
+                </li>
+                <li className="sm:hidden">
+                  <button
+                    onClick={handleLogout}
+                    className="flex flex-col items-center space-y-1 text-gray-500 hover:text-gray-700"
+                  >
+                    <LogOut className="h-6 w-6" />
+                    <span className="text-xs">ログアウト</span>
+                  </button>
+                </li>
               </>
             ) : (
               <>
                 <li>
                   <Link
-                    to="/home"
+                    to="/child/home"
                     className={`flex flex-col items-center space-y-1 ${
-                      isActive('/home') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                      isActive('/child/home') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     <Home className="h-6 w-6" />
@@ -237,9 +280,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </li>
                 <li>
                   <Link
-                    to="/learning"
+                    to="/child/learning"
                     className={`flex flex-col items-center space-y-1 ${
-                      isActive('/learning') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                      isActive('/child/learning') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     <BookOpen className="h-6 w-6" />
@@ -248,9 +291,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </li>
                 <li>
                   <Link
-                    to="/works/new"
+                    to="/child/works/new"
                     className={`flex flex-col items-center space-y-1 ${
-                      isActive('/works/new') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                      isActive('/child/works/new') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     <PlusSquare className="h-6 w-6" />
@@ -259,9 +302,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </li>
                 <li>
                   <Link
-                    to="/works"
+                    to="/child/works"
                     className={`flex flex-col items-center space-y-1 ${
-                      isActive('/works') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                      isActive('/child/works') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     <Image className="h-6 w-6" />
@@ -270,9 +313,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </li>
                 <li>
                   <Link
-                    to="/sel-quest"
+                    to="/child/sel-quest"
                     className={`flex flex-col items-center space-y-1 ${
-                      isActive('/sel-quest') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                      isActive('/child/sel-quest') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
                     <Heart className="h-6 w-6" />
@@ -284,6 +327,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
       </footer>
+
+      {loading && (
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
+        </div>
+      )}
     </div>
   );
 }

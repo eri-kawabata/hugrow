@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Layout } from './Layout';
 import { Image, MessageCircle, Heart, Calendar, Filter, Search, Trash2, AlertTriangle, X, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -77,43 +77,23 @@ export function ParentWorks() {
     }
   };
 
-  const fetchFeedback = async (workId: string) => {
-    if (!supabase) return;
+  const fetchFeedback = useCallback(async (workId: string) => {
+    if (!isParentMode) return;
 
     try {
-      setFeedbackLoading(true);
       const { data, error } = await supabase
         .from('work_feedback')
-        .select(`
-          id,
-          feedback,
-          created_at,
-          user_id,
-          profiles:user_id (username)
-        `)
+        .select('id, feedback, created_at, user_id, profiles:user_id(username)')
         .eq('work_id', workId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching feedback:', error);
-        setFeedbackList([]);
-        return;
-      }
-
-      // Transform the data to include username
-      const feedbackWithUsernames = data.map(item => ({
-        ...item,
-        username: item.profiles?.username
-      }));
-
-      setFeedbackList(feedbackWithUsernames);
-    } catch (error) {
-      console.error('Error fetching feedback:', error);
-      setFeedbackList([]);
-    } finally {
-      setFeedbackLoading(false);
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Error fetching feedback:', err);
+      return [];
     }
-  };
+  }, [isParentMode]);
 
   const handleFeedbackSubmit = async () => {
     if (!supabase || !selectedWork || !feedback.trim()) {
