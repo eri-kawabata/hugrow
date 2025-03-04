@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Layout } from './Layout';
-import { Mic, Square, Save, Play, Pause, Loader2, ArrowLeft } from 'lucide-react';
+import { Mic, Square, Save, Play, Pause, Loader2, ArrowLeft, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 export function AudioRecorder() {
   const [isRecording, setIsRecording] = useState(false);
@@ -13,12 +13,14 @@ export function AudioRecorder() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
+  const [showTips, setShowTips] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     return () => {
@@ -147,16 +149,66 @@ export function AudioRecorder() {
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between mb-8">
-            <Link
-              to="/works/new"
-              className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span>戻る</span>
-            </Link>
-            <h1 className="text-2xl font-bold">音声を録音</h1>
+          <div className="bg-white rounded-xl shadow-md p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link
+                to={location.pathname.includes('/child/') ? "/child/works/new" : "/works/new"}
+                className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors p-2 rounded-lg hover:bg-indigo-50"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span className="font-medium">もどる</span>
+              </Link>
+            </div>
+            <h1 className="text-xl font-bold text-center bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
+              <div className="flex items-center gap-2">
+                <Mic className="h-6 w-6 text-indigo-600" />
+                <span>おとをろくおん</span>
+              </div>
+            </h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowTips(!showTips)}
+                className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-all"
+                title="つかいかた"
+              >
+                <Info className="h-5 w-5" />
+              </button>
+            </div>
           </div>
+
+          {showTips && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 animate-fadeIn">
+              <h3 className="font-bold text-blue-800 mb-2">つかいかた</h3>
+              <ul className="space-y-2 text-blue-700 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">1.</span>
+                  <span>「録音を開始」ボタンをおして、おとをろくおんします</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">2.</span>
+                  <span>「録音を停止」ボタンをおすと、ろくおんがおわります</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">3.</span>
+                  <span>「再生」ボタンでろくおんしたおとをきくことができます</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">4.</span>
+                  <span>「やり直す」ボタンでさいしょからやりなおせます</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold">5.</span>
+                  <span>タイトルとせつめいをかいて「保存する」ボタンをおします</span>
+                </li>
+              </ul>
+              <button 
+                onClick={() => setShowTips(false)}
+                className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                とじる
+              </button>
+            </div>
+          )}
 
           <div className="space-y-6">
             {/* Recording Controls */}
@@ -206,7 +258,7 @@ export function AudioRecorder() {
                     isRecording
                       ? 'bg-red-600 text-white hover:bg-red-700'
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  } transition-colors duration-200`}
+                  } transition-colors duration-200 shadow-md hover:shadow-lg transform hover:scale-105`}
                 >
                   {isRecording ? (
                     <>
@@ -224,7 +276,7 @@ export function AudioRecorder() {
                 <div className="flex items-center gap-4">
                   <button
                     onClick={togglePlayback}
-                    className="px-6 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors duration-200 flex items-center gap-2"
+                    className="px-6 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors duration-200 shadow-md hover:shadow-lg transform hover:scale-105 flex items-center gap-2"
                   >
                     {isPlaying ? (
                       <>
@@ -244,7 +296,7 @@ export function AudioRecorder() {
                       setIsPlaying(false);
                       setRecordingTime(0);
                     }}
-                    className="px-6 py-3 rounded-xl font-bold border border-gray-300 hover:bg-gray-50 transition-colors duration-200"
+                    className="px-6 py-3 rounded-xl font-bold border border-gray-300 hover:bg-gray-50 transition-colors duration-200 shadow-sm hover:shadow-md"
                   >
                     やり直す
                   </button>
@@ -261,39 +313,40 @@ export function AudioRecorder() {
                   className="hidden"
                 />
 
-                <div className="space-y-4">
+                <div className="space-y-4 mt-8 border-t pt-6 border-gray-200">
+                  <h3 className="font-bold text-lg text-gray-800">さくひんをほぞん</h3>
                   <div>
                     <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                      タイトル
+                      タイトル <span className="text-red-500">*</span>
                     </label>
                     <input
                       id="title"
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="作品のタイトルを入力"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-sm"
+                      placeholder="さくひんのタイトルをにゅうりょく"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                      説明
+                      せつめい
                     </label>
                     <textarea
                       id="description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="作品の説明を入力"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-sm"
+                      placeholder="さくひんのせつめいをにゅうりょく"
                       rows={4}
                     />
                   </div>
 
                   <button
                     onClick={handleSave}
-                    disabled={loading}
-                    className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={loading || !title.trim()}
+                    className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 flex items-center justify-center gap-2 shadow-md mt-4"
                   >
                     {loading ? (
                       <Loader2 className="animate-spin h-5 w-5" />
@@ -304,6 +357,9 @@ export function AudioRecorder() {
                       </>
                     )}
                   </button>
+                  {!title.trim() && (
+                    <p className="text-red-500 text-sm mt-1">タイトルをにゅうりょくしてください</p>
+                  )}
                 </div>
               </>
             )}
