@@ -6,7 +6,8 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { handleError } from '../utils/errorHandler';
 
-const CameraCapture = () => {
+// 名前付きエクスポートとして定義し直す
+export const CameraCapture = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -480,6 +481,4 @@ const CameraCapture = () => {
       )}
     </div>
   );
-};
-
-export default CameraCapture; 
+}; 

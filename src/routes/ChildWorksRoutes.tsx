@@ -4,7 +4,7 @@ import { MyWorks } from '../components/MyWorks';
 import { WorkUpload } from '../components/WorkUpload';
 import { DrawingCanvas } from '../components/DrawingCanvas';
 import { AudioRecorder } from '../components/AudioRecorder';
-import CameraCapture from '../components/CameraCapture';
+import { CameraCapture } from '../components/CameraCapture';
 import { WorkDetail } from '../components/WorkDetail';
 
 export const ChildWorksRoutes: React.FC = () => {

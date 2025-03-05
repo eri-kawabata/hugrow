@@ -1,11 +1,12 @@
 import React, { useCallback, memo, useState } from 'react';
 import { LogOut, User, ChevronDown } from 'lucide-react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 
 type BaseLayoutProps = {
   children: React.ReactNode;
+  hideHeader?: boolean;
 };
 
 type HeaderProps = {
@@ -16,7 +17,7 @@ type HeaderProps = {
 
 const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
   const [isOpen, setIsOpen] = useState(false);
-
+  
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -88,10 +89,10 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
 
 Header.displayName = 'Header';
 
-export const BaseLayout: React.FC<BaseLayoutProps> = ({ children }) => {
+export const BaseLayout: React.FC<BaseLayoutProps> = ({ children, hideHeader }) => {
   const navigate = useNavigate();
   const { signOut, profile } = useAuth();
-
+  
   const handleLogout = useCallback(async () => {
     try {
       await signOut();
@@ -110,23 +111,14 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-[#f8fbfd]">
-      {/* ヘッダー */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <Link to="/" className="text-[#5d7799] text-xl font-bold">
-                Hugrow
-              </Link>
-              <div className="text-sm text-gray-500">
-                ようこそ、{profile?.username || 'ゲスト'} さん
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      {!hideHeader && (
+        <Header 
+          username={profile?.username} 
+          onModeChange={handleModeChange} 
+          onLogout={handleLogout} 
+        />
+      )}
 
-      {/* メインコンテンツ */}
       <main className="flex-1">
         {children}
       </main>
