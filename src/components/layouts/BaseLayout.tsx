@@ -1,6 +1,6 @@
 import React, { useCallback, memo, useState } from 'react';
 import { LogOut, User, ChevronDown } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 
@@ -17,6 +17,10 @@ type HeaderProps = {
 
 const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { pathname } = useLocation();
+  
+  // 現在のモードを判定
+  const isParentMode = pathname.includes('/parent');
   
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
@@ -46,7 +50,7 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
                   className="flex items-center gap-2 py-2 px-4 rounded-full text-gray-600 hover:bg-gray-50 transition-colors"
                 >
                   <User className="h-5 w-5" />
-                  <span>子供モード</span>
+                  <span>{isParentMode ? '保護者モード' : '子供モード'}</span>
                   <ChevronDown className="h-4 w-4" />
                 </button>
                 {isOpen && (
@@ -56,7 +60,7 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
                         onModeChange('parent');
                         setIsOpen(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50"
+                      className={`w-full px-4 py-2 text-left ${isParentMode ? 'text-indigo-600 font-medium bg-indigo-50' : 'text-gray-700 hover:bg-gray-50'}`}
                     >
                       保護者モード
                     </button>
@@ -65,7 +69,7 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
                         onModeChange('child');
                         setIsOpen(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50"
+                      className={`w-full px-4 py-2 text-left ${!isParentMode ? 'text-indigo-600 font-medium bg-indigo-50' : 'text-gray-700 hover:bg-gray-50'}`}
                     >
                       子供モード
                     </button>
