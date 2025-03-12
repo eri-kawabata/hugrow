@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { 
   Routes, 
   Route, 
@@ -7,23 +7,25 @@ import {
   createBrowserRouter,
   RouterProvider,
 } from 'react-router-dom';
-import { Auth } from './components/Auth';
-import { SignUp } from './components/SignUp';
-import { PasswordReset } from './components/Auth/PasswordReset';
-import { UpdatePassword } from './components/Auth/UpdatePassword';
-import { Home } from './components/Home';
-import { LearningRoutes } from './routes/LearningRoutes';
-import { ParentWorksRoutes } from './routes/ParentWorksRoutes';
-import { ChildWorksRoutes } from './routes/ChildWorksRoutes';
-import { ProfileRoutes } from './routes/ProfileRoutes';
-import { AnalyticsRoutes } from './routes/AnalyticsRoutes';
-import { ParentLayout } from './components/layouts/ParentLayout';
-import { ChildLayout } from './components/layouts/ChildLayout';
-import { ParentDashboard } from './components/ParentDashboard';
-import { SELQuest } from './components/SELQuest';
 import { AuthProvider } from '@/hooks/useAuth';
 import { Toaster } from 'react-hot-toast';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
+
+// 遅延ロードするコンポーネント
+const Auth = lazy(() => import('./components/Auth').then(module => ({ default: module.Auth })));
+const SignUp = lazy(() => import('./components/SignUp').then(module => ({ default: module.SignUp })));
+const PasswordReset = lazy(() => import('./components/Auth/PasswordReset').then(module => ({ default: module.PasswordReset })));
+const UpdatePassword = lazy(() => import('./components/Auth/UpdatePassword').then(module => ({ default: module.UpdatePassword })));
+const Home = lazy(() => import('./components/Home').then(module => ({ default: module.Home })));
+const LearningRoutes = lazy(() => import('./routes/LearningRoutes').then(module => ({ default: module.LearningRoutes })));
+const ParentWorksRoutes = lazy(() => import('./routes/ParentWorksRoutes').then(module => ({ default: module.ParentWorksRoutes })));
+const ChildWorksRoutes = lazy(() => import('./routes/ChildWorksRoutes').then(module => ({ default: module.ChildWorksRoutes })));
+const ProfileRoutes = lazy(() => import('./routes/ProfileRoutes').then(module => ({ default: module.ProfileRoutes })));
+const AnalyticsRoutes = lazy(() => import('./routes/AnalyticsRoutes').then(module => ({ default: module.AnalyticsRoutes })));
+const ParentLayout = lazy(() => import('./components/layouts/ParentLayout').then(module => ({ default: module.ParentLayout })));
+const ChildLayout = lazy(() => import('./components/layouts/ChildLayout').then(module => ({ default: module.ChildLayout })));
+const ParentDashboard = lazy(() => import('./components/ParentDashboard').then(module => ({ default: module.ParentDashboard })));
+const SELQuest = lazy(() => import('./components/SELQuest').then(module => ({ default: module.SELQuest })));
 
 // ルート定義
 const router = createBrowserRouter(
