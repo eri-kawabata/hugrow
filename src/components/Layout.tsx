@@ -116,6 +116,11 @@ export function Layout({ children }: LayoutProps) {
         .maybeSingle();
 
       setProfile(newProfile);
+      
+      // 子供モードに切り替えた時に、localStorage に子供の名前を保存
+      if (!checked && newProfile) {
+        localStorage.setItem('childName', newProfile.username || '');
+      }
     } catch (error) {
       console.error('Error updating mode:', error);
       toast.error('モードの切り替えに失敗しました');

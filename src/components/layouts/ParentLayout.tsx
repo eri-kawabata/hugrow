@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { BarChart2, Heart, Image, User } from 'lucide-react';
+import { BarChart2, Heart, Image, User, BookOpen } from 'lucide-react';
 import { BaseLayout } from './BaseLayout';
 
 export const ParentLayout: React.FC = () => {
@@ -34,6 +34,17 @@ export const ParentLayout: React.FC = () => {
               >
                 <Heart className="h-6 w-6" />
                 <span className="text-xs">感情分析</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/parent/analytics/learning"
+                className={`flex flex-col items-center space-y-1 ${
+                  isActive('/parent/analytics/learning') ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <BookOpen className="h-6 w-6" />
+                <span className="text-xs">学習進捗</span>
               </Link>
             </li>
             <li>

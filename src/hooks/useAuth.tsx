@@ -99,17 +99,43 @@ export function AuthProvider() {
   // プロフィールの取得
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const { data: profile, error } = await supabase
+      // まず親プロフィールを探す
+      const { data: parentProfile, error: parentError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .eq('role', 'parent')
+        .maybeSingle();
+
+      if (parentProfile) {
+        return parentProfile;
+      }
+
+      // 親プロフィールが見つからない場合は、子供プロフィールを探す
+      const { data: childProfile, error: childError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('role', 'child')
+        .maybeSingle();
+
+      if (childProfile) {
+        return childProfile;
+      }
+
+      // どちらも見つからない場合は、ロールを指定せずに検索
+      const { data: anyProfile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
 
       if (error) {
         console.error('プロフィール取得エラー:', error);
         return null;
       }
-      return profile;
+
+      return anyProfile;
     } catch (error) {
       console.error('プロフィール取得エラー:', error);
       return null;
@@ -142,13 +168,42 @@ export function AuthProvider() {
 
       if (data.user) {
         const profile = await fetchProfile(data.user.id);
+        
         if (profile) {
           updateAuthState(data.user, profile, true);
           notifyTabs('signIn');
           toast.success('ログインしました');
           navigate(profile.role === 'parent' ? '/parent/dashboard' : '/child/home', { replace: true });
         } else {
-          throw new Error('プロフィールの取得に失敗しました');
+          // プロフィールが存在しない場合は新規作成
+          try {
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert([
+                {
+                  user_id: data.user.id,
+                  username: email.split('@')[0],
+                  role: 'parent',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }
+              ])
+              .select()
+              .single();
+
+            if (createError) {
+              console.error('プロフィール作成エラー:', createError);
+              throw new Error('プロフィールの作成に失敗しました');
+            }
+
+            updateAuthState(data.user, newProfile, true);
+            notifyTabs('signIn');
+            toast.success('ログインしました');
+            navigate('/parent/dashboard', { replace: true });
+          } catch (createError) {
+            console.error('プロフィール作成エラー:', createError);
+            throw new Error('プロフィールの作成に失敗しました');
+          }
         }
       }
     } catch (error) {

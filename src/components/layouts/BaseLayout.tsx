@@ -1,8 +1,9 @@
-import React, { useCallback, memo, useState } from 'react';
+import React, { useCallback, memo, useState, useEffect } from 'react';
 import { LogOut, User, ChevronDown } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 
 type BaseLayoutProps = {
   children: React.ReactNode;
@@ -18,9 +19,61 @@ type HeaderProps = {
 const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const { pathname } = useLocation();
+  const [childName, setChildName] = useState<string | null>(null);
   
   // 現在のモードを判定
   const isParentMode = pathname.includes('/parent');
+  
+  // 子供モードの場合、子供の名前を取得
+  useEffect(() => {
+    const fetchChildName = async () => {
+      try {
+        // 子供モードの場合、localStorageから子供の名前を取得
+        if (!isParentMode) {
+          const savedChildName = localStorage.getItem('childName');
+          if (savedChildName) {
+            setChildName(savedChildName);
+            return;
+          }
+        }
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        // 子供のプロフィールを取得
+        let query = supabase
+          .from('profiles')
+          .select('username');
+          
+        // 現在のモードに応じてクエリを変更
+        if (isParentMode) {
+          // 保護者モードの場合は何もしない
+        } else {
+          // 子供モードの場合は子供のプロフィールを取得
+          query = query.eq('role', 'child');
+        }
+        
+        const { data: profile } = await query
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (profile) {
+          setChildName(profile.username);
+          // 子供モードの場合、localStorageに子供の名前を保存
+          if (!isParentMode) {
+            localStorage.setItem('childName', profile.username || '');
+          }
+        }
+      } catch (error) {
+        console.error('プロフィール取得エラー:', error);
+      }
+    };
+    
+    fetchChildName();
+  }, [pathname, isParentMode]);
+  
+  // 表示する名前を決定
+  const displayName = isParentMode ? username : childName || username;
   
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
@@ -33,10 +86,10 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
             >
               Hugrow
             </Link>
-            {username && (
+            {displayName && (
               <div className="hidden sm:flex items-center gap-2 py-1 px-3 bg-indigo-50 rounded-full">
                 <span className="text-gray-600">ようこそ、</span>
-                <span className="font-medium text-indigo-700">{username}</span>
+                <span className="font-medium text-indigo-700">{displayName}</span>
                 <span className="text-gray-600">さん</span>
               </div>
             )}

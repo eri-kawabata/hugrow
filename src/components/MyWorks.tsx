@@ -258,14 +258,14 @@ export function MyWorks() {
                   actionTo="/child/works/new"
                   icon={<Image className="h-16 w-16 text-[#5d7799]/50" />}
                 />
-              </div>
+                  </div>
             ) : (
               <div className="mt-6">
                 <WorksGrid works={filteredWorks} />
               </div>
             )}
           </div>
-        </div>
+          </div>
       </div>
     </div>
   );

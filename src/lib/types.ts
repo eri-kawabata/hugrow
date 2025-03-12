@@ -108,11 +108,13 @@ export type Profile = {
   username: string;
   email?: string;
   role: 'parent' | 'child';
-  birthday?: string;
+  birthdate?: string;
   parent_id?: string;
   child_number?: number;
   created_at?: string;
   updated_at?: string;
+  avatar_url?: string;
+  avatarUrl?: string;
 };
 
 export interface UserLearningActivity {

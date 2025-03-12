@@ -358,78 +358,78 @@ export function SELQuest() {
           <div className="space-y-8">
             {selectedQuest && (
               <div className="bg-white rounded-[32px] shadow-md p-8">
-                <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4 mb-6">
                   <div className="p-4 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl">
-                    <Heart className="h-8 w-8 text-pink-500" />
-                  </div>
+              <Heart className="h-8 w-8 text-pink-500" />
+            </div>
                   <h2 className="text-2xl font-bold text-[#5d7799]">{selectedQuest.title}</h2>
-                </div>
-                <p className="text-lg text-gray-700">{selectedQuest.description}</p>
-              </div>
-            )}
+          </div>
+              <p className="text-lg text-gray-700">{selectedQuest.description}</p>
+            </div>
+          )}
 
             <div className="bg-white rounded-[32px] shadow-md p-6">
               <h3 className="text-lg font-bold text-[#5d7799] mb-4">いまのきもちは？</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
-                {emotions.map((emotion) => (
-                  <button
-                    key={emotion.name}
-                    onClick={() => setSelectedEmotion(emotion.name)}
+            {emotions.map((emotion) => (
+              <button
+                key={emotion.name}
+                onClick={() => setSelectedEmotion(emotion.name)}
                     className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all duration-300 transform ${
-                      selectedEmotion === emotion.name
+                  selectedEmotion === emotion.name
                         ? `${emotion.bgColor} ${emotion.borderColor} scale-105 shadow-md`
                         : `bg-white/70 border-gray-100 ${emotion.hoverBorderColor} hover:scale-102 hover:shadow-sm`
-                    }`}
-                  >
+                }`}
+              >
                     <emotion.icon className={`h-8 w-8 ${emotion.color}`} />
                     <span className="text-sm font-medium">{emotion.name}</span>
-                  </button>
-                ))}
-              </div>
+              </button>
+            ))}
+          </div>
 
-              {feedback && (
+          {feedback && (
                 <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 transform hover:scale-102 transition-transform">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="p-1.5 bg-white rounded-lg">
                       <Sparkles className="h-4 w-4 text-indigo-600" />
-                    </div>
-                    <span className="text-base font-bold text-indigo-900">AIからのメッセージ</span>
-                  </div>
-                  <p className="text-sm text-indigo-700 leading-relaxed">{feedback}</p>
                 </div>
-              )}
+                    <span className="text-base font-bold text-indigo-900">AIからのメッセージ</span>
+              </div>
+                  <p className="text-sm text-indigo-700 leading-relaxed">{feedback}</p>
+            </div>
+          )}
 
               <div className="mb-6">
                 <label className="block text-base font-bold text-[#5d7799] mb-2">
-                  きょうのできごと
-                </label>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
+              きょうのできごと
+            </label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
                   className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
                   rows={3}
-                  placeholder="どんなことがあったかな？"
-                />
-              </div>
+              placeholder="どんなことがあったかな？"
+            />
+          </div>
 
-              <button
-                onClick={handleSubmit}
-                disabled={loading || !selectedEmotion}
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !selectedEmotion}
                 className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-3 px-4 rounded-xl text-base font-bold hover:from-indigo-600 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-              >
+          >
                 <ThumbsUp className="h-5 w-5" />
-                <span>きろくする</span>
-              </button>
-            </div>
+            <span>きろくする</span>
+          </button>
+        </div>
 
-            {responses.length > 0 && (
+        {responses.length > 0 && (
               <div className="bg-white rounded-[32px] shadow-md p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold flex items-center gap-2 text-[#5d7799]">
                     <MessageCircle className="h-5 w-5 text-indigo-600" />
-                    <span>これまでのきろく</span>
+              <span>これまでのきろく</span>
                     <span className="ml-2 text-sm font-normal text-gray-500">({responses.length}件)</span>
-                  </h2>
+            </h2>
                   
                   {/* 表示切替ボタン */}
                   <div className="flex rounded-lg overflow-hidden border border-indigo-200">
@@ -460,15 +460,15 @@ export function SELQuest() {
                 {viewMode === 'list' ? (
                   <>
                     <div className="space-y-3">
-                      {responses.map((response) => {
-                        const emotion = emotions.find(e => e.name === response.emotion);
+              {responses.map((response) => {
+                const emotion = emotions.find(e => e.name === response.emotion);
                         const isExpanded = expandedResponseId === response.id;
                         
-                        return (
-                          <div
-                            key={response.id}
+                return (
+                  <div
+                    key={response.id}
                             className={`rounded-xl border-2 ${
-                              emotion?.borderColor || 'border-gray-100'
+                      emotion?.borderColor || 'border-gray-100'
                             } ${emotion?.bgColor || 'bg-gray-50'} transition-all`}
                           >
                             <div 
@@ -479,9 +479,9 @@ export function SELQuest() {
                                 {emotion && <emotion.icon className={`h-5 w-5 ${emotion.color}`} />}
                                 <span className="font-bold text-sm">{response.emotion}</span>
                                 <span className="text-gray-600 text-xs">
-                                  {new Date(response.created_at).toLocaleDateString('ja-JP')}
-                                </span>
-                              </div>
+                        {new Date(response.created_at).toLocaleDateString('ja-JP')}
+                      </span>
+                    </div>
                               {isExpanded ? 
                                 <ChevronUp className="h-4 w-4 text-gray-500" /> : 
                                 <ChevronDown className="h-4 w-4 text-gray-500" />
@@ -490,14 +490,14 @@ export function SELQuest() {
                             
                             {isExpanded && (
                               <div className="px-3 pb-3">
-                                {response.note && (
+                    {response.note && (
                                   <div className="mb-3">
                                     <p className="text-xs text-gray-500 mb-1">きょうのできごと:</p>
                                     <p className="text-sm text-gray-700">{response.note}</p>
                                   </div>
-                                )}
+                    )}
                                 
-                                {response.sel_feedback && response.sel_feedback[0] && (
+                    {response.sel_feedback && response.sel_feedback[0] && (
                                   <div className="p-3 bg-white/80 rounded-lg border border-indigo-100">
                                     <div className="flex items-center gap-1.5 mb-1.5">
                                       <Sparkles className="h-4 w-4 text-indigo-600" />
@@ -655,15 +655,15 @@ export function SELQuest() {
                                     +{dayResponses.length - 3}
                                   </div>
                                 )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
             )}
           </div>
         </div>

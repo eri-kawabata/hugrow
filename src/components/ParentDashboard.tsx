@@ -189,7 +189,7 @@ export const ParentDashboard: React.FC = () => {
         </Link>
 
         <Link
-          to="/parent/analytics/arts"
+          to="/parent/analytics"
           className="group p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-all hover:translate-y-[-2px] border border-gray-100"
         >
           <div className="flex items-center gap-4">

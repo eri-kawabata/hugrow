@@ -615,14 +615,14 @@ export function SELAnalytics() {
       });
       
       // ダウンロード用のリンク作成
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+    const link = document.createElement('a');
       link.setAttribute('href', url);
       link.setAttribute('download', `感情記録_${format(new Date(), 'yyyyMMdd')}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
-      link.click();
+    link.click();
       document.body.removeChild(link);
       
       toast.success('CSVファイルをダウンロードしました');
@@ -728,7 +728,7 @@ export function SELAnalytics() {
             </button>
           </div>
         </div>
-      </div>
+        </div>
 
       {/* タブナビゲーションのデザイン改善 */}
       <div className="mb-6 bg-white rounded-lg shadow-md overflow-hidden">
@@ -811,8 +811,8 @@ export function SELAnalytics() {
                     </div>
                   </div>
                 </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
                     <LineChart 
                       data={emotionTrendData} 
                       margin={{ left: 50, right: 20, top: 20, bottom: 20 }}
@@ -831,16 +831,16 @@ export function SELAnalytics() {
                         axisLine={false}
                         tickLine={false}
                       />
-                      <Tooltip 
-                        content={({ payload }) => {
-                          if (!payload?.length) return null;
+                  <Tooltip
+                    content={({ payload }) => {
+                      if (!payload?.length) return null;
                           const data = payload[0].payload;
                           const emotion = emotions.find(e => e.name === data.emotion);
                           if (!emotion) return null;
                           
                           const Icon = emotion.icon;
                           
-                          return (
+                      return (
                             <div className="bg-white p-4 border border-gray-200 rounded-lg shadow">
                               <div className="flex items-center gap-3 mb-2">
                                 <Icon className={emotion.color} size={24} />
@@ -855,23 +855,23 @@ export function SELAnalytics() {
                                   <span className="text-xs text-gray-400">（最も多かった感情を表示）</span>
                                 </p>
                               )}
-                            </div>
-                          );
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="intensity"
-                        stroke="#6366F1"
-                        strokeWidth={2}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="intensity"
+                    stroke="#6366F1"
+                    strokeWidth={2}
                         dot={{ fill: '#6366F1', r: 4 }}
                         activeDot={{ r: 6, fill: '#4F46E5' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
               {/* 感情分布 */}
               <div className="bg-white rounded-lg shadow-md p-6 border border-purple-100">
                 <div className="flex items-center justify-between mb-6">
@@ -880,15 +880,15 @@ export function SELAnalytics() {
                     <h2 className="text-lg font-medium text-gray-900">感情の分布</h2>
                   </div>
                 </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
                     <PieChart margin={{ left: 20, right: 20, top: 20, bottom: 20 }}>
-                      <Pie
-                        data={emotionDistributionData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
+                  <Pie
+                    data={emotionDistributionData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
                         outerRadius={120}
                         label={({ name, value, percent }) => {
                           // NaN%を防ぐため、percentが有効な数値かチェック
@@ -907,7 +907,7 @@ export function SELAnalytics() {
                             />
                           );
                         })}
-                      </Pie>
+                  </Pie>
                       <Tooltip 
                         content={({ payload }) => {
                           if (!payload?.length) return null;
@@ -931,11 +931,11 @@ export function SELAnalytics() {
                           );
                         }}
                       />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
+          </div>
+        </div>
           )}
           
           {/* インサイトタブ */}
@@ -1055,8 +1055,8 @@ export function SELAnalytics() {
                                 <span className="mr-2">
                                   <Icon size={20} />
                                 </span>
-                                {response.emotion}
-                              </span>
+                      {response.emotion}
+                    </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {response.intensity}
@@ -1157,10 +1157,10 @@ export function SELAnalytics() {
                   </div>
                 </div>
               )}
-            </div>
+          </div>
           )}
         </div>
       )}
-    </div>
+      </div>
   );
 } 
