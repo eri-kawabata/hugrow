@@ -7,16 +7,16 @@ import { ErrorMessage } from '@/components/Common/ErrorMessage';
 import { EmptyState } from '@/components/Common/EmptyState';
 
 // 作品タイプのフィルター型
-type WorkTypeFilter = 'all' | Work['type'];
+type WorkTypeFilter = 'all' | Work['type'] | 'drawing' | 'audio' | 'photo';
 
-const WorkTypeIcon = memo(({ type }: { type: Work['type'] }) => {
+const WorkTypeIcon = memo(({ type }: { type: WorkTypeFilter }) => {
   const icons = {
     drawing: <Palette className="h-6 w-6 text-[#5d7799]" />,
     audio: <Music className="h-6 w-6 text-[#5d7799]" />,
     photo: <Camera className="h-6 w-6 text-[#5d7799]" />,
   };
 
-  return icons[type] || null;
+  return icons[type] || <Image className="h-6 w-6 text-[#5d7799]" />;
 });
 
 WorkTypeIcon.displayName = 'WorkTypeIcon';
@@ -34,6 +34,11 @@ const CreateWorkButton = memo(() => (
 CreateWorkButton.displayName = 'CreateWorkButton';
 
 const WorkCard = memo(({ work }: { work: Work }) => {
+  // 作品タイプを決定（互換性のため）
+  const workType = work.type || (
+    work.media_type === 'image' ? 'photo' : 'audio'
+  );
+
   // 作品タイプに基づく背景色とボーダー色を設定
   const cardStyles = {
     drawing: {
@@ -63,23 +68,99 @@ const WorkCard = memo(({ work }: { work: Work }) => {
     photo: '写真',
   };
 
-  const style = cardStyles[work.type];
+  const style = cardStyles[workType];
+
+  // メディアURLを取得（media_urlまたはcontent_url）
+  const mediaUrl = work.thumbnail_url || work.media_url || work.content_url;
+
+  // サムネイルを表示するための関数
+  const renderThumbnail = () => {
+    if (mediaUrl && (workType === 'drawing' || workType === 'photo')) {
+      return (
+        <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-white flex items-center justify-center relative group-hover:opacity-95 transition-opacity duration-300">
+          <img 
+            src={mediaUrl} 
+            alt={work.title} 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // 画像読み込みエラー時にデフォルトアイコンを表示
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.parentElement?.classList.add('image-error');
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#5d7799]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        </div>
+      );
+    } else if (workType === 'drawing') {
+      // お絵かきのデフォルトサムネイル
+      return (
+        <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#8ec5d6]/30 to-white flex items-center justify-center relative">
+          <div className="absolute inset-0 flex items-center justify-center opacity-10">
+            <div className="w-32 h-32 border-4 border-[#8ec5d6]/30 rounded-full"></div>
+            <div className="w-24 h-24 border-4 border-[#8ec5d6]/40 rounded-full absolute"></div>
+            <div className="w-16 h-16 border-4 border-[#8ec5d6]/50 rounded-full absolute"></div>
+          </div>
+          <Palette className="h-16 w-16 text-[#5d7799]/40" />
+        </div>
+      );
+    } else if (workType === 'audio') {
+      // 音声のデフォルトサムネイル
+      return (
+        <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#f5f6bf]/30 to-white flex items-center justify-center relative">
+          <div className="flex flex-col items-center">
+            <Music className="h-16 w-16 text-[#5d7799]/40" />
+            <div className="flex space-x-1 mt-2">
+              {[3, 5, 4, 6, 2, 4, 3].map((h, i) => (
+                <div 
+                  key={i} 
+                  className="w-1 bg-[#5d7799]/30 rounded-full animate-pulse" 
+                  style={{ 
+                    height: `${h * 4}px`,
+                    animationDelay: `${i * 0.1}s`
+                  }}
+                ></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    } else if (workType === 'photo') {
+      // 写真のデフォルトサムネイル
+      return (
+        <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#f7c5c2]/30 to-white flex items-center justify-center relative">
+          <div className="absolute inset-0 flex items-center justify-center opacity-10">
+            <div className="w-32 h-24 border-4 border-[#f7c5c2]/40 rounded-lg transform rotate-3"></div>
+            <div className="w-32 h-24 border-4 border-[#f7c5c2]/30 rounded-lg absolute transform -rotate-3"></div>
+          </div>
+          <Camera className="h-16 w-16 text-[#5d7799]/40" />
+        </div>
+      );
+    }
+    
+    // デフォルトのサムネイル
+    return (
+      <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-gray-100 to-white flex items-center justify-center">
+        <Image className="h-16 w-16 text-[#5d7799]/40" />
+      </div>
+    );
+  };
 
   return (
     <Link
       to={`/child/works/${work.id}`}
       className={`group block bg-gradient-to-br ${style.bg} rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 ${style.border} hover:scale-105 animate-fade-in ${style.shadow}`}
     >
+      {renderThumbnail()}
       <div className="p-6">
         <div className="flex items-start gap-4">
           <div className={`p-3.5 rounded-xl transition-colors ${style.iconBg} transform group-hover:rotate-3 duration-300`}>
-            <WorkTypeIcon type={work.type} />
+            <WorkTypeIcon type={workType} />
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="font-bold text-[#5d7799] truncate text-xl">{work.title}</h2>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs px-2.5 py-1 rounded-full bg-white/70 text-[#5d7799] font-medium border border-[#5d7799]/10">
-                {typeLabels[work.type]}
+                {typeLabels[workType]}
               </span>
               <p className="text-sm text-[#5d7799]/80">
                 {new Date(work.created_at).toLocaleDateString('ja-JP')}
