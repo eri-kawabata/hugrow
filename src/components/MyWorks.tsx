@@ -24,7 +24,7 @@ WorkTypeIcon.displayName = 'WorkTypeIcon';
 const CreateWorkButton = memo(() => (
   <Link
     to="/child/works/new"
-    className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#8ec5d6] to-[#5d7799] text-white rounded-full hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+    className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#8ec5d6] to-[#5d7799] text-white rounded-full hover:shadow-lg transition-all duration-300 transform hover:scale-105 font-bold"
   >
     <Plus className="h-5 w-5" />
     <span>新しい作品を作る</span>
@@ -40,16 +40,19 @@ const WorkCard = memo(({ work }: { work: Work }) => {
       border: 'border-[#8ec5d6]',
       bg: 'from-white to-[#8ec5d6]/20',
       iconBg: 'bg-[#8ec5d6]/30 group-hover:bg-[#8ec5d6]/40',
+      shadow: 'shadow-[#8ec5d6]/20',
     },
     audio: {
       border: 'border-[#f5f6bf]',
       bg: 'from-white to-[#f5f6bf]/20',
       iconBg: 'bg-[#f5f6bf]/30 group-hover:bg-[#f5f6bf]/40',
+      shadow: 'shadow-[#f5f6bf]/20',
     },
     photo: {
       border: 'border-[#f7c5c2]',
       bg: 'from-white to-[#f7c5c2]/20',
       iconBg: 'bg-[#f7c5c2]/30 group-hover:bg-[#f7c5c2]/40',
+      shadow: 'shadow-[#f7c5c2]/20',
     },
   };
 
@@ -65,17 +68,17 @@ const WorkCard = memo(({ work }: { work: Work }) => {
   return (
     <Link
       to={`/child/works/${work.id}`}
-      className={`group block bg-gradient-to-br ${style.bg} rounded-[20px] shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border-2 ${style.border} hover:scale-105 animate-fade-in`}
+      className={`group block bg-gradient-to-br ${style.bg} rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 ${style.border} hover:scale-105 animate-fade-in ${style.shadow}`}
     >
-      <div className="p-5">
+      <div className="p-6">
         <div className="flex items-start gap-4">
-          <div className={`p-3 rounded-xl transition-colors ${style.iconBg}`}>
+          <div className={`p-3.5 rounded-xl transition-colors ${style.iconBg} transform group-hover:rotate-3 duration-300`}>
             <WorkTypeIcon type={work.type} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-[#5d7799] truncate text-lg">{work.title}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs px-2 py-1 rounded-full bg-white/70 text-[#5d7799] font-medium">
+            <h2 className="font-bold text-[#5d7799] truncate text-xl">{work.title}</h2>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-white/70 text-[#5d7799] font-medium border border-[#5d7799]/10">
                 {typeLabels[work.type]}
               </span>
               <p className="text-sm text-[#5d7799]/80">
@@ -137,13 +140,13 @@ const FilterButton = memo(({ type, activeFilter, onClick }: {
   return (
     <button
       onClick={() => onClick(type)}
-      className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+      className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
         isActive 
           ? `${config.activeColor} ${config.activeTextColor || 'text-white'} shadow-md transform scale-110` 
-          : `${config.color} ${config.textColor} hover:opacity-80 hover:shadow-sm`
+          : `${config.color} ${config.textColor} hover:opacity-90 hover:shadow-sm border border-[#5d7799]/10`
       }`}
     >
-      <span className={`${isActive ? 'transform scale-110' : ''} transition-transform duration-200`}>
+      <span className={`${isActive ? 'transform scale-110' : ''} transition-transform duration-300`}>
         {config.icon}
       </span>
       <span>{config.label}</span>
@@ -154,9 +157,15 @@ const FilterButton = memo(({ type, activeFilter, onClick }: {
 FilterButton.displayName = 'FilterButton';
 
 const WorksGrid = memo(({ works }: { works: Work[] }) => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-    {works.map((work) => (
-      <WorkCard key={work.id} work={work} />
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+    {works.map((work, index) => (
+      <div 
+        key={work.id} 
+        className="animate-fade-in" 
+        style={{ animationDelay: `${index * 0.1}s` }}
+      >
+        <WorkCard work={work} />
+      </div>
     ))}
   </div>
 ));
@@ -171,14 +180,20 @@ const Header = memo(({
   setActiveFilter: (filter: WorkTypeFilter) => void 
 }) => (
   <div>
-    <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] px-4 py-10 rounded-b-[40px] shadow-lg">
-      <h1 className="text-4xl font-bold text-white text-center drop-shadow-md">
-        わたしの作品
-      </h1>
+    <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] px-4 py-12 rounded-b-[40px] shadow-lg relative overflow-hidden">
+      <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
+      <div className="relative z-10">
+        <h1 className="text-4xl font-bold text-white text-center drop-shadow-md mb-2">
+          わたしの作品
+        </h1>
+        <p className="text-white/90 text-center text-sm max-w-md mx-auto">
+          あなたの素敵な作品をここで見ることができます
+        </p>
+      </div>
     </div>
     
-    <div className="px-6 mt-6">
-      <div className="flex flex-wrap items-center justify-center gap-3 pb-4">
+    <div className="px-6 -mt-6">
+      <div className="bg-white/80 backdrop-blur-sm rounded-full shadow-lg p-2 flex flex-wrap items-center justify-center gap-3 max-w-2xl mx-auto">
         <FilterButton type="all" activeFilter={activeFilter} onClick={setActiveFilter} />
         <FilterButton type="drawing" activeFilter={activeFilter} onClick={setActiveFilter} />
         <FilterButton type="audio" activeFilter={activeFilter} onClick={setActiveFilter} />
@@ -213,7 +228,7 @@ export function MyWorks() {
       <div className="min-h-screen bg-[#f8fbfd]">
         <div className="max-w-5xl mx-auto">
           <Header activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-          <div className="px-6 pt-6">
+          <div className="px-6 pt-8">
             <div className="flex justify-center items-center min-h-[50vh] bg-white rounded-[32px] shadow-sm p-8">
               <LoadingSpinner size="lg" message="作品を読み込んでいます..." />
             </div>
@@ -228,7 +243,7 @@ export function MyWorks() {
       <div className="min-h-screen bg-[#f8fbfd]">
         <div className="max-w-5xl mx-auto">
           <Header activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-          <div className="px-6 pt-6">
+          <div className="px-6 pt-8">
             <div className="bg-white rounded-[32px] shadow-sm p-8">
               <ErrorMessage
                 title="作品の読み込みに失敗しました"
@@ -248,7 +263,7 @@ export function MyWorks() {
       <div className="max-w-5xl mx-auto">
         <Header activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
         <div className="space-y-12 pb-28">
-          <div className="px-6">
+          <div className="px-6 pt-8">
             {filteredWorks.length === 0 ? (
               <div className="bg-white rounded-[32px] shadow-sm p-8 mt-6">
                 <EmptyState
@@ -258,14 +273,23 @@ export function MyWorks() {
                   actionTo="/child/works/new"
                   icon={<Image className="h-16 w-16 text-[#5d7799]/50" />}
                 />
-                  </div>
+              </div>
             ) : (
               <div className="mt-6">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-xl font-bold text-[#5d7799]">
+                    {activeFilter === 'all' ? 'すべての作品' : `${filterTypeToJapanese(activeFilter)}作品`}
+                    <span className="ml-2 text-sm font-normal text-[#5d7799]/70">
+                      ({filteredWorks.length}件)
+                    </span>
+                  </h2>
+                  <CreateWorkButton />
+                </div>
                 <WorksGrid works={filteredWorks} />
               </div>
             )}
           </div>
-          </div>
+        </div>
       </div>
     </div>
   );

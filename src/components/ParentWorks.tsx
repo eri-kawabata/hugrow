@@ -10,7 +10,8 @@ interface Work {
   id: string;
   title: string;
   description?: string;
-  media_url: string;
+  media_url?: string;
+  content_url?: string;
   media_type: 'drawing' | 'photo' | 'audio' | 'image' | 'video';
   type?: 'drawing' | 'photo' | 'audio';
   user_id: string;
@@ -40,8 +41,16 @@ const getSafeMediaUrl = (url: string) => {
   }
   
   try {
+    // URLをトリムして余分な空白を削除
+    url = url.trim();
+    
     // URLが既に完全なURLの場合はそのまま返す
     if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // データURIの場合はそのまま返す
+    if (url.startsWith('data:')) {
       return url;
     }
     
@@ -244,6 +253,9 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0, getSafeMediaU
   
   const typeLabel = typeLabels[workType] || '作品';
   const typeColor = typeColors[workType] || 'bg-gradient-to-r from-purple-500 to-indigo-600';
+  
+  // media_urlとcontent_urlの両方をチェック
+  const mediaUrl = work.media_url || work.content_url;
 
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 animate-fadeIn transform hover:-translate-y-1">
@@ -254,7 +266,7 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0, getSafeMediaU
         <div className="relative h-48 bg-gray-100 overflow-hidden">
           {workType === 'drawing' || workType === 'photo' ? (
             <img 
-              src={getSafeMediaUrl(work.media_url)} 
+              src={getSafeMediaUrl(mediaUrl)} 
               alt={work.title} 
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
               onError={(e) => {
@@ -423,7 +435,9 @@ export function ParentWorks() {
     works.forEach(work => {
       if (work.media_type === 'drawing' || work.media_type === 'photo') {
         const img = new window.Image();
-        img.src = getSafeMediaUrl(work.media_url);
+        // media_urlとcontent_urlの両方をチェック
+        const mediaUrl = work.media_url || work.content_url;
+        img.src = getSafeMediaUrl(mediaUrl);
       }
     });
   };
@@ -491,10 +505,17 @@ export function ParentWorks() {
 
       // データが存在し、少なくとも1つのプロファイルがある場合
       if (profiles && profiles.length > 0) {
-        // 最初のプロファイルを使用
-        const profile = profiles[0];
-        console.log('使用するプロファイル:', profile);
-        setIsParentMode(profile?.role === 'parent');
+        // 親ロールのプロファイルを探す
+        const parentProfile = profiles.find(profile => profile.role === 'parent');
+        console.log('親ロールのプロファイル:', parentProfile);
+        
+        // 親ロールのプロファイルが見つかった場合は親モードに設定
+        if (parentProfile) {
+          setIsParentMode(true);
+        } else {
+          // 親ロールのプロファイルが見つからない場合は子モードに設定
+          setIsParentMode(false);
+        }
       } else {
         // プロファイルが見つからない場合はデフォルトで親モードに設定
         console.warn('プロファイルが見つかりません');
@@ -535,9 +556,17 @@ export function ParentWorks() {
       
       console.log('取得した作品データ:', data);
       
+      // データベースのカラム名を確認
+      if (data.length > 0) {
+        console.log('データベースのカラム名:', Object.keys(data[0]));
+        console.log('最初の作品の詳細データ:', JSON.stringify(data[0], null, 2));
+      }
+      
       // 各作品のメディアURLをログに出力
       data.forEach(work => {
-        console.log(`作品「${work.title}」のメディアURL:`, work.media_url);
+        // content_urlとmedia_urlの両方をチェック
+        const mediaUrl = work.media_url || work.content_url;
+        console.log(`作品「${work.title}」のメディアURL:`, mediaUrl);
         console.log(`作品「${work.title}」のメディアタイプ:`, work.media_type);
         console.log(`作品「${work.title}」のタイプ:`, work.type);
       });
@@ -550,7 +579,10 @@ export function ParentWorks() {
         
         // メディアタイプのデバッグ出力
         console.log(`作品「${work.title}」の元のメディアタイプ: ${originalType}`);
-        console.log(`作品「${work.title}」のメディアURL: ${work.media_url}`);
+        
+        // content_urlとmedia_urlの両方をチェック
+        let mediaUrl = work.media_url || work.content_url;
+        console.log(`作品「${work.title}」のメディアURL: ${mediaUrl}`);
         
         // 正規化ロジック
         if (originalType === 'image') {
@@ -568,7 +600,6 @@ export function ParentWorks() {
         }
         
         // media_urlが相対パスの場合、完全なURLに変換
-        let mediaUrl = work.media_url;
         if (mediaUrl && !mediaUrl.startsWith('http://') && !mediaUrl.startsWith('https://') && !mediaUrl.startsWith('data:')) {
           mediaUrl = getSafeMediaUrl(mediaUrl);
           console.log(`  → メディアURLを変換: ${mediaUrl}`);
