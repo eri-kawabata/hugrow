@@ -107,7 +107,24 @@ const FeedbackItem = memo(({ feedback, onLike }: {
   feedback: Feedback, 
   onLike: (id: string) => void 
 }) => {
-  const stamp = STAMPS.find(s => s.id === feedback.stamp);
+  // フィードバックテキストからスタンプ情報を抽出
+  let feedbackText = feedback.feedback || '';
+  let stampId = null;
+  
+  // スタンプ情報の抽出（[スタンプ名] の形式）
+  const stampMatch = feedbackText.match(/^\[(ハート|いいね|スター|賞|スマイル)\]\s*/);
+  if (stampMatch) {
+    const stampLabel = stampMatch[1];
+    // スタンプラベルからIDを逆引き
+    const foundStamp = STAMPS.find(s => s.label === stampLabel);
+    if (foundStamp) {
+      stampId = foundStamp.id;
+      // スタンプ情報を除去したテキストを設定
+      feedbackText = feedbackText.replace(stampMatch[0], '');
+    }
+  }
+  
+  const stamp = stampId ? STAMPS.find(s => s.id === stampId) : null;
   
   return (
     <div className="bg-gray-50 rounded-lg p-4 mb-3 animate-fadeIn">
@@ -123,7 +140,9 @@ const FeedbackItem = memo(({ feedback, onLike }: {
         </span>
       </div>
       
-      <p className="mt-2 text-gray-700">{feedback.feedback}</p>
+      {feedbackText && feedbackText !== 'スタンプを送りました' && (
+        <p className="mt-2 text-gray-700">{feedbackText}</p>
+      )}
       
       {stamp && (
         <div className="mt-2 flex items-center gap-1">
@@ -581,6 +600,7 @@ export function ParentWorks() {
     }
   };
 
+  // スタンプ付きフィードバックを送信する関数
   const handleFeedbackSubmit = async () => {
     if (!supabase || !selectedWork || (!feedback.trim() && !selectedStamp)) {
       toast.error('フィードバックまたはスタンプを入力してください');
@@ -594,13 +614,22 @@ export function ParentWorks() {
         return;
       }
       
+      // スタンプ情報をフィードバックテキストに含める
+      let feedbackText = feedback.trim();
+      if (selectedStamp) {
+        const stamp = STAMPS.find(s => s.id === selectedStamp);
+        if (stamp) {
+          // スタンプ情報をテキストの先頭に追加
+          feedbackText = `[${stamp.label}] ${feedbackText}`;
+        }
+      }
+      
       const { data, error } = await supabase
         .from('work_feedback')
         .insert([{
           work_id: selectedWork.id,
           user_id: user.id,
-          feedback: feedback.trim() || null,
-          stamp: selectedStamp
+          feedback: feedbackText || 'スタンプを送りました' // スタンプのみの場合はデフォルトテキスト
         }])
         .select();
 
