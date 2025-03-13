@@ -32,6 +32,60 @@ type Feedback = {
 // 作品タイプのフィルター型
 type WorkTypeFilter = 'all' | 'drawing' | 'photo' | 'audio';
 
+// メディアURLを安全に処理する関数
+const getSafeMediaUrl = (url: string) => {
+  if (!url) {
+    // URLがない場合はプレースホルダー画像のURLを返す
+    return 'https://via.placeholder.com/400x300?text=No+Image';
+  }
+  
+  try {
+    // URLが既に完全なURLの場合はそのまま返す
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // Supabaseのストレージパスの場合
+    if (url.includes('storage/v1/object/public')) {
+      // 既にURLの形式になっているが、プロトコルが欠けている場合
+      if (url.startsWith('//')) {
+        return `https:${url}`;
+      }
+      
+      // 相対パスの場合
+      if (url.startsWith('/')) {
+        return `${window.location.origin}${url}`;
+      }
+    }
+    
+    // Supabaseの直接ストレージURLを構築
+    // 環境変数からSupabaseのURLを取得
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xvgbwcgbqjkbfnpvhwlc.supabase.co';
+    
+    // URLがworksで始まる場合
+    if (url.startsWith('works/')) {
+      return `${supabaseUrl}/storage/v1/object/public/${url}`;
+    }
+    
+    // URLにworksが含まれる場合
+    if (url.includes('works/') && !url.includes('http')) {
+      // パスの一部を抽出
+      const pathMatch = url.match(/works\/(.+)/);
+      if (pathMatch && pathMatch[1]) {
+        return `${supabaseUrl}/storage/v1/object/public/works/${pathMatch[1]}`;
+      }
+      return `${supabaseUrl}/storage/v1/object/public/${url}`;
+    }
+    
+    // それ以外の場合は相対パスとして扱う
+    return `${window.location.origin}/${url}`;
+  } catch (error) {
+    console.error('Error processing URL:', error, url);
+    // エラーが発生した場合はプレースホルダー画像のURLを返す
+    return 'https://via.placeholder.com/400x300?text=Error';
+  }
+};
+
 // スタンプの種類
 const STAMPS = [
   { id: 'heart', icon: <Heart className="h-6 w-6" />, label: 'ハート', color: 'text-rose-500' },
@@ -197,6 +251,16 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
   const typeLabel = typeLabels[workType] || '作品';
   const typeColor = typeColors[workType] || 'bg-gradient-to-r from-purple-500 to-indigo-600';
 
+  // 画像URLを安全に取得
+  const safeMediaUrl = getSafeMediaUrl(work.media_url);
+  
+  // 作成日を整形
+  const formattedDate = new Date(work.created_at).toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 animate-fadeIn transform hover:-translate-y-1">
       <Link
@@ -206,9 +270,13 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
         <div className="relative h-48 bg-gray-100 overflow-hidden">
           {workType === 'drawing' || workType === 'photo' ? (
             <img 
-              src={work.media_url} 
+              src={safeMediaUrl} 
               alt={work.title} 
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+              onError={(e) => {
+                console.error(`画像読み込みエラー: ${safeMediaUrl}`);
+                e.currentTarget.src = 'https://via.placeholder.com/400x300?text=画像を読み込めません';
+              }}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
@@ -217,6 +285,11 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
           )}
           <div className={`absolute top-2 right-2 ${typeColor} text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm shadow-md`}>
             {typeLabel}
+          </div>
+          
+          {/* 作成日のバッジを追加 */}
+          <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+            {formattedDate}
           </div>
         </div>
       </Link>
@@ -230,8 +303,12 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
         
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center text-sm text-gray-500">
-            <Calendar className="h-4 w-4 mr-1" />
-            <span>{new Date(work.created_at).toLocaleDateString('ja-JP')}</span>
+            {feedbackCount > 0 && (
+              <div className="flex items-center mr-2">
+                <MessageCircle className="h-4 w-4 mr-1 text-indigo-400" />
+                <span className="text-indigo-500 font-medium">{feedbackCount}</span>
+              </div>
+            )}
           </div>
           
           <button
@@ -248,7 +325,7 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
           >
             <MessageCircle className={`h-4 w-4 ${feedbackCount > 0 ? 'text-indigo-500' : ''}`} />
             <span>
-              {feedbackCount > 0 ? `${feedbackCount}件` : 'フィードバック'}
+              {feedbackCount > 0 ? `フィードバック` : 'フィードバック'}
             </span>
           </button>
         </div>
@@ -284,7 +361,7 @@ const Header = memo(({
           </div>
           <input
             type="text"
-            placeholder="作品を検索..."
+            placeholder="タイトルや説明で検索..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-10 py-2 border border-indigo-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-indigo-50 text-indigo-900 placeholder-indigo-300"
@@ -301,6 +378,7 @@ const Header = memo(({
       </div>
       
       <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mr-2 text-sm text-gray-500 font-medium">表示:</div>
         <FilterButton type="all" activeFilter={activeFilter} onClick={setActiveFilter} />
         <FilterButton type="drawing" activeFilter={activeFilter} onClick={setActiveFilter} />
         <FilterButton type="photo" activeFilter={activeFilter} onClick={setActiveFilter} />
@@ -329,9 +407,17 @@ const EmptyState = memo(({ filter }: { filter: WorkTypeFilter }) => {
       <h3 className="text-xl font-medium text-gray-700 mb-2">
         {filterLabels[filter]}作品が見つかりません
       </h3>
-      <p className="text-gray-500">
+      <p className="text-gray-500 mb-6">
         検索条件に一致する作品はありません。
       </p>
+      <div className="flex justify-center">
+        <button 
+          onClick={() => window.location.href = '/parent/works'}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+        >
+          すべての作品を表示
+        </button>
+      </div>
     </div>
   );
 });
@@ -779,50 +865,6 @@ export function ParentWorks() {
     }
   };
 
-  // メディアURLを安全に処理する関数
-  const getSafeMediaUrl = (url: string) => {
-    if (!url) {
-      // URLがない場合はプレースホルダー画像のURLを返す
-      return 'https://via.placeholder.com/400x300?text=No+Image';
-    }
-    
-    try {
-      // URLが既に完全なURLの場合はそのまま返す
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
-      }
-      
-      // Supabaseのストレージパスの場合
-      if (url.includes('storage/v1/object/public')) {
-        // 既にURLの形式になっているが、プロトコルが欠けている場合
-        if (url.startsWith('//')) {
-          return `https:${url}`;
-        }
-        
-        // 相対パスの場合
-        if (url.startsWith('/')) {
-          return `${window.location.origin}${url}`;
-        }
-      }
-      
-      // Supabaseの直接ストレージURLを構築
-      if (url.includes('works/') && !url.includes('http')) {
-        // 環境変数からSupabaseのURLを取得
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-        if (supabaseUrl) {
-          return `${supabaseUrl}/storage/v1/object/public/${url}`;
-        }
-      }
-      
-      // それ以外の場合は相対パスとして扱う
-      return `${window.location.origin}/${url}`;
-    } catch (error) {
-      console.error('Error processing URL:', error, url);
-      // エラーが発生した場合はプレースホルダー画像のURLを返す
-      return 'https://via.placeholder.com/400x300?text=Error';
-    }
-  };
-
   const fetchFeedbackCounts = async (workIds: string[]) => {
     if (!supabase || workIds.length === 0) return;
 
@@ -980,17 +1022,31 @@ export function ParentWorks() {
         ) : filteredWorks.length === 0 ? (
           <EmptyState filter={filter} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredWorks.map((work, index) => (
-              <div key={work.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                <WorkCard 
-                  work={work} 
-                  onFeedbackClick={setSelectedWork}
-                  feedbackCount={feedbackCounts[work.id] || 0}
-                />
+          <>
+            <div className="mb-4 flex justify-between items-center">
+              <p className="text-gray-600">
+                <span className="font-medium">{filteredWorks.length}</span> 件の作品が見つかりました
+                {filter !== 'all' && ` (${
+                  filter === 'drawing' ? 'お絵かき' : 
+                  filter === 'photo' ? '写真' : '音声'
+                })`}
+              </p>
+              <div className="text-sm text-gray-500">
+                最新の作品が上に表示されます
               </div>
-            ))}
-          </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredWorks.map((work, index) => (
+                <div key={work.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
+                  <WorkCard 
+                    work={work} 
+                    onFeedbackClick={setSelectedWork}
+                    feedbackCount={feedbackCounts[work.id] || 0}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -999,7 +1055,16 @@ export function ParentWorks() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-scaleIn">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
-              <h3 className="text-xl font-semibold text-indigo-900">{selectedWork.title}へのフィードバック</h3>
+              <div>
+                <h3 className="text-xl font-semibold text-indigo-900">{selectedWork.title}</h3>
+                <p className="text-sm text-gray-500">
+                  {new Date(selectedWork.created_at).toLocaleDateString('ja-JP', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
               <button
                 onClick={() => {
                   setSelectedWork(null);
@@ -1026,7 +1091,7 @@ export function ParentWorks() {
                   onClick={() => setShowFeedbacks(true)}
                   className={`px-4 py-2 font-medium text-sm transition-all duration-200 ${showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                  フィードバック一覧 {feedbackList.length > 0 && `(${feedbackList.length})`}
+                  フィードバック履歴 {feedbackList.length > 0 && `(${feedbackList.length})`}
                 </button>
               </div>
               
@@ -1039,7 +1104,8 @@ export function ParentWorks() {
                     </div>
                   ) : feedbackList.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      まだフィードバックはありません
+                      <p className="mb-2">まだフィードバックはありません</p>
+                      <p className="text-sm">子どもの成長を励ますメッセージを送りましょう</p>
                     </div>
                   ) : (
                     <div>
@@ -1091,6 +1157,9 @@ export function ParentWorks() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-inner bg-gray-50"
                       rows={4}
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      子どもが見るメッセージです。励ましの言葉や具体的な感想を書くと喜ばれます。
+                    </p>
                   </div>
                 </div>
               )}
