@@ -34,14 +34,18 @@ type WorkTypeFilter = 'all' | 'drawing' | 'photo' | 'audio';
 
 // メディアURLを安全に処理する関数
 const getSafeMediaUrl = (url: string) => {
-  if (!url) {
+  if (!url || url === 'null' || url === 'undefined' || url === '') {
     // URLがない場合はプレースホルダー画像のURLを返す
-    return 'https://via.placeholder.com/400x300?text=No+Image';
+    console.log('無効なURLのためプレースホルダーを使用します');
+    return ''; // 空文字列を返す
   }
   
   try {
+    console.log('元のURL:', url); // デバッグ用
+    
     // URLが既に完全なURLの場合はそのまま返す
     if (url.startsWith('http://') || url.startsWith('https://')) {
+      console.log('完全なURLを返します:', url);
       return url;
     }
     
@@ -49,12 +53,16 @@ const getSafeMediaUrl = (url: string) => {
     if (url.includes('storage/v1/object/public')) {
       // 既にURLの形式になっているが、プロトコルが欠けている場合
       if (url.startsWith('//')) {
-        return `https:${url}`;
+        const fullUrl = `https:${url}`;
+        console.log('プロトコルを追加:', fullUrl);
+        return fullUrl;
       }
       
       // 相対パスの場合
       if (url.startsWith('/')) {
-        return `${window.location.origin}${url}`;
+        const fullUrl = `${window.location.origin}${url}`;
+        console.log('相対パスを絶対パスに変換:', fullUrl);
+        return fullUrl;
       }
     }
     
@@ -64,7 +72,9 @@ const getSafeMediaUrl = (url: string) => {
     
     // URLがworksで始まる場合
     if (url.startsWith('works/')) {
-      return `${supabaseUrl}/storage/v1/object/public/${url}`;
+      const fullUrl = `${supabaseUrl}/storage/v1/object/public/${url}`;
+      console.log('works/で始まるパスを変換:', fullUrl);
+      return fullUrl;
     }
     
     // URLにworksが含まれる場合
@@ -72,17 +82,23 @@ const getSafeMediaUrl = (url: string) => {
       // パスの一部を抽出
       const pathMatch = url.match(/works\/(.+)/);
       if (pathMatch && pathMatch[1]) {
-        return `${supabaseUrl}/storage/v1/object/public/works/${pathMatch[1]}`;
+        const fullUrl = `${supabaseUrl}/storage/v1/object/public/works/${pathMatch[1]}`;
+        console.log('works/を含むパスを変換:', fullUrl);
+        return fullUrl;
       }
-      return `${supabaseUrl}/storage/v1/object/public/${url}`;
+      const fullUrl = `${supabaseUrl}/storage/v1/object/public/${url}`;
+      console.log('works/を含むパスをフォールバック変換:', fullUrl);
+      return fullUrl;
     }
     
     // それ以外の場合は相対パスとして扱う
-    return `${window.location.origin}/${url}`;
+    const fullUrl = `${window.location.origin}/${url}`;
+    console.log('相対パスとして処理:', fullUrl);
+    return fullUrl;
   } catch (error) {
-    console.error('Error processing URL:', error, url);
-    // エラーが発生した場合はプレースホルダー画像のURLを返す
-    return 'https://via.placeholder.com/400x300?text=Error';
+    console.error('URL処理エラー:', error, url);
+    // エラーが発生した場合は空文字列を返す
+    return '';
   }
 };
 
@@ -235,6 +251,8 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
   onFeedbackClick: (work: Work) => void,
   feedbackCount?: number
 }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const workType = work.type || work.media_type;
   const typeLabels = {
     drawing: 'お絵かき',
@@ -252,7 +270,8 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
   const typeColor = typeColors[workType] || 'bg-gradient-to-r from-purple-500 to-indigo-600';
 
   // 画像URLを安全に取得
-  const safeMediaUrl = getSafeMediaUrl(work.media_url);
+  const safeMediaUrl = work.media_url ? getSafeMediaUrl(work.media_url) : '';
+  console.log(`作品「${work.title}」の処理後URL:`, safeMediaUrl);
   
   // 作成日を整形
   const formattedDate = new Date(work.created_at).toLocaleDateString('ja-JP', {
@@ -260,6 +279,46 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
     month: 'short',
     day: 'numeric'
   });
+
+  // 画像読み込みエラー処理
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error(`画像読み込みエラー: ${work.title}`, work.media_url);
+    setImageError(true);
+  };
+
+  // 画像読み込み完了処理
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
+  // デフォルトのサムネイル表示
+  const renderDefaultThumbnail = () => {
+    if (workType === 'audio') {
+      return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+          <Music className="h-16 w-16 text-gray-300 mb-2" />
+          <p className="text-sm text-gray-400">音声</p>
+        </div>
+      );
+    } else if (workType === 'drawing') {
+      return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+          <Palette className="h-16 w-16 text-gray-300 mb-2" />
+          <p className="text-sm text-gray-400">お絵かき</p>
+        </div>
+      );
+    } else {
+      return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+          <Camera className="h-16 w-16 text-gray-300 mb-2" />
+          <p className="text-sm text-gray-400">写真</p>
+        </div>
+      );
+    }
+  };
+
+  // 画像URLが無効な場合はデフォルトのサムネイルを表示
+  const shouldShowDefaultThumbnail = !safeMediaUrl || imageError;
 
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 animate-fadeIn transform hover:-translate-y-1">
@@ -269,19 +328,27 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
       >
         <div className="relative h-48 bg-gray-100 overflow-hidden">
           {workType === 'drawing' || workType === 'photo' ? (
-            <img 
-              src={safeMediaUrl} 
-              alt={work.title} 
-              className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-              onError={(e) => {
-                console.error(`画像読み込みエラー: ${safeMediaUrl}`);
-                e.currentTarget.src = 'https://via.placeholder.com/400x300?text=画像を読み込めません';
-              }}
-            />
+            <>
+              {!imageLoaded && !shouldShowDefaultThumbnail && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+                </div>
+              )}
+              
+              {shouldShowDefaultThumbnail ? (
+                renderDefaultThumbnail()
+              ) : (
+                <img 
+                  src={safeMediaUrl} 
+                  alt={work.title} 
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                  onError={handleImageError}
+                  onLoad={handleImageLoad}
+                />
+              )}
+            </>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-              <Music className="h-16 w-16 text-gray-300" />
-            </div>
+            renderDefaultThumbnail()
           )}
           <div className={`absolute top-2 right-2 ${typeColor} text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm shadow-md`}>
             {typeLabel}
@@ -458,6 +525,11 @@ export function ParentWorks() {
       if (work.media_type === 'drawing' || work.media_type === 'photo') {
         const img = new window.Image();
         img.src = getSafeMediaUrl(work.media_url);
+        
+        // エラー処理を追加
+        img.onerror = () => {
+          console.error(`プリロード中にエラーが発生しました: ${work.title}`, work.media_url);
+        };
       }
     });
   };
@@ -507,19 +579,26 @@ export function ParentWorks() {
         return;
       }
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-        
-      if (error) {
-        console.error('プロファイル取得エラー:', error);
-        setIsParentMode(true);
-        return;
-      }
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (error) {
+          console.error('プロファイル取得エラー:', error);
+          // エラーが発生しても親モードとして扱う
+          setIsParentMode(true);
+          return;
+        }
 
-      setIsParentMode(profile?.role === 'parent');
+        setIsParentMode(profile?.role === 'parent');
+      } catch (profileError) {
+        console.error('プロファイル取得中に例外が発生しました:', profileError);
+        // エラーが発生しても親モードとして扱う
+        setIsParentMode(true);
+      }
     } catch (error) {
       console.error('認証チェックエラー:', error);
       setIsParentMode(true);
@@ -534,6 +613,9 @@ export function ParentWorks() {
 
     try {
       setLoading(true);
+      
+      // 作品データを取得
+      console.log('作品データを取得中...');
       const { data, error } = await supabase
         .from('works')
         .select('*')
@@ -545,15 +627,22 @@ export function ParentWorks() {
         return;
       }
       
-      if (!data) {
+      if (!data || data.length === 0) {
         console.warn('作品データが取得できませんでした');
         setWorks([]);
         return;
       }
       
-      console.log('取得した作品データ:', data);
+      console.log(`${data.length}件の作品データを取得しました`);
       
-      // メディアタイプの正規化
+      // 各作品のメディアURLをチェック
+      data.forEach(work => {
+        console.log(`作品ID: ${work.id}, タイトル: ${work.title}`);
+        console.log(`  メディアタイプ: ${work.media_type}`);
+        console.log(`  メディアURL: ${work.media_url || 'なし'}`);
+      });
+      
+      // メディアタイプの正規化とURLの処理
       const normalizedData = data.map(work => {
         // 元のメディアタイプを保存
         const originalType = work.media_type;
@@ -577,9 +666,36 @@ export function ParentWorks() {
           console.log(`  → 'type'フィールドを使用: ${work.type}`);
         }
         
+        // メディアURLの処理
+        let processedMediaUrl = work.media_url;
+        
+        // URLが空または無効な場合はプレースホルダーを設定
+        if (!processedMediaUrl || processedMediaUrl === 'null' || processedMediaUrl === 'undefined') {
+          console.log(`  → メディアURLが無効なため、空文字列を設定`);
+          processedMediaUrl = '';
+        } else {
+          // URLの形式をチェック
+          try {
+            // URLが相対パスの場合は絶対パスに変換
+            if (!processedMediaUrl.startsWith('http://') && !processedMediaUrl.startsWith('https://')) {
+              // Supabaseのストレージパスを構築
+              const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xvgbwcgbqjkbfnpvhwlc.supabase.co';
+              
+              if (processedMediaUrl.startsWith('works/')) {
+                processedMediaUrl = `${supabaseUrl}/storage/v1/object/public/${processedMediaUrl}`;
+                console.log(`  → Supabaseストレージパスに変換: ${processedMediaUrl}`);
+              }
+            }
+          } catch (error) {
+            console.error(`  → URL処理エラー:`, error);
+            processedMediaUrl = '';
+          }
+        }
+        
         return {
           ...work,
-          media_type: normalizedType
+          media_type: normalizedType,
+          media_url: processedMediaUrl
         };
       });
       
@@ -617,87 +733,127 @@ export function ParentWorks() {
       if (error) {
         console.error('フィードバックの取得エラー:', error);
         toast.error('フィードバックの読み込みに失敗しました');
-        return;
-      }
-      
-      if (!data) {
         setFeedbackList([]);
         return;
       }
       
-      // ユーザー情報を取得
-      const userIds = [...new Set(data.map(item => item.user_id))];
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, username')
-        .in('user_id', userIds);
-        
-      if (profilesError) {
-        console.error('プロファイル情報の取得エラー:', profilesError);
-      }
-      
-      // プロファイル情報をマッピング
-      const userMap = new Map();
-      if (profilesData) {
-        profilesData.forEach(profile => {
-          userMap.set(profile.user_id, profile.username);
-        });
-      }
-      
-      // いいね情報を取得
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.warn('ユーザー情報が取得できませんでした');
+      if (!data || data.length === 0) {
+        console.log('フィードバックがありません');
+        setFeedbackList([]);
         return;
       }
       
-      const { data: likesData, error: likesError } = await supabase
-        .from('feedback_likes')
-        .select('feedback_id, count')
-        .in('feedback_id', data.map(item => item.id));
+      console.log(`${data.length}件のフィードバックを取得しました`);
+      
+      try {
+        // ユーザー情報を取得
+        const userIds = [...new Set(data.map(item => item.user_id))];
         
-      if (likesError) {
-        console.error('いいね情報の取得エラー:', likesError);
-      }
-      
-      // 自分のいいね情報を取得
-      const { data: myLikesData, error: myLikesError } = await supabase
-        .from('feedback_likes')
-        .select('feedback_id')
-        .eq('user_id', user.id)
-        .in('feedback_id', data.map(item => item.id));
+        if (userIds.length === 0) {
+          console.warn('ユーザーIDが取得できませんでした');
+          setFeedbackList(data.map(item => ({
+            ...item,
+            username: '匿名',
+            likes: 0,
+            liked_by_me: false
+          })));
+          return;
+        }
         
-      if (myLikesError) {
-        console.error('自分のいいね情報の取得エラー:', myLikesError);
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, username')
+          .in('user_id', userIds);
+          
+        if (profilesError) {
+          console.error('プロファイル情報の取得エラー:', profilesError);
+          // エラーが発生してもフィードバックは表示する
+          setFeedbackList(data.map(item => ({
+            ...item,
+            username: '匿名',
+            likes: 0,
+            liked_by_me: false
+          })));
+          return;
+        }
+        
+        // プロファイル情報をマッピング
+        const userMap = new Map();
+        if (profilesData) {
+          profilesData.forEach(profile => {
+            userMap.set(profile.user_id, profile.username);
+          });
+        }
+        
+        // いいね情報を取得
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.warn('ユーザー情報が取得できませんでした');
+          // ユーザー情報がなくてもフィードバックは表示する
+          setFeedbackList(data.map(item => ({
+            ...item,
+            username: userMap.get(item.user_id) || '匿名',
+            likes: 0,
+            liked_by_me: false
+          })));
+          return;
+        }
+        
+        // いいね情報の取得を試みる
+        let likesMap = new Map();
+        let myLikesSet = new Set();
+        
+        try {
+          const { data: likesData, error: likesError } = await supabase
+            .from('feedback_likes')
+            .select('feedback_id, count')
+            .in('feedback_id', data.map(item => item.id));
+            
+          if (!likesError && likesData) {
+            likesData.forEach(item => {
+              likesMap.set(item.feedback_id, item.count);
+            });
+          }
+          
+          const { data: myLikesData, error: myLikesError } = await supabase
+            .from('feedback_likes')
+            .select('feedback_id')
+            .eq('user_id', user.id)
+            .in('feedback_id', data.map(item => item.id));
+            
+          if (!myLikesError && myLikesData) {
+            myLikesData.forEach(item => {
+              myLikesSet.add(item.feedback_id);
+            });
+          }
+        } catch (likesError) {
+          console.error('いいね情報の取得中にエラーが発生しました:', likesError);
+          // エラーが発生してもフィードバックは表示する
+        }
+        
+        // フィードバックリストを更新
+        const updatedFeedbackList = data.map(item => ({
+          ...item,
+          username: userMap.get(item.user_id) || '匿名',
+          likes: likesMap.get(item.id) || 0,
+          liked_by_me: myLikesSet.has(item.id)
+        }));
+        
+        setFeedbackList(updatedFeedbackList);
+      } catch (dataProcessError) {
+        console.error('フィードバックデータの処理中にエラーが発生しました:', dataProcessError);
+        // エラーが発生してもフィードバックは表示する
+        setFeedbackList(data.map(item => ({
+          ...item,
+          username: '匿名',
+          likes: 0,
+          liked_by_me: false
+        })));
       }
-      
-      // いいね情報をマッピング
-      const likesMap = new Map();
-      if (likesData) {
-        likesData.forEach(item => {
-          likesMap.set(item.feedback_id, item.count);
-        });
-      }
-      
-      const myLikesSet = new Set();
-      if (myLikesData) {
-        myLikesData.forEach(item => {
-          myLikesSet.add(item.feedback_id);
-        });
-      }
-      
-      // フィードバックリストを更新
-      const updatedFeedbackList = data.map(item => ({
-        ...item,
-        username: userMap.get(item.user_id) || '匿名',
-        likes: likesMap.get(item.id) || 0,
-        liked_by_me: myLikesSet.has(item.id)
-      }));
-      
-      setFeedbackList(updatedFeedbackList);
     } catch (error) {
       console.error('予期せぬエラーが発生しました:', error);
       toast.error('予期せぬエラーが発生しました');
+      setFeedbackList([]);
     } finally {
       setFeedbackLoading(false);
     }
