@@ -65,18 +65,22 @@ const FilterButton = memo(({ type, activeFilter, onClick }: {
     all: { 
       label: 'すべて', 
       icon: <Filter className="h-4 w-4" />,
+      color: 'bg-gradient-to-r from-purple-500 to-indigo-600'
     },
     drawing: { 
       label: '絵', 
       icon: <Palette className="h-4 w-4" />,
+      color: 'bg-gradient-to-r from-orange-400 to-pink-500'
     },
     audio: { 
       label: '音声', 
       icon: <Music className="h-4 w-4" />,
+      color: 'bg-gradient-to-r from-green-400 to-teal-500'
     },
     photo: { 
       label: '写真', 
       icon: <Camera className="h-4 w-4" />,
+      color: 'bg-gradient-to-r from-blue-400 to-cyan-500'
     },
   };
 
@@ -86,13 +90,13 @@ const FilterButton = memo(({ type, activeFilter, onClick }: {
   return (
     <button
       onClick={() => onClick(type)}
-      className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+      className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all duration-300 transform hover:scale-105 ${
         isActive 
-          ? `bg-indigo-600 text-white shadow-md` 
-          : `bg-white text-gray-700 hover:bg-gray-50 border border-gray-200`
+          ? `${config.color} text-white shadow-lg` 
+          : `bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:shadow`
       }`}
     >
-      <span>
+      <span className={`${isActive ? 'animate-pulse' : ''}`}>
         {config.icon}
       </span>
       <span>{config.label}</span>
@@ -184,34 +188,41 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
     photo: '写真',
   };
   
+  const typeColors = {
+    drawing: 'bg-gradient-to-r from-orange-400 to-pink-500',
+    audio: 'bg-gradient-to-r from-green-400 to-teal-500',
+    photo: 'bg-gradient-to-r from-blue-400 to-cyan-500',
+  };
+  
   const typeLabel = typeLabels[workType] || '作品';
+  const typeColor = typeColors[workType] || 'bg-gradient-to-r from-purple-500 to-indigo-600';
 
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-200 animate-fadeIn">
+    <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 animate-fadeIn transform hover:-translate-y-1">
       <Link
         to={`/parent/works/${work.id}`}
         className="block"
       >
-        <div className="relative h-48 bg-gray-100">
+        <div className="relative h-48 bg-gray-100 overflow-hidden">
           {workType === 'drawing' || workType === 'photo' ? (
             <img 
               src={work.media_url} 
               alt={work.title} 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
               <Music className="h-16 w-16 text-gray-300" />
             </div>
           )}
-          <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm">
+          <div className={`absolute top-2 right-2 ${typeColor} text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm shadow-md`}>
             {typeLabel}
           </div>
         </div>
       </Link>
       
       <div className="p-4">
-        <h2 className="font-semibold text-gray-800 text-lg mb-1">{work.title}</h2>
+        <h2 className="font-semibold text-gray-800 text-lg mb-1 line-clamp-1">{work.title}</h2>
         
         {work.description && (
           <p className="text-sm text-gray-600 mb-3 line-clamp-2">{work.description}</p>
@@ -229,10 +240,16 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
               e.stopPropagation();
               onFeedbackClick(work);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-md text-sm font-medium transition-all duration-200"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+              feedbackCount > 0 
+                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
           >
-            <MessageCircle className="h-4 w-4" />
-            <span>フィードバック{feedbackCount > 0 ? ` (${feedbackCount})` : ''}</span>
+            <MessageCircle className={`h-4 w-4 ${feedbackCount > 0 ? 'text-indigo-500' : ''}`} />
+            <span>
+              {feedbackCount > 0 ? `${feedbackCount}件` : 'フィードバック'}
+            </span>
           </button>
         </div>
       </div>
@@ -254,30 +271,30 @@ const Header = memo(({
   searchTerm: string,
   setSearchTerm: (term: string) => void
 }) => (
-  <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+  <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
           子どもの作品一覧
         </h1>
         
         <div className="relative max-w-md w-full">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
+            <Search className="h-5 w-5 text-indigo-400" />
           </div>
           <input
             type="text"
             placeholder="作品を検索..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="block w-full pl-10 pr-10 py-2 border border-indigo-200 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-indigo-50 text-indigo-900 placeholder-indigo-300"
           />
           {searchTerm && (
             <button 
               onClick={() => setSearchTerm('')}
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
-              <X className="h-5 w-5 text-gray-400 hover:text-gray-500" />
+              <X className="h-5 w-5 text-indigo-400 hover:text-indigo-500" />
             </button>
           )}
         </div>
@@ -305,9 +322,9 @@ const EmptyState = memo(({ filter }: { filter: WorkTypeFilter }) => {
   };
   
   return (
-    <div className="bg-white rounded-lg shadow-md p-8 mt-6 text-center">
-      <div className="inline-flex items-center justify-center p-4 bg-gray-100 rounded-full mb-4">
-        <ImageIcon className="h-12 w-12 text-gray-400" />
+    <div className="bg-white rounded-lg shadow-md p-8 mt-6 text-center animate-fadeIn">
+      <div className="inline-flex items-center justify-center p-4 bg-indigo-50 rounded-full mb-4">
+        <ImageIcon className="h-12 w-12 text-indigo-300" />
       </div>
       <h3 className="text-xl font-medium text-gray-700 mb-2">
         {filterLabels[filter]}作品が見つかりません
@@ -944,7 +961,7 @@ export function ParentWorks() {
   }, [filteredWorks, works, filter]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
       <Header 
         activeFilter={filter} 
         setActiveFilter={setFilter}
@@ -964,13 +981,14 @@ export function ParentWorks() {
           <EmptyState filter={filter} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredWorks.map((work) => (
-              <WorkCard 
-                key={work.id} 
-                work={work} 
-                onFeedbackClick={setSelectedWork}
-                feedbackCount={feedbackCounts[work.id] || 0}
-              />
+            {filteredWorks.map((work, index) => (
+              <div key={work.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
+                <WorkCard 
+                  work={work} 
+                  onFeedbackClick={setSelectedWork}
+                  feedbackCount={feedbackCounts[work.id] || 0}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -978,10 +996,10 @@ export function ParentWorks() {
 
       {/* Feedback Modal */}
       {selectedWork && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-xl font-semibold text-gray-800">{selectedWork.title}へのフィードバック</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-scaleIn">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+              <h3 className="text-xl font-semibold text-indigo-900">{selectedWork.title}へのフィードバック</h3>
               <button
                 onClick={() => {
                   setSelectedWork(null);
@@ -989,7 +1007,7 @@ export function ParentWorks() {
                   setSelectedStamp(null);
                   setFeedback('');
                 }}
-                className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-full hover:bg-gray-100"
+                className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-full hover:bg-white"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1000,13 +1018,13 @@ export function ParentWorks() {
               <div className="flex border-b border-gray-200 mb-4">
                 <button
                   onClick={() => setShowFeedbacks(false)}
-                  className={`px-4 py-2 font-medium text-sm ${!showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 py-2 font-medium text-sm transition-all duration-200 ${!showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   新規フィードバック
                 </button>
                 <button
                   onClick={() => setShowFeedbacks(true)}
-                  className={`px-4 py-2 font-medium text-sm ${showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 py-2 font-medium text-sm transition-all duration-200 ${showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   フィードバック一覧 {feedbackList.length > 0 && `(${feedbackList.length})`}
                 </button>
@@ -1025,19 +1043,20 @@ export function ParentWorks() {
                     </div>
                   ) : (
                     <div>
-                      {feedbackList.map(item => (
-                        <FeedbackItem 
-                          key={item.id} 
-                          feedback={item} 
-                          onLike={handleLikeToggle} 
-                        />
+                      {feedbackList.map((item, index) => (
+                        <div key={item.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
+                          <FeedbackItem 
+                            feedback={item} 
+                            onLike={handleLikeToggle} 
+                          />
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
               ) : (
                 // 新規フィードバック入力
-                <div>
+                <div className="animate-fadeIn">
                   <p className="text-gray-600 mb-4">子どもの作品に対するフィードバックを送信します。励ましのメッセージや感想を書いてみましょう。</p>
                   
                   <div className="mb-4">
@@ -1049,10 +1068,10 @@ export function ParentWorks() {
                         <button
                           key={stamp.id}
                           onClick={() => setSelectedStamp(stamp.id === selectedStamp ? null : stamp.id)}
-                          className={`p-2 rounded-md transition-all ${
+                          className={`p-3 rounded-full transition-all duration-300 transform ${
                             stamp.id === selectedStamp 
-                              ? 'bg-indigo-100 ring-2 ring-indigo-500 ring-offset-2' 
-                              : 'bg-gray-50 hover:bg-gray-100'
+                              ? 'bg-indigo-100 ring-2 ring-indigo-500 ring-offset-2 scale-110' 
+                              : 'bg-gray-50 hover:bg-gray-100 hover:scale-105'
                           }`}
                         >
                           <div className={stamp.color}>{stamp.icon}</div>
@@ -1069,7 +1088,7 @@ export function ParentWorks() {
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
                       placeholder="子どもへのメッセージを書いてください..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-inner"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-inner bg-gray-50"
                       rows={4}
                     />
                   </div>
@@ -1077,7 +1096,7 @@ export function ParentWorks() {
               )}
             </div>
             
-            <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
               <button
                 onClick={() => {
                   setSelectedWork(null);
@@ -1085,7 +1104,7 @@ export function ParentWorks() {
                   setSelectedStamp(null);
                   setFeedback('');
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors rounded hover:bg-gray-100"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors rounded-full hover:bg-white"
               >
                 キャンセル
               </button>
@@ -1094,7 +1113,7 @@ export function ParentWorks() {
                 <button
                   onClick={handleFeedbackSubmit}
                   disabled={!feedback.trim() && !selectedStamp}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm flex items-center gap-2"
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-md transform hover:scale-105 disabled:hover:scale-100 flex items-center gap-2"
                 >
                   <MessageCircle className="h-4 w-4" />
                   <span>送信する</span>
