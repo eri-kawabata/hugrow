@@ -32,6 +32,53 @@ type Feedback = {
 // 作品タイプのフィルター型
 type WorkTypeFilter = 'all' | 'drawing' | 'photo' | 'audio';
 
+// メディアURLを安全に処理する関数
+const getSafeMediaUrl = (url: string) => {
+  if (!url) {
+    // URLがない場合はデータURIのプレースホルダー画像を返す
+    return 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22300%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20300%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e113b0f1%20text%20%7B%20fill%3A%23AAAAAA%3Bfont-weight%3Abold%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e113b0f1%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23EEEEEE%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22148.5%22%20y%3D%22157.9%22%3ENo Image%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
+  }
+  
+  try {
+    // URLが既に完全なURLの場合はそのまま返す
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // Supabaseのストレージパスの場合
+    if (url.includes('storage/v1/object/public')) {
+      // 既にURLの形式になっているが、プロトコルが欠けている場合
+      if (url.startsWith('//')) {
+        return `https:${url}`;
+      }
+      
+      // 相対パスの場合
+      if (url.startsWith('/')) {
+        return `${window.location.origin}${url}`;
+      }
+    }
+    
+    // Supabaseの直接ストレージURLを構築
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    if (supabaseUrl) {
+      // パスが既にworks/で始まっている場合
+      if (url.includes('works/')) {
+        return `${supabaseUrl}/storage/v1/object/public/${url}`;
+      } else {
+        // 完全なパスを構築
+        return `${supabaseUrl}/storage/v1/object/public/works/${url}`;
+      }
+    }
+    
+    // それ以外の場合は相対パスとして扱う
+    return `${window.location.origin}/${url}`;
+  } catch (error) {
+    console.error('Error processing URL:', error, url);
+    // エラーが発生した場合はデータURIのプレースホルダー画像を返す
+    return 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22300%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20300%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e113b0f1%20text%20%7B%20fill%3A%23AAAAAA%3Bfont-weight%3Abold%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e113b0f1%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23EEEEEE%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22148.5%22%20y%3D%22157.9%22%3ENo Image%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
+  }
+};
+
 // スタンプの種類
 const STAMPS = [
   { id: 'heart', icon: <Heart className="h-6 w-6" />, label: 'ハート', color: 'text-rose-500' },
@@ -176,10 +223,11 @@ const FeedbackItem = memo(({ feedback, onLike }: {
 FeedbackItem.displayName = 'FeedbackItem';
 
 // 作品カードコンポーネント
-const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: { 
+const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0, getSafeMediaUrl }: { 
   work: Work, 
   onFeedbackClick: (work: Work) => void,
-  feedbackCount?: number
+  feedbackCount?: number,
+  getSafeMediaUrl: (url: string) => string
 }) => {
   const workType = work.type || work.media_type;
   const typeLabels = {
@@ -206,9 +254,13 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0 }: {
         <div className="relative h-48 bg-gray-100 overflow-hidden">
           {workType === 'drawing' || workType === 'photo' ? (
             <img 
-              src={work.media_url} 
+              src={getSafeMediaUrl(work.media_url)} 
               alt={work.title} 
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22400%22%20height%3D%22300%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%20300%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_189e113b0f1%20text%20%7B%20fill%3A%23AAAAAA%3Bfont-weight%3Abold%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A20pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_189e113b0f1%22%3E%3Crect%20width%3D%22400%22%20height%3D%22300%22%20fill%3D%22%23EEEEEE%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22148.5%22%20y%3D%22157.9%22%3ENo Image%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E';
+              }}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
@@ -421,11 +473,13 @@ export function ParentWorks() {
         return;
       }
 
-      const { data: profile, error } = await supabase
+      console.log('認証ユーザーID:', user.id);
+
+      // 複数行の結果を処理できるように修正
+      const { data: profiles, error } = await supabase
         .from('profiles')
         .select('role')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
         
       if (error) {
         console.error('プロファイル取得エラー:', error);
@@ -433,7 +487,19 @@ export function ParentWorks() {
         return;
       }
 
-      setIsParentMode(profile?.role === 'parent');
+      console.log('取得したプロファイル:', profiles);
+
+      // データが存在し、少なくとも1つのプロファイルがある場合
+      if (profiles && profiles.length > 0) {
+        // 最初のプロファイルを使用
+        const profile = profiles[0];
+        console.log('使用するプロファイル:', profile);
+        setIsParentMode(profile?.role === 'parent');
+      } else {
+        // プロファイルが見つからない場合はデフォルトで親モードに設定
+        console.warn('プロファイルが見つかりません');
+        setIsParentMode(true);
+      }
     } catch (error) {
       console.error('認証チェックエラー:', error);
       setIsParentMode(true);
@@ -448,6 +514,8 @@ export function ParentWorks() {
 
     try {
       setLoading(true);
+      
+      // 適切なヘッダーを設定してリクエスト
       const { data, error } = await supabase
         .from('works')
         .select('*')
@@ -467,6 +535,13 @@ export function ParentWorks() {
       
       console.log('取得した作品データ:', data);
       
+      // 各作品のメディアURLをログに出力
+      data.forEach(work => {
+        console.log(`作品「${work.title}」のメディアURL:`, work.media_url);
+        console.log(`作品「${work.title}」のメディアタイプ:`, work.media_type);
+        console.log(`作品「${work.title}」のタイプ:`, work.type);
+      });
+      
       // メディアタイプの正規化
       const normalizedData = data.map(work => {
         // 元のメディアタイプを保存
@@ -475,6 +550,7 @@ export function ParentWorks() {
         
         // メディアタイプのデバッグ出力
         console.log(`作品「${work.title}」の元のメディアタイプ: ${originalType}`);
+        console.log(`作品「${work.title}」のメディアURL: ${work.media_url}`);
         
         // 正規化ロジック
         if (originalType === 'image') {
@@ -491,9 +567,17 @@ export function ParentWorks() {
           console.log(`  → 'type'フィールドを使用: ${work.type}`);
         }
         
+        // media_urlが相対パスの場合、完全なURLに変換
+        let mediaUrl = work.media_url;
+        if (mediaUrl && !mediaUrl.startsWith('http://') && !mediaUrl.startsWith('https://') && !mediaUrl.startsWith('data:')) {
+          mediaUrl = getSafeMediaUrl(mediaUrl);
+          console.log(`  → メディアURLを変換: ${mediaUrl}`);
+        }
+        
         return {
           ...work,
-          media_type: normalizedType
+          media_type: normalizedType,
+          media_url: mediaUrl
         };
       });
       
@@ -534,7 +618,7 @@ export function ParentWorks() {
         return;
       }
       
-      if (!data) {
+      if (!data || data.length === 0) {
         setFeedbackList([]);
         return;
       }
@@ -779,50 +863,6 @@ export function ParentWorks() {
     }
   };
 
-  // メディアURLを安全に処理する関数
-  const getSafeMediaUrl = (url: string) => {
-    if (!url) {
-      // URLがない場合はプレースホルダー画像のURLを返す
-      return 'https://via.placeholder.com/400x300?text=No+Image';
-    }
-    
-    try {
-      // URLが既に完全なURLの場合はそのまま返す
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
-      }
-      
-      // Supabaseのストレージパスの場合
-      if (url.includes('storage/v1/object/public')) {
-        // 既にURLの形式になっているが、プロトコルが欠けている場合
-        if (url.startsWith('//')) {
-          return `https:${url}`;
-        }
-        
-        // 相対パスの場合
-        if (url.startsWith('/')) {
-          return `${window.location.origin}${url}`;
-        }
-      }
-      
-      // Supabaseの直接ストレージURLを構築
-      if (url.includes('works/') && !url.includes('http')) {
-        // 環境変数からSupabaseのURLを取得
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-        if (supabaseUrl) {
-          return `${supabaseUrl}/storage/v1/object/public/${url}`;
-        }
-      }
-      
-      // それ以外の場合は相対パスとして扱う
-      return `${window.location.origin}/${url}`;
-    } catch (error) {
-      console.error('Error processing URL:', error, url);
-      // エラーが発生した場合はプレースホルダー画像のURLを返す
-      return 'https://via.placeholder.com/400x300?text=Error';
-    }
-  };
-
   const fetchFeedbackCounts = async (workIds: string[]) => {
     if (!supabase || workIds.length === 0) return;
 
@@ -987,6 +1027,7 @@ export function ParentWorks() {
                   work={work} 
                   onFeedbackClick={setSelectedWork}
                   feedbackCount={feedbackCounts[work.id] || 0}
+                  getSafeMediaUrl={getSafeMediaUrl}
                 />
               </div>
             ))}
