@@ -54,6 +54,32 @@ const FeedbackItem = memo(({ feedback }: FeedbackItemProps) => {
     ? feedback.feedback.replace(/^\[(.*?)\]\s*/, '')
     : feedback.feedback;
 
+  // ユーザー名を取得する関数
+  const getUserName = () => {
+    // ユーザープロフィールのフルネームがあればそれを優先的に使用
+    if (feedback.user_profile?.full_name) {
+      return feedback.user_profile.full_name;
+    }
+    
+    // 表示名があればそれを使用
+    if (feedback.user_profile?.display_name) {
+      return feedback.user_profile.display_name;
+    }
+    
+    // usernameプロパティがあればそれを使用
+    if (feedback.username && feedback.username !== '保護者') {
+      return feedback.username;
+    }
+    
+    // メールアドレスがあれば@より前の部分を使用
+    if (feedback.user_email) {
+      return feedback.user_email.split('@')[0];
+    }
+    
+    // どれもない場合は「保護者」と表示
+    return '保護者';
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 animate-fade-in">
       <div className="flex items-start gap-3">
@@ -61,7 +87,7 @@ const FeedbackItem = memo(({ feedback }: FeedbackItemProps) => {
           {feedback.user_profile?.avatar_url ? (
             <img
               src={feedback.user_profile.avatar_url}
-              alt={feedback.user_profile.display_name || '保護者'}
+              alt={getUserName()}
               className="h-10 w-10 rounded-full object-cover"
             />
           ) : (
@@ -74,7 +100,7 @@ const FeedbackItem = memo(({ feedback }: FeedbackItemProps) => {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
             <h4 className="font-medium text-gray-900">
-              {feedback.user_profile?.display_name || '保護者'}
+              {getUserName()}
             </h4>
             <span className="text-xs text-gray-500">
               {new Date(feedback.created_at).toLocaleDateString('ja-JP')}

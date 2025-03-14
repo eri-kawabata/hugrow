@@ -1,96 +1,126 @@
 import React, { memo, useCallback, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Image, Music, Camera, Plus, Filter, X, Palette } from 'lucide-react';
+import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle } from 'lucide-react';
 import { useWorks, Work } from '@/hooks/useWorks';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { ErrorMessage } from '@/components/Common/ErrorMessage';
 import { EmptyState } from '@/components/Common/EmptyState';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 // 作品タイプのフィルター型
 type WorkTypeFilter = 'all' | Work['type'] | 'drawing' | 'audio' | 'photo';
 
-const WorkTypeIcon = memo(({ type }: { type: WorkTypeFilter }) => {
-  const icons = {
-    drawing: <Palette className="h-6 w-6 text-[#5d7799]" />,
-    audio: <Music className="h-6 w-6 text-[#5d7799]" />,
-    photo: <Camera className="h-6 w-6 text-[#5d7799]" />,
-  };
+// フィルタータイプを日本語に変換する関数
+const filterTypeToJapanese = (type: WorkTypeFilter): string => {
+  switch (type) {
+    case 'all': return 'すべての';
+    case 'drawing': return 'お絵かき';
+    case 'audio': return '音声';
+    case 'photo': return '写真';
+    default: return '';
+  }
+};
 
-  return icons[type] || <Image className="h-6 w-6 text-[#5d7799]" />;
-});
-
-WorkTypeIcon.displayName = 'WorkTypeIcon';
-
+// 作成ボタンコンポーネント
 const CreateWorkButton = memo(() => (
   <Link
     to="/child/works/new"
-    className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#8ec5d6] to-[#5d7799] text-white rounded-full hover:shadow-lg transition-all duration-300 transform hover:scale-105 font-bold"
+    className="flex items-center gap-2 bg-gradient-to-r from-[#8ec5d6] to-[#5d7799] text-white px-4 py-2 rounded-full hover:shadow-lg transition-all duration-300 transform hover:scale-105"
   >
     <Plus className="h-5 w-5" />
-    <span>新しい作品を作る</span>
+    <span className="font-medium">新しい作品を作る</span>
   </Link>
 ));
 
 CreateWorkButton.displayName = 'CreateWorkButton';
 
+// 作品カードコンポーネント
 const WorkCard = memo(({ work }: { work: Work }) => {
   // 作品タイプを決定（互換性のため）
-  const workType = work.type || (
-    work.media_type === 'image' ? 'photo' : 'audio'
-  );
+  const workType = work.type || 'drawing';
+  const { user } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [hasFeedback, setHasFeedback] = useState(false);
+  const [feedbackCount, setFeedbackCount] = useState(0);
+  const [parentName, setParentName] = useState<string>('');
+  
+  // お気に入り状態とフィードバック状態を読み込む
+  useEffect(() => {
+    const loadFavoriteAndFeedbackStatus = async () => {
+      if (!user) return;
+      
+      try {
+        // お気に入り状態を確認
+        const { data: favoriteData, error: favoriteError } = await supabase
+          .from('favorites')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('work_id', work.id)
+          .single();
+          
+        if (!favoriteError) {
+          setIsFavorite(true);
+        }
+        
+        // フィードバック数を確認
+        const { data: feedbackData, error: feedbackError } = await supabase
+          .from('work_feedback')
+          .select('id, user_id')
+          .eq('work_id', work.id);
+          
+        console.log('作品ID:', work.id, 'フィードバックデータ:', feedbackData);
+          
+        if (!feedbackError && feedbackData && feedbackData.length > 0) {
+          setHasFeedback(true);
+          setFeedbackCount(feedbackData.length);
+          
+          try {
+            // 保護者のユーザーIDを取得
+            const userId = feedbackData[0].user_id;
+            
+            // プロフィール情報を取得 - single()を使わない
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('display_name')
+              .eq('user_id', userId);
+              
+            if (!profileError && profileData && profileData.length > 0 && profileData[0].display_name) {
+              console.log('保護者名を設定:', profileData[0].display_name);
+              setParentName(profileData[0].display_name);
+            } else {
+              console.log('保護者プロフィールが見つかりません');
+              setParentName('保護者');
+            }
+          } catch (profileErr) {
+            console.error('プロフィール取得エラー:', profileErr);
+            setParentName('保護者');
+          }
+        }
+      } catch (err) {
+        console.error('状態の読み込みに失敗しました:', err);
+      }
+    };
+    
+    loadFavoriteAndFeedbackStatus();
+  }, [work.id, user]);
 
-  // 作品タイプに基づく背景色とボーダー色を設定
-  const cardStyles = {
-    drawing: {
-      border: 'border-[#8ec5d6]',
-      bg: 'from-white to-[#8ec5d6]/20',
-      iconBg: 'bg-[#8ec5d6]/30 group-hover:bg-[#8ec5d6]/40',
-      shadow: 'shadow-[#8ec5d6]/20',
-    },
-    audio: {
-      border: 'border-[#f5f6bf]',
-      bg: 'from-white to-[#f5f6bf]/20',
-      iconBg: 'bg-[#f5f6bf]/30 group-hover:bg-[#f5f6bf]/40',
-      shadow: 'shadow-[#f5f6bf]/20',
-    },
-    photo: {
-      border: 'border-[#f7c5c2]',
-      bg: 'from-white to-[#f7c5c2]/20',
-      iconBg: 'bg-[#f7c5c2]/30 group-hover:bg-[#f7c5c2]/40',
-      shadow: 'shadow-[#f7c5c2]/20',
-    },
-  };
-
-  // 作品タイプに基づくラベルを設定
-  const typeLabels = {
-    drawing: 'お絵かき',
-    audio: '音声',
-    photo: '写真',
-  };
-
-  const style = cardStyles[workType];
-
-  // メディアURLを取得（media_urlまたはcontent_url）
-  const mediaUrl = work.thumbnail_url || work.media_url || work.content_url;
-
-  // サムネイルを表示するための関数
+  // サムネイルをレンダリングする関数
   const renderThumbnail = () => {
-    if (mediaUrl && (workType === 'drawing' || workType === 'photo')) {
-      return (
-        <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-white flex items-center justify-center relative group-hover:opacity-95 transition-opacity duration-300">
-          <img 
-            src={mediaUrl} 
-            alt={work.title} 
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              // 画像読み込みエラー時にデフォルトアイコンを表示
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.parentElement?.classList.add('image-error');
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#5d7799]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-        </div>
-      );
+    if (work.content_url) {
+      // 実際のコンテンツURLがある場合
+      if (workType === 'drawing' || workType === 'photo') {
+        return (
+          <div className="w-full h-40 overflow-hidden rounded-t-[24px] relative">
+            <img 
+              src={work.content_url} 
+              alt={work.title} 
+              className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+              loading="lazy"
+            />
+          </div>
+        );
+      }
     } else if (workType === 'drawing') {
       // お絵かきのデフォルトサムネイル
       return (
@@ -129,8 +159,9 @@ const WorkCard = memo(({ work }: { work: Work }) => {
       return (
         <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#f7c5c2]/30 to-white flex items-center justify-center relative">
           <div className="absolute inset-0 flex items-center justify-center opacity-10">
-            <div className="w-32 h-24 border-4 border-[#f7c5c2]/40 rounded-lg transform rotate-3"></div>
-            <div className="w-32 h-24 border-4 border-[#f7c5c2]/30 rounded-lg absolute transform -rotate-3"></div>
+            <div className="w-32 h-32 border-4 border-[#f7c5c2]/30 rounded-full"></div>
+            <div className="w-24 h-24 border-4 border-[#f7c5c2]/40 rounded-full absolute"></div>
+            <div className="w-16 h-16 border-4 border-[#f7c5c2]/50 rounded-full absolute"></div>
           </div>
           <Camera className="h-16 w-16 text-[#5d7799]/40" />
         </div>
@@ -139,98 +170,152 @@ const WorkCard = memo(({ work }: { work: Work }) => {
     
     // デフォルトのサムネイル
     return (
-      <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-gray-100 to-white flex items-center justify-center">
-        <Image className="h-16 w-16 text-[#5d7799]/40" />
+      <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gray-100 flex items-center justify-center">
+        <Image className="h-16 w-16 text-gray-300" />
       </div>
     );
   };
 
+  // 作品タイプに応じたラベルとカラーを取得
+  const getTypeInfo = () => {
+    switch (workType) {
+      case 'drawing':
+        return {
+          label: 'お絵かき',
+          color: 'bg-[#8ec5d6]'
+        };
+      case 'audio':
+        return {
+          label: '音声',
+          color: 'bg-[#f5f6bf]'
+        };
+      case 'photo':
+        return {
+          label: '写真',
+          color: 'bg-[#f7c5c2]'
+        };
+      default:
+        return {
+          label: '作品',
+          color: 'bg-gray-500'
+        };
+    }
+  };
+
+  const { label, color } = getTypeInfo();
+
   return (
-    <Link
-      to={`/child/works/${work.id}`}
-      className={`group block bg-gradient-to-br ${style.bg} rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 ${style.border} hover:scale-105 animate-fade-in ${style.shadow}`}
-    >
-      {renderThumbnail()}
-      <div className="p-6">
-        <div className="flex items-start gap-4">
-          <div className={`p-3.5 rounded-xl transition-colors ${style.iconBg} transform group-hover:rotate-3 duration-300`}>
-            <WorkTypeIcon type={workType} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-[#5d7799] truncate text-xl">{work.title}</h2>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-white/70 text-[#5d7799] font-medium border border-[#5d7799]/10">
-                {typeLabels[workType]}
-              </span>
-              <p className="text-sm text-[#5d7799]/80">
-                {new Date(work.created_at).toLocaleDateString('ja-JP')}
-              </p>
+    <Link to={`/child/works/${work.id}`} className="block">
+      <div className="bg-white rounded-[24px] shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-[#5d7799]/10 relative">
+        {renderThumbnail()}
+        
+        {/* タイプラベル */}
+        <div className={`absolute top-3 right-3 ${color} text-white text-xs px-2 py-1 rounded-full shadow-md`}>
+          {label}
+        </div>
+        
+        {/* お気に入りとフィードバックのアイコン */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {isFavorite && (
+            <div className="bg-yellow-100 p-2 rounded-full shadow-md">
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
             </div>
-          </div>
+          )}
+          
+          {hasFeedback && (
+            <div className="bg-indigo-100 p-2 rounded-full shadow-md group relative">
+              <MessageCircle className="h-4 w-4 text-indigo-500" />
+              {feedbackCount > 1 && (
+                <span className="absolute -top-1 -right-1 bg-indigo-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
+                  {feedbackCount}
+                </span>
+              )}
+              
+              {/* 保護者名のツールチップ */}
+              <div className="absolute left-full ml-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                {parentName ? `${parentName}さんからのフィードバック` : '保護者からのフィードバック'}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="p-4">
+          <h3 className="font-bold text-[#5d7799] text-lg mb-1 truncate">{work.title}</h3>
+          <p className="text-gray-500 text-sm">
+            {new Date(work.created_at).toLocaleDateString('ja-JP')}
+          </p>
         </div>
       </div>
     </Link>
-  )
+  );
 });
 
 WorkCard.displayName = 'WorkCard';
 
-const FilterButton = memo(({ type, activeFilter, onClick }: { 
+// フィルターボタンコンポーネント
+const FilterButton = memo(({ 
+  type, 
+  activeFilter, 
+  onClick 
+}: { 
   type: WorkTypeFilter, 
   activeFilter: WorkTypeFilter, 
   onClick: (type: WorkTypeFilter) => void 
 }) => {
-  // フィルタータイプに基づくラベルとアイコンを設定
-  const filterConfig = {
-    all: { 
-      label: 'すべて', 
-      icon: <Filter className="h-4 w-4" />,
-      color: 'bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf]',
-      activeColor: 'bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf]',
-      textColor: 'text-white',
-    },
-    drawing: { 
-      label: 'お絵かき', 
-      icon: <Palette className="h-4 w-4" />,
-      color: 'bg-[#8ec5d6]/20',
-      activeColor: 'bg-[#8ec5d6]',
-      textColor: 'text-[#5d7799]',
-      activeTextColor: 'text-white',
-    },
-    audio: { 
-      label: '音声', 
-      icon: <Music className="h-4 w-4" />,
-      color: 'bg-[#f5f6bf]/20',
-      activeColor: 'bg-[#f5f6bf]',
-      textColor: 'text-[#5d7799]',
-      activeTextColor: 'text-white',
-    },
-    photo: { 
-      label: '写真', 
-      icon: <Camera className="h-4 w-4" />,
-      color: 'bg-[#f7c5c2]/20',
-      activeColor: 'bg-[#f7c5c2]',
-      textColor: 'text-[#5d7799]',
-      activeTextColor: 'text-white',
-    },
+  const isActive = type === activeFilter;
+  
+  const getFilterInfo = () => {
+    switch (type) {
+      case 'all':
+        return {
+          label: 'すべて',
+          icon: <Filter className="h-5 w-5" />
+        };
+      case 'drawing':
+        return {
+          label: 'お絵かき',
+          icon: <Palette className="h-5 w-5" />
+        };
+      case 'audio':
+        return {
+          label: '音声',
+          icon: <Music className="h-5 w-5" />
+        };
+      case 'photo':
+        return {
+          label: '写真',
+          icon: <Camera className="h-5 w-5" />
+        };
+      default:
+        return {
+          label: 'すべて',
+          icon: <Filter className="h-5 w-5" />
+        };
+    }
   };
 
-  const isActive = type === activeFilter;
-  const config = filterConfig[type];
+  const { label, icon } = getFilterInfo();
 
   return (
     <button
       onClick={() => onClick(type)}
-      className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
+      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 ${
         isActive 
-          ? `${config.activeColor} ${config.activeTextColor || 'text-white'} shadow-md transform scale-110` 
-          : `${config.color} ${config.textColor} hover:opacity-90 hover:shadow-sm border border-[#5d7799]/10`
+          ? 'bg-[#5d7799] text-white shadow-md' 
+          : 'bg-white text-[#5d7799] hover:bg-[#5d7799]/10'
       }`}
     >
-      <span className={`${isActive ? 'transform scale-110' : ''} transition-transform duration-300`}>
-        {config.icon}
-      </span>
-      <span>{config.label}</span>
+      {icon}
+      <span className="font-medium">{label}</span>
+      {isActive && (
+        <X 
+          className="h-4 w-4 ml-1 cursor-pointer" 
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick('all');
+          }} 
+        />
+      )}
     </button>
   );
 });
@@ -374,14 +459,4 @@ export function MyWorks() {
       </div>
     </div>
   );
-}
-
-// フィルタータイプを日本語に変換するヘルパー関数
-function filterTypeToJapanese(type: WorkTypeFilter): string {
-  switch (type) {
-    case 'drawing': return 'お絵かき';
-    case 'audio': return '音声';
-    case 'photo': return '写真';
-    default: return 'すべて';
-  }
 } 
