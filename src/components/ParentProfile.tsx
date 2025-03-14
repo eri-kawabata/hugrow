@@ -144,6 +144,8 @@ export function ParentProfile() {
         return;
       }
 
+      console.log('Fetching children for parent ID:', profile.id);
+
       // データベースのスキーマを確認
       const { data: columns, error: columnsError } = await supabase
         .from('profiles')
@@ -155,12 +157,17 @@ export function ParentProfile() {
         return;
       }
 
+      console.log('Database schema:', columns && columns.length > 0 ? Object.keys(columns[0]) : 'No columns found');
+
       // birthdateカラムが存在するか確認
       const hasBirthdateColumn = columns && columns.length > 0 && 'birthdate' in columns[0];
       const hasBirthdayColumn = columns && columns.length > 0 && 'birthday' in columns[0];
 
+      console.log('Has birthdate column:', hasBirthdateColumn);
+      console.log('Has birthday column:', hasBirthdayColumn);
+
       // 適切なカラムを選択
-      let selectColumns = 'id, username, role, avatar_url';
+      let selectColumns = 'id, username, role, avatar_url, child_number';
       if (hasBirthdateColumn) {
         selectColumns += ', birthdate';
       } else if (hasBirthdayColumn) {
@@ -171,12 +178,15 @@ export function ParentProfile() {
         .from('profiles')
         .select(selectColumns)
         .eq('parent_id', profile.id)
-        .eq('role', 'child');
+        .eq('role', 'child')
+        .order('child_number', { ascending: true });
 
       if (error) {
         console.error('Failed to fetch children:', error);
         return;
       }
+
+      console.log('Fetched children:', data);
 
       // birthdayカラムをbirthdateにマッピング
       const mappedData = data?.map(child => {
@@ -510,9 +520,6 @@ export function ParentProfile() {
         return;
       }
 
-      // 次の子供番号を取得
-      const nextChildNumber = children.length + 1;
-
       // データベースのスキーマを確認
       const { data: columns, error: columnsError } = await supabase
         .from('profiles')
@@ -526,30 +533,21 @@ export function ParentProfile() {
         return;
       }
 
+      console.log('Database schema:', columns && columns.length > 0 ? Object.keys(columns[0]) : 'No columns found');
+
       // birthdateカラムが存在するか確認
       const hasBirthdateColumn = columns && columns.length > 0 && 'birthdate' in columns[0];
       const hasBirthdayColumn = columns && columns.length > 0 && 'birthday' in columns[0];
 
-      // birthdateカラムが存在しない場合は追加
-      if (!hasBirthdateColumn && !hasBirthdayColumn) {
-        try {
-          // birthdateカラムを追加するSQL
-          const { error: alterError } = await supabase.rpc('add_birthdate_column');
-          if (alterError) {
-            console.error('Failed to add birthdate column:', alterError);
-          }
-        } catch (err) {
-          console.error('Error adding birthdate column:', err);
-        }
-      }
+      console.log('Has birthdate column:', hasBirthdateColumn);
+      console.log('Has birthday column:', hasBirthdayColumn);
 
       // 既存の子供プロフィールを確認
       const { data: existingProfiles, error: existingError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, child_number')
         .eq('parent_id', profile.id)
-        .eq('role', 'child')
-        .eq('child_number', nextChildNumber);
+        .eq('role', 'child');
 
       if (existingError) {
         console.error('Failed to check existing profiles:', existingError);
@@ -558,26 +556,23 @@ export function ParentProfile() {
         return;
       }
 
-      // 既に同じchild_numberが存在する場合は、最大値+1を使用
-      let childNumber = nextChildNumber;
+      // 既存の子供の数を確認し、次の子供番号を決定
+      let childNumber = 1;
       if (existingProfiles && existingProfiles.length > 0) {
-        const { data: maxChildNumber, error: maxError } = await supabase
-          .from('profiles')
-          .select('child_number')
-          .eq('parent_id', profile.id)
-          .eq('role', 'child')
-          .order('child_number', { ascending: false })
-          .limit(1);
-
-        if (maxError) {
-          console.error('Failed to get max child number:', maxError);
-        } else if (maxChildNumber && maxChildNumber.length > 0) {
-          childNumber = (maxChildNumber[0].child_number || 0) + 1;
-        }
+        // 既存の子供番号の最大値を取得
+        const maxChildNumber = Math.max(...existingProfiles.map(p => p.child_number || 0));
+        childNumber = maxChildNumber + 1;
       }
 
+      console.log('Adding child with number:', childNumber);
+
+      // 新しいUUIDを生成（プロフィールIDのみに使用）
+      const randomId = crypto.randomUUID();
+      
+      // 直接挿入を試みる
       const insertData: any = {
-        user_id: user.id,
+        id: randomId,
+        user_id: user.id, // 親のユーザーIDを使用
         username: newChildName.trim(),
         role: 'child',
         parent_id: profile.id,
@@ -591,56 +586,21 @@ export function ParentProfile() {
         insertData.birthdate = newChildBirthday;
       } else if (hasBirthdayColumn) {
         insertData.birthday = newChildBirthday;
-      } else {
-        // どちらのカラムも存在しない場合は、birthdateとして追加
-        insertData.birthdate = newChildBirthday;
       }
 
-      // 一意のIDを生成して使用
-      const { data: newProfile, error } = await supabase
+      console.log('Inserting child profile with data:', insertData);
+
+      const { error } = await supabase
         .from('profiles')
-        .insert(insertData)
-        .select();
+        .insert(insertData);
 
       if (error) {
         console.error('Error adding child profile:', error);
-        
-        // 一意性制約エラーの場合は、別のアプローチを試みる
-        if (error.message.includes('unique constraint') || error.code === '23505' || 
-            error.message.includes('column "birthdate" of relation "profiles" does not exist')) {
-          toast.error('プロフィールの追加に問題が発生しました。別の方法で追加します。');
-          
-          // 新しいUUIDを生成
-          const randomId = crypto.randomUUID();
-          
-          // 直接SQLを実行して挿入
-          const { error: sqlError } = await supabase.rpc('insert_child_profile', {
-            p_user_id: user.id,
-            p_username: newChildName.trim(),
-            p_birthdate: newChildBirthday,
-            p_parent_id: profile.id,
-            p_child_number: childNumber,
-            p_random_id: randomId
-          });
-          
-          if (sqlError) {
-            console.error('Error with direct SQL insert:', sqlError);
-            toast.error('プロフィールの追加に失敗しました: ' + sqlError.message);
-            return;
-          }
-          
-          toast.success('子供のプロフィールを追加しました');
-          setNewChildName('');
-          setNewChildBirthday('');
-          setShowAddChildForm(false);
-          fetchChildren();
-          return;
-        }
-        
         toast.error('プロフィールの追加に失敗しました: ' + error.message);
+        setUpdating(false);
         return;
       }
-
+      
       toast.success('子供のプロフィールを追加しました');
       setNewChildName('');
       setNewChildBirthday('');
@@ -648,7 +608,7 @@ export function ParentProfile() {
       fetchChildren();
     } catch (error) {
       console.error('Error adding child profile:', error);
-      toast.error('プロフィールの追加に失敗しました');
+      toast.error('プロフィールの追加中にエラーが発生しました');
     } finally {
       setUpdating(false);
     }
@@ -679,9 +639,14 @@ export function ParentProfile() {
         return;
       }
 
+      console.log('Database schema:', columns && columns.length > 0 ? Object.keys(columns[0]) : 'No columns found');
+
       // birthdateカラムが存在するか確認
       const hasBirthdateColumn = columns && columns.length > 0 && 'birthdate' in columns[0];
       const hasBirthdayColumn = columns && columns.length > 0 && 'birthday' in columns[0];
+
+      console.log('Has birthdate column:', hasBirthdateColumn);
+      console.log('Has birthday column:', hasBirthdayColumn);
 
       const updateData: any = {
         username: username.trim() || null,
@@ -701,7 +666,12 @@ export function ParentProfile() {
         .eq('id', childId)
         .eq('role', 'child');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating child profile:', error);
+        toast.error('プロフィールの更新に失敗しました: ' + error.message);
+        setUpdating(false);
+        return;
+      }
 
       toast.success('子供のプロフィールを更新しました');
       setEditingChild(null);
@@ -1147,8 +1117,11 @@ export function ParentProfile() {
                           )}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-lg">{child.username || '名前未設定'}</p>
+                          <h3 className="font-medium text-gray-800 flex items-center gap-2">
+                            {child.username}
+                            <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">
+                              子供 #{child.child_number || 1}
+                            </span>
                             <button
                               onClick={() => setEditingChild(child.id)}
                               className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-50"
@@ -1156,12 +1129,14 @@ export function ParentProfile() {
                             >
                               <Edit className="h-3.5 w-3.5" />
                             </button>
-                          </div>
-                          <p className="text-sm text-gray-500">
-                            {child.birthdate 
-                              ? new Date(child.birthdate).toLocaleDateString('ja-JP', {year: 'numeric', month: 'long', day: 'numeric'})
-                              : '誕生日未設定'
-                            }
+                          </h3>
+                          <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {child.birthdate ? new Date(child.birthdate).toLocaleDateString('ja-JP', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            }) : '誕生日未設定'}
                           </p>
                         </div>
                       </div>
