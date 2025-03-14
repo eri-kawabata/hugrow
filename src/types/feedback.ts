@@ -5,11 +5,11 @@ export interface Feedback {
   feedback: string;
   created_at: string;
   username?: string;
-  user_email?: string;
   user_profile?: {
     display_name: string;
     avatar_url?: string;
     full_name?: string;
+    username?: string;
     role?: string;
   };
 } 

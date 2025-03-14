@@ -56,7 +56,12 @@ const FeedbackItem = memo(({ feedback }: FeedbackItemProps) => {
 
   // ユーザー名を取得する関数
   const getUserName = () => {
-    // ユーザープロフィールのフルネームがあればそれを優先的に使用
+    // プロフィールのusernameフィールドがあればそれを優先的に使用
+    if (feedback.user_profile?.username) {
+      return feedback.user_profile.username;
+    }
+    
+    // ユーザープロフィールのフルネームがあればそれを使用
     if (feedback.user_profile?.full_name) {
       return feedback.user_profile.full_name;
     }
@@ -69,11 +74,6 @@ const FeedbackItem = memo(({ feedback }: FeedbackItemProps) => {
     // usernameプロパティがあればそれを使用
     if (feedback.username && feedback.username !== '保護者') {
       return feedback.username;
-    }
-    
-    // メールアドレスがあれば@より前の部分を使用
-    if (feedback.user_email) {
-      return feedback.user_email.split('@')[0];
     }
     
     // どれもない場合は「保護者」と表示
