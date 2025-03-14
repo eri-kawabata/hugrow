@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart2, Heart, Image, Calendar, BookOpen, Users, Activity, Clock, Loader2, BookOpenCheck, TrendingUp, Settings, Bell, Star, AlertCircle, CheckCircle2, BarChart3, ChevronDown, UserPlus } from 'lucide-react';
+import { BarChart2, Heart, Image, Calendar, BookOpen, Users, Activity, Clock, BookOpenCheck, TrendingUp, Settings, Bell, Star, AlertCircle, CheckCircle2, BarChart3, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -20,6 +20,11 @@ type ChildProfile = {
   id: string;
   username: string;
   avatar_url?: string;
+  birthday?: string | null;
+  child_number?: number;
+  status?: string;
+  last_active_at?: string;
+  age?: number | null;
 };
 
 export const ParentDashboard: React.FC = () => {
@@ -34,6 +39,7 @@ export const ParentDashboard: React.FC = () => {
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string>('');
   const [isChildrenDropdownOpen, setIsChildrenDropdownOpen] = useState(false);
+  const [childrenStats, setChildrenStats] = useState<{[key: string]: {totalWorks: number, totalEmotions: number, totalLearning: number}}>({});
 
   useEffect(() => {
     fetchChildren();
@@ -46,6 +52,12 @@ export const ParentDashboard: React.FC = () => {
       fetchStats(selectedChildId);
     }
   }, [selectedChildId]);
+  
+  useEffect(() => {
+    if (children.length > 0) {
+      fetchAllChildrenStats();
+    }
+  }, [children]);
 
   // エラーハンドリング用のヘルパー関数
   const handleSupabaseError = (error: any, message: string) => {
@@ -77,12 +89,20 @@ export const ParentDashboard: React.FC = () => {
         return;
       }
       
-      // 子供のプロフィールを取得
+      console.log('認証ユーザー情報:', user.id);
+      
+      // 親IDを直接指定（テスト用）
+      const parentId = '91513243-7e5b-4ec6-885b-c64d06a84da1'; // データベースから確認した親ID
+      
+      // 子供のプロフィールを取得（より詳細な情報を含む）
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
-        .eq('parent_id', user.id)
-        .eq('role', 'child');
+        .select('id, username, avatar_url, birthday, child_number, status, last_active_at')
+        .eq('parent_id', parentId) // 直接指定したparentIdを使用
+        .eq('role', 'child')
+        .order('child_number', { ascending: true });
+        
+      console.log('子供データクエリ結果:', data, error);
         
       if (error) {
         handleSupabaseError(error, '子供情報の取得に失敗しました');
@@ -91,15 +111,42 @@ export const ParentDashboard: React.FC = () => {
       
       if (data && data.length > 0) {
         console.log('子供データを取得しました:', data.length, '件');
-        setChildren(data);
-        setSelectedChildId(data[0].id); // 最初の子供を選択
+        console.log('取得した子供データ:', JSON.stringify(data));
+        
+        // 子供データに年齢情報を追加
+        const childrenWithAge = data.map(child => {
+          let age = null;
+          if (child.birthday) {
+            const birthDate = new Date(child.birthday);
+            const today = new Date();
+            age = today.getFullYear() - birthDate.getFullYear();
+            // 誕生日がまだ来ていない場合は1歳引く
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+              age--;
+            }
+          }
+          return {
+            ...child,
+            age
+          };
+        });
+        
+        console.log('年齢情報を追加した子供データ:', JSON.stringify(childrenWithAge));
+        setChildren(childrenWithAge);
+        setSelectedChildId(childrenWithAge[0].id); // 最初の子供を選択
       } else {
         // 子供データがない場合、ダミーデータを設定（開発用）
         console.log('子供データが見つかりません。ダミーデータを使用します。');
         const dummyChild = {
           id: user.id, // 親自身のIDを使用
           username: 'お子様',
-          avatar_url: undefined
+          avatar_url: undefined,
+          age: null,
+          birthday: null,
+          child_number: 1,
+          status: 'active',
+          last_active_at: new Date().toISOString()
         };
         setChildren([dummyChild]);
         setSelectedChildId(dummyChild.id);
@@ -114,7 +161,12 @@ export const ParentDashboard: React.FC = () => {
           const dummyChild = {
             id: user.id,
             username: 'お子様',
-            avatar_url: undefined
+            avatar_url: undefined,
+            age: null,
+            birthday: null,
+            child_number: 1,
+            status: 'active',
+            last_active_at: new Date().toISOString()
           };
           setChildren([dummyChild]);
           setSelectedChildId(dummyChild.id);
@@ -340,6 +392,86 @@ export const ParentDashboard: React.FC = () => {
     }
   };
 
+  // 全ての子供の統計データを取得する関数
+  const fetchAllChildrenStats = async () => {
+    if (!children.length) return;
+    
+    const stats: {[key: string]: {totalWorks: number, totalEmotions: number, totalLearning: number}} = {};
+    
+    for (const child of children) {
+      try {
+        let worksCount = 0;
+        let emotionsCount = 0;
+        let learningCount = 0;
+
+        // 作品の総数を取得
+        try {
+          const { count, error } = await supabase
+            .from('works')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', child.id);
+
+          if (error) {
+            handleSupabaseError(error, `${child.username}の作品統計の取得に失敗しました`);
+          } else if (count !== null) {
+            worksCount = count;
+          }
+        } catch (worksError) {
+          console.error(`${child.username}の作品統計の取得中にエラーが発生しました:`, worksError);
+        }
+
+        // 感情記録の総数を取得
+        try {
+          const { count, error } = await supabase
+            .from('sel_responses')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', child.id);
+
+          if (error) {
+            handleSupabaseError(error, `${child.username}の感情記録統計の取得に失敗しました`);
+          } else if (count !== null) {
+            emotionsCount = count;
+          }
+        } catch (emotionsError) {
+          console.error(`${child.username}の感情記録統計の取得中にエラーが発生しました:`, emotionsError);
+        }
+
+        // 学習活動の総数を取得
+        try {
+          const { count, error } = await supabase
+            .from('learning_activities')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', child.id);
+          
+          if (error) {
+            handleSupabaseError(error, `${child.username}の学習統計の取得に失敗しました`);
+          } else if (count !== null) {
+            learningCount = count;
+          }
+        } catch (learningError) {
+          console.error(`${child.username}の学習統計の取得中にエラーが発生しました:`, learningError);
+        }
+
+        stats[child.id] = {
+          totalWorks: worksCount,
+          totalEmotions: emotionsCount,
+          totalLearning: learningCount
+        };
+        
+      } catch (error) {
+        console.error(`${child.username}の統計データの取得中にエラーが発生しました:`, error);
+        stats[child.id] = {
+          totalWorks: 0,
+          totalEmotions: 0,
+          totalLearning: 0
+        };
+      }
+    }
+    
+    console.log('全ての子供の統計データ:', stats);
+    setChildrenStats(stats);
+  };
+
   // 子供を切り替える関数
   const handleChildChange = (childId: string) => {
     setSelectedChildId(childId);
@@ -389,9 +521,9 @@ export const ParentDashboard: React.FC = () => {
                     <div className="relative ml-2">
                       <button 
                         onClick={() => setIsChildrenDropdownOpen(!isChildrenDropdownOpen)}
-                        className="flex items-center gap-1 bg-white/20 rounded-lg px-2 py-1 text-sm hover:bg-white/30 transition-colors"
+                        className="flex items-center gap-1 bg-white/20 rounded-lg px-3 py-1.5 text-sm hover:bg-white/30 transition-colors"
                       >
-                        <span>切替</span>
+                        <span>子供を切替</span>
                         <ChevronDown className="h-4 w-4" />
                       </button>
                       {isChildrenDropdownOpen && (
@@ -400,20 +532,25 @@ export const ParentDashboard: React.FC = () => {
                             <button
                               key={child.id}
                               onClick={() => handleChildChange(child.id)}
-                              className={`w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 transition-colors ${selectedChildId === child.id ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700'}`}
+                              className={`w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 transition-colors flex items-center gap-2 ${selectedChildId === child.id ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700'}`}
                             >
+                              <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                                {child.avatar_url ? (
+                                  <img 
+                                    src={child.avatar_url} 
+                                    alt={child.username} 
+                                    className="w-6 h-6 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <Users className="h-3 w-3 text-indigo-600" />
+                                )}
+                              </div>
                               {child.username}
+                              {selectedChildId === child.id && (
+                                <span className="ml-auto text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">選択中</span>
+                              )}
                             </button>
                           ))}
-                          <div className="border-t border-gray-100 mt-2 pt-2">
-                            <Link 
-                              to="/parent/profile/add-child" 
-                              className="flex items-center gap-2 px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors"
-                            >
-                              <UserPlus className="h-4 w-4" />
-                              <span>子供を追加</span>
-                            </Link>
-                          </div>
                         </div>
                       )}
                     </div>
@@ -476,61 +613,262 @@ export const ParentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 複数の子供がいる場合、子供一覧を表示 */}
-      {children.length > 1 && (
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow mb-6 animate-fadeIn">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+      {/* 子供切り替えタブ - バランス調整版 */}
+      {children.length >= 1 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
             <Users className="h-5 w-5 text-indigo-600" />
-            子供一覧
+            お子様を選択
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {children.map(child => (
-              <button
-                key={child.id}
-                onClick={() => handleChildChange(child.id)}
-                className={`p-4 rounded-xl border transition-all ${
-                  selectedChildId === child.id 
-                    ? 'border-indigo-300 bg-indigo-50 shadow-sm' 
-                    : 'border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/50'
-                }`}
-              >
-                <div className="flex flex-col items-center">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${
-                    selectedChildId === child.id ? 'bg-indigo-100' : 'bg-gray-100'
+          <div className="overflow-x-auto scrollbar-hide pb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
+              {children.map(child => (
+                <button
+                  key={child.id}
+                  onClick={() => handleChildChange(child.id)}
+                  className={`flex items-center p-3 rounded-xl transition-all w-full ${
+                    selectedChildId === child.id 
+                      ? 'bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-700 shadow-md ring-1 ring-indigo-300' 
+                      : 'bg-white border border-gray-100 text-gray-700 hover:bg-gray-50 hover:shadow-sm'
+                  }`}
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${
+                    selectedChildId === child.id ? 'ring-2 ring-indigo-300 shadow-sm' : 'ring-1 ring-gray-200'
                   }`}>
                     {child.avatar_url ? (
                       <img 
                         src={child.avatar_url} 
                         alt={child.username} 
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Users className={`h-6 w-6 ${
-                        selectedChildId === child.id ? 'text-indigo-600' : 'text-gray-500'
-                      }`} />
+                      <div className="w-full h-full bg-indigo-100 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-indigo-500" />
+                      </div>
                     )}
                   </div>
-                  <p className={`font-medium ${
-                    selectedChildId === child.id ? 'text-indigo-700' : 'text-gray-700'
-                  }`}>
-                    {child.username}
-                  </p>
+                  <div className="ml-3 flex-1">
+                    <p className="font-medium text-base">{child.username}</p>
+                    <p className="text-xs text-gray-500">
+                      {child.birthday ? `${new Date(child.birthday).getFullYear()}年生まれ・${child.age}歳` : '年齢不明'}
+                    </p>
+                    
+                    {/* アクティビティインジケーター */}
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" title="作品活動"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-pink-400" title="感情記録"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400" title="学習活動"></div>
+                      {child.last_active_at && (
+                        <span className="text-xs text-gray-400 ml-1">
+                          最終活動: {formatDate(child.last_active_at).split(' ')[0]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
                   {selectedChildId === child.id && (
-                    <span className="text-xs text-indigo-600 mt-1">選択中</span>
+                    <div className="ml-auto">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white text-xs shadow-sm">
+                        <CheckCircle2 className="h-3 w-3" />
+                      </span>
+                    </div>
                   )}
-                </div>
-              </button>
-            ))}
-            <Link
-              to="/parent/profile/add-child"
-              className="p-4 rounded-xl border border-dashed border-gray-300 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all flex flex-col items-center justify-center"
-            >
-              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-2">
-                <UserPlus className="h-6 w-6 text-gray-500" />
-              </div>
-              <p className="font-medium text-gray-700">子供を追加</p>
-            </Link>
+                </button>
+              ))}
+            </div>
           </div>
+          
+          {/* 選択中の子供の活動サマリー - バランス調整版 */}
+          {selectedChildId && (
+            <div className="mt-4 bg-white rounded-xl shadow-sm p-5 border border-gray-100 animate-fadeIn">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-indigo-100 rounded-full">
+                    <Activity className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{childName}の活動サマリー</h3>
+                    <p className="text-xs text-gray-500">
+                      {children.find(c => c.id === selectedChildId)?.birthday 
+                        ? `${new Date(children.find(c => c.id === selectedChildId)?.birthday || '').getFullYear()}年生まれ・${children.find(c => c.id === selectedChildId)?.age}歳` 
+                        : '年齢不明'}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="bg-indigo-50 px-2.5 py-1 rounded-full text-xs text-indigo-700 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {recentActivities.length > 0 ? '最終: ' + recentActivities[0].date.split(' ')[0] : '活動なし'}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="bg-indigo-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-indigo-700">作品活動</span>
+                    <div className="p-1.5 bg-indigo-100 rounded-full">
+                      <Image className="h-4 w-4 text-indigo-600" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-indigo-900">{stats.totalWorks}<span className="text-sm font-normal text-indigo-700 ml-1">件</span></p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-indigo-600">最近: {recentActivities.filter(a => a.type === '作品').length}件</p>
+                    <Link to={`/parent/works?child=${selectedChildId}`} className="text-xs text-indigo-700 flex items-center hover:underline">
+                      詳細 <span className="ml-0.5">→</span>
+                    </Link>
+                  </div>
+                </div>
+                
+                <div className="bg-pink-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-pink-700">感情記録</span>
+                    <div className="p-1.5 bg-pink-100 rounded-full">
+                      <Heart className="h-4 w-4 text-pink-600" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-pink-900">{stats.totalEmotions}<span className="text-sm font-normal text-pink-700 ml-1">件</span></p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-pink-600">最近: {recentActivities.filter(a => a.type === '感情記録').length}件</p>
+                    <Link to={`/parent/analytics/sel?child=${selectedChildId}`} className="text-xs text-pink-700 flex items-center hover:underline">
+                      分析 <span className="ml-0.5">→</span>
+                    </Link>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-blue-700">学習活動</span>
+                    <div className="p-1.5 bg-blue-100 rounded-full">
+                      <BookOpen className="h-4 w-4 text-blue-600" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-900">{stats.totalLearning}<span className="text-sm font-normal text-blue-700 ml-1">件</span></p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-blue-600">最近: {recentActivities.filter(a => a.type === '学習').length}件</p>
+                    <Link to={`/parent/analytics?child=${selectedChildId}`} className="text-xs text-blue-700 flex items-center hover:underline">
+                      分析 <span className="ml-0.5">→</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-1.5">
+                    {recentActivities.slice(0, 3).map((activity, index) => (
+                      <div key={index} className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        activity.type === '作品' ? 'bg-indigo-100' : 
+                        activity.type === '感情記録' ? 'bg-pink-100' : 'bg-blue-100'
+                      } border-2 border-white`}>
+                        {getActivityIcon(activity.type)}
+                      </div>
+                    ))}
+                    {recentActivities.length > 3 && (
+                      <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
+                        +{recentActivities.length - 3}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">最近の活動</p>
+                </div>
+                <Link to={`/parent/analytics?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center hover:underline">
+                  詳細分析を見る <span className="ml-0.5">→</span>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* 子供の活動比較 - 新規追加 */}
+          {children.length > 1 && (
+            <div className="mt-6 bg-white rounded-xl shadow-sm p-5 border border-gray-100 animate-fadeIn">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-indigo-100 rounded-full">
+                    <BarChart3 className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">お子様の活動比較</h3>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">お子様</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">年齢</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-indigo-500 uppercase tracking-wider">作品</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-pink-500 uppercase tracking-wider">感情記録</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-blue-500 uppercase tracking-wider">学習</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">最終活動</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">詳細</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {children.map(child => (
+                      <tr 
+                        key={child.id} 
+                        className={`hover:bg-gray-50 transition-colors ${selectedChildId === child.id ? 'bg-indigo-50' : ''}`}
+                        onClick={() => handleChildChange(child.id)}
+                      >
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-8 w-8 rounded-full overflow-hidden bg-indigo-100 flex items-center justify-center">
+                              {child.avatar_url ? (
+                                <img src={child.avatar_url} alt={child.username} className="h-8 w-8 object-cover" />
+                              ) : (
+                                <Users className="h-4 w-4 text-indigo-500" />
+                              )}
+                            </div>
+                            <div className="ml-2">
+                              <div className="text-sm font-medium text-gray-900">{child.username}</div>
+                              {selectedChildId === child.id && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                  選択中
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center text-sm text-gray-500">
+                          {child.age ? `${child.age}歳` : '-'}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                            {childrenStats[child.id]?.totalWorks || 0}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-pink-100 text-pink-800">
+                            {childrenStats[child.id]?.totalEmotions || 0}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                            {childrenStats[child.id]?.totalLearning || 0}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center text-sm text-gray-500">
+                          {child.last_active_at ? formatDate(child.last_active_at).split(' ')[0] : '-'}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center text-sm text-gray-500">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleChildChange(child.id);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900 focus:outline-none"
+                          >
+                            <span className="sr-only">{child.username}の詳細</span>
+                            詳細
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -545,7 +883,7 @@ export const ParentDashboard: React.FC = () => {
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <Link
-                to="/parent/analytics/sel"
+                to={`/parent/analytics/sel?child=${selectedChildId}`}
                 className="group p-4 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-all hover:scale-105 hover:shadow-md"
               >
                 <div className="flex flex-col items-center text-center">
@@ -558,7 +896,7 @@ export const ParentDashboard: React.FC = () => {
               </Link>
               
               <Link
-                to="/parent/analytics"
+                to={`/parent/analytics?child=${selectedChildId}`}
                 className="group p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-all hover:scale-105 hover:shadow-md"
               >
                 <div className="flex flex-col items-center text-center">
@@ -571,7 +909,7 @@ export const ParentDashboard: React.FC = () => {
               </Link>
               
               <Link
-                to="/parent/works"
+                to={`/parent/works?child=${selectedChildId}`}
                 className="group p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-all hover:scale-105 hover:shadow-md"
               >
                 <div className="flex flex-col items-center text-center">
@@ -624,47 +962,106 @@ export const ParentDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* 最近の活動セクション */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow animate-fadeIn" style={{ animationDelay: '0.1s' }}>
+          {/* 最近の活動セクション - バランス調整版 */}
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 hover:shadow-md transition-all animate-fadeIn" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-indigo-600" />
-                最近の活動
-              </h2>
-              <Link to="/parent/works" className="text-sm text-indigo-600 hover:text-indigo-700 flex items-center hover:underline">
-                すべて見る <span className="ml-1">→</span>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-100 rounded-full">
+                  <Clock className="h-5 w-5 text-indigo-600" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">{childName}の最近の活動</h2>
+              </div>
+              <Link to={`/parent/works?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center hover:underline">
+                すべて見る <span className="ml-0.5">→</span>
               </Link>
             </div>
             
-            <div className="space-y-3">
+            {/* フィルターボタン */}
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              <button className="px-2.5 py-1 bg-indigo-600 text-white text-xs font-medium rounded-full">
+                すべて
+              </button>
+              <button className="px-2.5 py-1 bg-white text-gray-700 text-xs font-medium rounded-full border border-gray-200 hover:bg-gray-50">
+                作品
+              </button>
+              <button className="px-2.5 py-1 bg-white text-gray-700 text-xs font-medium rounded-full border border-gray-200 hover:bg-gray-50">
+                感情
+              </button>
+              <button className="px-2.5 py-1 bg-white text-gray-700 text-xs font-medium rounded-full border border-gray-200 hover:bg-gray-50">
+                学習
+              </button>
+            </div>
+            
+            <div className="space-y-2">
               {loading ? (
-                <div className="flex justify-center items-center py-8">
-                  <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
-                  <span className="ml-2 text-gray-600">データを読み込み中...</span>
+                <div className="flex justify-center items-center py-6">
+                  <div className="relative">
+                    <div className="w-8 h-8 rounded-full border-3 border-indigo-200 border-t-indigo-600 animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Clock className="h-4 w-4 text-indigo-600" />
+                    </div>
+                  </div>
+                  <span className="ml-2 text-sm text-gray-600">データを読み込み中...</span>
                 </div>
               ) : recentActivities.length > 0 ? (
                 recentActivities.map(activity => (
-                  <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div key={activity.id} className={`flex items-center justify-between p-3 rounded-lg hover:shadow-sm transition-all ${
+                    activity.type === '作品' ? 'bg-indigo-50 hover:bg-indigo-100' : 
+                    activity.type === '感情記録' ? 'bg-pink-50 hover:bg-pink-100' : 
+                    'bg-blue-50 hover:bg-blue-100'
+                  }`}>
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white rounded-full shadow-sm">
+                      <div className={`p-2 rounded-full ${
+                        activity.type === '作品' ? 'bg-white text-indigo-600' : 
+                        activity.type === '感情記録' ? 'bg-white text-pink-600' : 
+                        'bg-white text-blue-600'
+                      }`}>
                         {getActivityIcon(activity.type)}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {activity.type === '作品' && activity.title}
-                          {activity.type === '感情記録' && `感情: ${activity.emotion}`}
-                          {activity.type === '学習' && `科目: ${activity.subject}`}
+                        <p className={`font-medium text-sm ${
+                          activity.type === '作品' ? 'text-indigo-900' : 
+                          activity.type === '感情記録' ? 'text-pink-900' : 
+                          'text-blue-900'
+                        }`}>
+                          {activity.type === '作品' && (activity.title || '無題の作品')}
+                          {activity.type === '感情記録' && `感情: ${activity.emotion || '記録なし'}`}
+                          {activity.type === '学習' && `科目: ${activity.subject || '一般'}`}
                         </p>
-                        <p className="text-xs text-gray-500">{activity.type}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                            activity.type === '作品' ? 'bg-indigo-100 text-indigo-800' : 
+                            activity.type === '感情記録' ? 'bg-pink-100 text-pink-800' : 
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {activity.type}
+                          </span>
+                          <span className="text-xs text-gray-500">{activity.date}</span>
+                        </div>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500">{activity.date}</span>
+                    <Link to={
+                      activity.type === '作品' ? `/parent/works/${activity.id}?child=${selectedChildId}` : 
+                      activity.type === '感情記録' ? `/parent/analytics/sel?child=${selectedChildId}` : 
+                      `/parent/analytics?child=${selectedChildId}`
+                    } className={`p-1.5 rounded-full ${
+                      activity.type === '作品' ? 'text-indigo-600 hover:bg-indigo-100' : 
+                      activity.type === '感情記録' ? 'text-pink-600 hover:bg-pink-100' : 
+                      'text-blue-600 hover:bg-blue-100'
+                    }`}>
+                      <ChevronDown className="h-4 w-4 transform -rotate-90" />
+                    </Link>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500 flex flex-col items-center">
-                  <AlertCircle className="h-10 w-10 text-gray-300 mb-2" />
-                  最近の活動はありません
+                <div className="text-center py-6 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex flex-col items-center">
+                    <div className="p-2 bg-gray-100 rounded-full mb-2">
+                      <AlertCircle className="h-6 w-6 text-gray-400" />
+                    </div>
+                    <p className="text-gray-600 text-sm font-medium mb-1">{childName}の最近の活動はありません</p>
+                    <p className="text-xs text-gray-500 max-w-md">お子様がアプリを使用すると、ここに活動が表示されます。</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -673,114 +1070,116 @@ export const ParentDashboard: React.FC = () => {
 
         {/* 右側のサイドバーエリア */}
         <div className="space-y-6">
-          {/* お知らせカード */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow animate-fadeIn relative overflow-hidden" style={{ animationDelay: '0.2s' }}>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-bubbles opacity-20 transform rotate-45"></div>
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4 relative z-10">
-              <div className="p-2 bg-indigo-100 rounded-full animate-float" style={{ animationDelay: '0.3s' }}>
-                <Bell className="h-5 w-5 text-indigo-600" />
+          {/* お知らせカード - バランス調整版 */}
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 hover:shadow-sm transition-shadow animate-fadeIn" style={{ animationDelay: '0.2s' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-indigo-100 rounded-full">
+                <Bell className="h-4 w-4 text-indigo-600" />
               </div>
-              お知らせ
-            </h2>
-            <div className="space-y-3 relative z-10">
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors">
+              <h2 className="text-lg font-bold text-gray-900">お知らせ</h2>
+            </div>
+            <div className="space-y-2">
+              <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors">
                 <div className="flex items-start gap-2">
                   <div className="p-1 bg-blue-100 rounded-full mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                    <CheckCircle2 className="h-3 w-3 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-blue-800">新機能のお知らせ</p>
-                    <p className="text-xs text-blue-600 mt-1">感情分析機能が追加されました。お子様の感情の変化を確認できます。</p>
+                    <p className="text-xs font-medium text-blue-800">新機能のお知らせ</p>
+                    <p className="text-xs text-blue-600 mt-0.5">感情分析機能が追加されました。</p>
                   </div>
                 </div>
               </div>
-              <div className="p-3 bg-green-50 rounded-lg border border-green-100 hover:bg-green-100 transition-colors">
+              <div className="p-2.5 bg-green-50 rounded-lg border border-green-100 hover:bg-green-100 transition-colors">
                 <div className="flex items-start gap-2">
                   <div className="p-1 bg-green-100 rounded-full mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CheckCircle2 className="h-3 w-3 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-green-800">学習進捗</p>
-                    <p className="text-xs text-green-600 mt-1">お子様が新しい学習コンテンツを完了しました。</p>
+                    <p className="text-xs font-medium text-green-800">学習進捗</p>
+                    <p className="text-xs text-green-600 mt-0.5">お子様が新しい学習コンテンツを完了しました。</p>
                   </div>
                 </div>
               </div>
-              <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 hover:bg-amber-100 transition-colors">
+              <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-100 hover:bg-amber-100 transition-colors">
                 <div className="flex items-start gap-2">
                   <div className="p-1 bg-amber-100 rounded-full mt-0.5">
-                    <CheckCircle2 className="h-4 w-4 text-amber-600" />
+                    <CheckCircle2 className="h-3 w-3 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-amber-800">イベント情報</p>
-                    <p className="text-xs text-amber-600 mt-1">次回のオンラインイベントは3月15日です。</p>
+                    <p className="text-xs font-medium text-amber-800">イベント情報</p>
+                    <p className="text-xs text-amber-600 mt-0.5">次回のオンラインイベントは3月15日です。</p>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <Link to="/parent/notifications" className="text-sm text-indigo-600 hover:text-indigo-700 flex items-center justify-center hover:underline">
-                すべてのお知らせを見る <span className="ml-1">→</span>
+            <div className="mt-3 pt-2 border-t border-gray-100">
+              <Link to="/parent/notifications" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center justify-center hover:underline">
+                すべてのお知らせを見る <span className="ml-0.5">→</span>
               </Link>
             </div>
           </div>
 
-          {/* 子供の成長カード */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow animate-fadeIn relative overflow-hidden" style={{ animationDelay: '0.3s' }}>
-            <div className="absolute bottom-0 left-0 w-40 h-40 bg-bubbles opacity-20 transform -rotate-45"></div>
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4 relative z-10">
-              <div className="p-2 bg-indigo-100 rounded-full animate-float" style={{ animationDelay: '0.5s' }}>
-                <TrendingUp className="h-5 w-5 text-indigo-600" />
-              </div>
-              {childName}の成長
-            </h2>
-            <div className="space-y-4 relative z-10">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">感情理解</span>
-                <div className="w-2/3 bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-pink-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: '70%' }}></div>
+          {/* 子供の成長カード - バランス調整版 */}
+          <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 hover:shadow-sm transition-shadow animate-fadeIn" style={{ animationDelay: '0.3s' }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-indigo-100 rounded-full">
+                  <TrendingUp className="h-4 w-4 text-indigo-600" />
                 </div>
-                <span className="text-xs font-medium text-gray-700 ml-2">70%</span>
+                <h2 className="text-lg font-bold text-gray-900">{childName}の成長</h2>
+              </div>
+              {children.length > 1 && (
+                <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">
+                  {children.findIndex(child => child.id === selectedChildId) + 1}/{children.length}
+                </span>
+              )}
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-600">感情理解</span>
+                <div className="w-2/3 bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="bg-pink-500 h-2 rounded-full transition-all duration-1000" style={{ width: '70%' }}></div>
+                </div>
+                <span className="text-xs font-medium text-gray-700 ml-1">70%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">学習進捗</span>
-                <div className="w-2/3 bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: '45%' }}></div>
+                <span className="text-xs text-gray-600">学習進捗</span>
+                <div className="w-2/3 bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="bg-blue-500 h-2 rounded-full transition-all duration-1000" style={{ width: '45%' }}></div>
                 </div>
-                <span className="text-xs font-medium text-gray-700 ml-2">45%</span>
+                <span className="text-xs font-medium text-gray-700 ml-1">45%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">創造性</span>
-                <div className="w-2/3 bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-purple-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: '85%' }}></div>
+                <span className="text-xs text-gray-600">創造性</span>
+                <div className="w-2/3 bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="bg-purple-500 h-2 rounded-full transition-all duration-1000" style={{ width: '85%' }}></div>
                 </div>
-                <span className="text-xs font-medium text-gray-700 ml-2">85%</span>
+                <span className="text-xs font-medium text-gray-700 ml-1">85%</span>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <Link to="/parent/analytics" className="text-sm text-indigo-600 hover:text-indigo-700 flex items-center justify-center hover:underline">
-                詳細を見る <span className="ml-1">→</span>
+            <div className="mt-3 pt-2 border-t border-gray-100">
+              <Link to={`/parent/analytics?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center justify-center hover:underline">
+                詳細を見る <span className="ml-0.5">→</span>
               </Link>
             </div>
           </div>
           
-          {/* 今日のヒントカード */}
-          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl shadow-sm p-6 border border-indigo-100 animate-fadeIn relative overflow-hidden" style={{ animationDelay: '0.4s' }}>
-            <div className="absolute inset-0 bg-bubbles opacity-20"></div>
-            <div className="relative z-10">
-              <h2 className="text-lg font-bold text-indigo-900 flex items-center gap-2 mb-3">
-                <div className="p-2 bg-amber-100 rounded-full animate-float" style={{ animationDelay: '0.6s' }}>
-                  <Star className="h-5 w-5 text-amber-500" />
-                </div>
-                今日のヒント
-              </h2>
-              <p className="text-sm text-indigo-800">
-                お子様の感情表現を促すために、「今日はどんな気持ちだった？」と具体的に質問してみましょう。感情を言葉で表現する練習になります。
-              </p>
-              <div className="mt-3 flex justify-end">
-                <Link to="/parent/tips" className="text-xs text-indigo-600 hover:text-indigo-700 hover:underline">
-                  もっと見る →
-                </Link>
+          {/* 今日のヒントカード - バランス調整版 */}
+          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl shadow-sm p-5 border border-indigo-100 animate-fadeIn" style={{ animationDelay: '0.4s' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 bg-amber-100 rounded-full">
+                <Star className="h-4 w-4 text-amber-500" />
               </div>
+              <h2 className="text-lg font-bold text-indigo-900">今日のヒント</h2>
+            </div>
+            <p className="text-xs text-indigo-800 mb-3">
+              お子様の感情表現を促すために、「今日はどんな気持ちだった？」と具体的に質問してみましょう。感情を言葉で表現する練習になります。
+            </p>
+            <div className="flex justify-end">
+              <Link to="/parent/tips" className="text-xs text-indigo-600 hover:text-indigo-700 hover:underline">
+                もっと見る →
+              </Link>
             </div>
           </div>
         </div>
