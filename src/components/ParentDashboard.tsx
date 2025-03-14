@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart2, Heart, Image, Calendar, BookOpen, Users, Activity, Clock, BookOpenCheck, TrendingUp, Settings, Bell, Star, AlertCircle, CheckCircle2, BarChart3, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -27,6 +27,158 @@ type ChildProfile = {
   age?: number | null;
 };
 
+// 最適化のためのサブコンポーネント
+const StatCard = React.memo(({ 
+  icon, 
+  title, 
+  value, 
+  bgColor, 
+  delay 
+}: { 
+  icon: React.ReactNode; 
+  title: string; 
+  value: number; 
+  bgColor: string;
+  delay: string;
+}) => (
+  <div className={`${bgColor} backdrop-blur-sm rounded-lg p-4 flex items-center gap-3 relative overflow-hidden`}>
+    <div className="absolute inset-0 bg-bubbles opacity-30"></div>
+    <div className="relative z-10 p-2 bg-white/30 rounded-full animate-float" style={{ animationDelay: delay }}>
+      {icon}
+    </div>
+    <div className="relative z-10">
+      <p className="text-xs font-medium text-indigo-100">{title}</p>
+      <p className="text-xl font-bold">{value}</p>
+    </div>
+  </div>
+));
+
+// 活動カードコンポーネント
+const ActivityCard = React.memo(({ 
+  activity, 
+  selectedChildId, 
+  getActivityIcon 
+}: { 
+  activity: ActivityItem; 
+  selectedChildId: string;
+  getActivityIcon: (type: string) => React.ReactNode;
+}) => (
+  <div key={activity.id} className={`flex items-center justify-between p-3 rounded-lg hover:shadow-sm transition-all ${
+    activity.type === '作品' ? 'bg-indigo-50 hover:bg-indigo-100' : 
+    activity.type === '感情記録' ? 'bg-pink-50 hover:bg-pink-100' : 
+    'bg-blue-50 hover:bg-blue-100'
+  }`}>
+    <div className="flex items-center gap-3">
+      <div className={`p-2 rounded-full ${
+        activity.type === '作品' ? 'bg-white text-indigo-600' : 
+        activity.type === '感情記録' ? 'bg-white text-pink-600' : 
+        'bg-white text-blue-600'
+      }`}>
+        {getActivityIcon(activity.type)}
+      </div>
+      <div>
+        <p className={`font-medium text-sm ${
+          activity.type === '作品' ? 'text-indigo-900' : 
+          activity.type === '感情記録' ? 'text-pink-900' : 
+          'text-blue-900'
+        }`}>
+          {activity.type === '作品' && (activity.title || '無題の作品')}
+          {activity.type === '感情記録' && `感情: ${activity.emotion || '記録なし'}`}
+          {activity.type === '学習' && `科目: ${activity.subject || '一般'}`}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+            activity.type === '作品' ? 'bg-indigo-100 text-indigo-800' : 
+            activity.type === '感情記録' ? 'bg-pink-100 text-pink-800' : 
+            'bg-blue-100 text-blue-800'
+          }`}>
+            {activity.type}
+          </span>
+          <span className="text-xs text-gray-500">{activity.date}</span>
+        </div>
+      </div>
+    </div>
+    <Link to={
+      activity.type === '作品' ? `/parent/works/${activity.id}?child=${selectedChildId}` : 
+      activity.type === '感情記録' ? `/parent/analytics/sel?child=${selectedChildId}` : 
+      `/parent/analytics?child=${selectedChildId}`
+    } className={`p-1.5 rounded-full ${
+      activity.type === '作品' ? 'text-indigo-600 hover:bg-indigo-100' : 
+      activity.type === '感情記録' ? 'text-pink-600 hover:bg-pink-100' : 
+      'text-blue-600 hover:bg-blue-100'
+    }`}>
+      <ChevronDown className="h-4 w-4 transform -rotate-90" />
+    </Link>
+  </div>
+));
+
+// 子供選択ボタンコンポーネント
+const ChildSelectButton = React.memo(({ 
+  child, 
+  selectedChildId, 
+  onSelect, 
+  formatDate 
+}: { 
+  child: ChildProfile; 
+  selectedChildId: string;
+  onSelect: (id: string) => void;
+  formatDate: (date: string) => string;
+}) => (
+  <button
+    key={child.id}
+    onClick={() => onSelect(child.id)}
+    className={`flex items-center p-3 rounded-xl transition-all w-full ${
+      selectedChildId === child.id 
+        ? 'bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-700 shadow-md ring-1 ring-indigo-300' 
+        : 'bg-white border border-gray-100 text-gray-700 hover:bg-gray-50 hover:shadow-sm'
+    }`}
+  >
+    <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${
+      selectedChildId === child.id ? 'ring-2 ring-indigo-300 shadow-sm' : 'ring-1 ring-gray-200'
+    }`}>
+      {child.avatar_url ? (
+        <img 
+          src={child.avatar_url} 
+          alt={child.username} 
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full bg-indigo-100 flex items-center justify-center">
+          <Users className="h-6 w-6 text-indigo-500" />
+        </div>
+      )}
+    </div>
+    <div className="ml-3 flex-1">
+      <p className="font-medium text-base">{child.username}</p>
+      <p className="text-xs text-gray-500">
+        {child.birthday ? `${new Date(child.birthday).getFullYear()}年生まれ・${child.age}歳` : '年齢不明'}
+      </p>
+      
+      {/* アクティビティインジケーター */}
+      <div className="flex items-center gap-1.5 mt-1">
+        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" title="作品活動"></div>
+        <div className="w-1.5 h-1.5 rounded-full bg-pink-400" title="感情記録"></div>
+        <div className="w-1.5 h-1.5 rounded-full bg-blue-400" title="学習活動"></div>
+        {child.last_active_at && (
+          <span className="text-xs text-gray-400 ml-1">
+            最終活動: {formatDate(child.last_active_at).split(' ')[0]}
+          </span>
+        )}
+      </div>
+    </div>
+    
+    {selectedChildId === child.id && (
+      <div className="ml-auto">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white text-xs shadow-sm">
+          <CheckCircle2 className="h-3 w-3" />
+        </span>
+      </div>
+    )}
+  </button>
+));
+
+// メインコンポーネント
 export const ParentDashboard: React.FC = () => {
   const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +218,7 @@ export const ParentDashboard: React.FC = () => {
   }, [children]);
 
   // エラーハンドリング用のヘルパー関数
-  const handleSupabaseError = (error: any, message: string) => {
+  const handleSupabaseError = useCallback((error: any, message: string) => {
     console.error(`${message}:`, error);
     
     // エラーの種類に応じたメッセージ
@@ -84,10 +236,10 @@ export const ParentDashboard: React.FC = () => {
     
     // その他のエラー
     toast.error(message);
-  };
+  }, []);
 
   // 子供一覧を取得する関数
-  const fetchChildren = async () => {
+  const fetchChildren = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -182,10 +334,10 @@ export const ParentDashboard: React.FC = () => {
         toast.error('ログイン情報の取得に失敗しました。再ログインしてください。');
       }
     }
-  };
+  }, [handleSupabaseError]);
 
   // 子供の名前を取得する関数
-  const fetchChildName = async (childId: string) => {
+  const fetchChildName = useCallback(async (childId: string) => {
     try {
       const selectedChild = children.find(child => child.id === childId);
       if (selectedChild) {
@@ -206,7 +358,7 @@ export const ParentDashboard: React.FC = () => {
     } catch (error) {
       console.error('子供の名前取得エラー:', error);
     }
-  };
+  }, [children]);
 
   // 統計データを取得する関数
   const fetchStats = async (childId: string) => {
@@ -479,7 +631,7 @@ export const ParentDashboard: React.FC = () => {
   };
 
   // 子供を切り替える関数
-  const handleChildChange = (childId: string) => {
+  const handleChildChange = useCallback((childId: string) => {
     setSelectedChildId(childId);
     // 選択した子供のIDをlocalStorageに保存
     localStorage.setItem('selectedChildId', childId);
@@ -489,10 +641,10 @@ export const ParentDashboard: React.FC = () => {
       localStorage.setItem('childName', selectedChild.username);
     }
     setIsChildrenDropdownOpen(false);
-  };
+  }, [children]);
 
   // 日付フォーマット関数
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     if (!dateString) return '日付なし';
     
     try {
@@ -502,10 +654,10 @@ export const ParentDashboard: React.FC = () => {
       console.error('日付のフォーマットエラー:', e);
       return '日付エラー';
     }
-  };
+  }, []);
 
   // 活動タイプに応じたアイコンを返す関数
-  const getActivityIcon = (type: string) => {
+  const getActivityIcon = useCallback((type: string) => {
     switch (type) {
       case '作品':
         return <Image className="h-5 w-5 text-indigo-600" />;
@@ -516,7 +668,24 @@ export const ParentDashboard: React.FC = () => {
       default:
         return <Activity className="h-5 w-5 text-gray-500" />;
     }
-  };
+  }, []);
+
+  // メモ化された値
+  const filteredRecentActivities = useMemo(() => {
+    return recentActivities.slice(0, 10);
+  }, [recentActivities]);
+
+  const workActivities = useMemo(() => {
+    return recentActivities.filter(a => a.type === '作品');
+  }, [recentActivities]);
+
+  const emotionActivities = useMemo(() => {
+    return recentActivities.filter(a => a.type === '感情記録');
+  }, [recentActivities]);
+
+  const learningActivities = useMemo(() => {
+    return recentActivities.filter(a => a.type === '学習');
+  }, [recentActivities]);
 
   // 成長統計を計算する関数
   const calculateGrowthStats = (childId: string) => {
@@ -622,36 +791,27 @@ export const ParentDashboard: React.FC = () => {
           
           {/* 統計カード */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 animate-slideUp">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 flex items-center gap-3 relative overflow-hidden">
-              <div className="absolute inset-0 bg-bubbles opacity-30"></div>
-              <div className="relative z-10 p-2 bg-white/30 rounded-full animate-float" style={{ animationDelay: '0s' }}>
-                <Image className="h-6 w-6 text-white" />
-              </div>
-              <div className="relative z-10">
-                <p className="text-xs font-medium text-indigo-100">作品数</p>
-                <p className="text-xl font-bold">{stats.totalWorks}</p>
-              </div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 flex items-center gap-3 relative overflow-hidden">
-              <div className="absolute inset-0 bg-bubbles opacity-30"></div>
-              <div className="relative z-10 p-2 bg-white/30 rounded-full animate-float" style={{ animationDelay: '0.2s' }}>
-                <Heart className="h-6 w-6 text-white" />
-              </div>
-              <div className="relative z-10">
-                <p className="text-xs font-medium text-indigo-100">感情記録</p>
-                <p className="text-xl font-bold">{stats.totalEmotions}</p>
-              </div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 flex items-center gap-3 relative overflow-hidden">
-              <div className="absolute inset-0 bg-bubbles opacity-30"></div>
-              <div className="relative z-10 p-2 bg-white/30 rounded-full animate-float" style={{ animationDelay: '0.4s' }}>
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-              <div className="relative z-10">
-                <p className="text-xs font-medium text-indigo-100">学習活動</p>
-                <p className="text-xl font-bold">{stats.totalLearning}</p>
-              </div>
-            </div>
+            <StatCard 
+              icon={<Image className="h-6 w-6 text-white" />}
+              title="作品数"
+              value={stats.totalWorks}
+              bgColor="bg-white/20"
+              delay="0s"
+            />
+            <StatCard 
+              icon={<Heart className="h-6 w-6 text-white" />}
+              title="感情記録"
+              value={stats.totalEmotions}
+              bgColor="bg-white/20"
+              delay="0.2s"
+            />
+            <StatCard 
+              icon={<BookOpen className="h-6 w-6 text-white" />}
+              title="学習活動"
+              value={stats.totalLearning}
+              bgColor="bg-white/20"
+              delay="0.4s"
+            />
           </div>
         </div>
       </div>
@@ -666,57 +826,13 @@ export const ParentDashboard: React.FC = () => {
           <div className="overflow-x-auto scrollbar-hide pb-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
               {children.map(child => (
-                <button
+                <ChildSelectButton
                   key={child.id}
-                  onClick={() => handleChildChange(child.id)}
-                  className={`flex items-center p-3 rounded-xl transition-all w-full ${
-                    selectedChildId === child.id 
-                      ? 'bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-700 shadow-md ring-1 ring-indigo-300' 
-                      : 'bg-white border border-gray-100 text-gray-700 hover:bg-gray-50 hover:shadow-sm'
-                  }`}
-                >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${
-                    selectedChildId === child.id ? 'ring-2 ring-indigo-300 shadow-sm' : 'ring-1 ring-gray-200'
-                  }`}>
-                    {child.avatar_url ? (
-                      <img 
-                        src={child.avatar_url} 
-                        alt={child.username} 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-indigo-100 flex items-center justify-center">
-                        <Users className="h-6 w-6 text-indigo-500" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="ml-3 flex-1">
-                    <p className="font-medium text-base">{child.username}</p>
-                    <p className="text-xs text-gray-500">
-                      {child.birthday ? `${new Date(child.birthday).getFullYear()}年生まれ・${child.age}歳` : '年齢不明'}
-                    </p>
-                    
-                    {/* アクティビティインジケーター */}
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" title="作品活動"></div>
-                      <div className="w-1.5 h-1.5 rounded-full bg-pink-400" title="感情記録"></div>
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400" title="学習活動"></div>
-                      {child.last_active_at && (
-                        <span className="text-xs text-gray-400 ml-1">
-                          最終活動: {formatDate(child.last_active_at).split(' ')[0]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {selectedChildId === child.id && (
-                    <div className="ml-auto">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white text-xs shadow-sm">
-                        <CheckCircle2 className="h-3 w-3" />
-                      </span>
-                    </div>
-                  )}
-                </button>
+                  child={child}
+                  selectedChildId={selectedChildId}
+                  onSelect={handleChildChange}
+                  formatDate={formatDate}
+                />
               ))}
             </div>
           </div>
@@ -1064,53 +1180,12 @@ export const ParentDashboard: React.FC = () => {
                 </div>
               ) : recentActivities.length > 0 ? (
                 recentActivities.map(activity => (
-                  <div key={activity.id} className={`flex items-center justify-between p-3 rounded-lg hover:shadow-sm transition-all ${
-                    activity.type === '作品' ? 'bg-indigo-50 hover:bg-indigo-100' : 
-                    activity.type === '感情記録' ? 'bg-pink-50 hover:bg-pink-100' : 
-                    'bg-blue-50 hover:bg-blue-100'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        activity.type === '作品' ? 'bg-white text-indigo-600' : 
-                        activity.type === '感情記録' ? 'bg-white text-pink-600' : 
-                        'bg-white text-blue-600'
-                      }`}>
-                        {getActivityIcon(activity.type)}
-                      </div>
-                      <div>
-                        <p className={`font-medium text-sm ${
-                          activity.type === '作品' ? 'text-indigo-900' : 
-                          activity.type === '感情記録' ? 'text-pink-900' : 
-                          'text-blue-900'
-                        }`}>
-                          {activity.type === '作品' && (activity.title || '無題の作品')}
-                          {activity.type === '感情記録' && `感情: ${activity.emotion || '記録なし'}`}
-                          {activity.type === '学習' && `科目: ${activity.subject || '一般'}`}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                            activity.type === '作品' ? 'bg-indigo-100 text-indigo-800' : 
-                            activity.type === '感情記録' ? 'bg-pink-100 text-pink-800' : 
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {activity.type}
-                          </span>
-                          <span className="text-xs text-gray-500">{activity.date}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <Link to={
-                      activity.type === '作品' ? `/parent/works/${activity.id}?child=${selectedChildId}` : 
-                      activity.type === '感情記録' ? `/parent/analytics/sel?child=${selectedChildId}` : 
-                      `/parent/analytics?child=${selectedChildId}`
-                    } className={`p-1.5 rounded-full ${
-                      activity.type === '作品' ? 'text-indigo-600 hover:bg-indigo-100' : 
-                      activity.type === '感情記録' ? 'text-pink-600 hover:bg-pink-100' : 
-                      'text-blue-600 hover:bg-blue-100'
-                    }`}>
-                      <ChevronDown className="h-4 w-4 transform -rotate-90" />
-                    </Link>
-                  </div>
+                  <ActivityCard
+                    key={activity.id}
+                    activity={activity}
+                    selectedChildId={selectedChildId}
+                    getActivityIcon={getActivityIcon}
+                  />
                 ))
               ) : (
                 <div className="text-center py-6 bg-gray-50 rounded-lg border border-gray-100">

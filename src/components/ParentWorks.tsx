@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Image as ImageIcon, MessageCircle, Calendar, Filter, Search, X, Music, Camera, Palette, Heart, ThumbsUp, Star, Award, Smile, PenLine, MessageSquare, Sparkles, User } from 'lucide-react';
+import { Image as ImageIcon, MessageCircle, Calendar, Filter, Search, X, Music, Camera, Palette, Heart, ThumbsUp, Star, Award, Smile, PenLine, MessageSquare, Sparkles, User, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -420,11 +420,32 @@ export function ParentWorks() {
   const [likesLoading, setLikesLoading] = useState<Record<string, boolean>>({});
   const [selectedStamp, setSelectedStamp] = useState<string | null>(null);
   const [showFeedbacks, setShowFeedbacks] = useState(false);
+  const [children, setChildren] = useState<{id: string, username: string, avatar_url?: string}[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
+  const [compareMode, setCompareMode] = useState(false);
+  const [childrenWorks, setChildrenWorks] = useState<Record<string, Work[]>>({});
+  const [loadingChildrenWorks, setLoadingChildrenWorks] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
+  const [selectedChildrenForTimeline, setSelectedChildrenForTimeline] = useState<string[]>([]);
+  const [timelineWorks, setTimelineWorks] = useState<(Work & { childName: string, childAvatar?: string })[]>([]);
 
   useEffect(() => {
     checkParentMode();
+    fetchChildren();
     fetchWorks();
-  }, []);
+  }, [selectedChildId]);
+
+  useEffect(() => {
+    if (compareMode && children.length > 1) {
+      fetchAllChildrenWorks();
+    }
+  }, [compareMode]);
+
+  useEffect(() => {
+    if (compareMode && viewMode === 'timeline' && selectedChildrenForTimeline.length > 0) {
+      generateTimelineData();
+    }
+  }, [viewMode, selectedChildrenForTimeline, childrenWorks]);
 
   useEffect(() => {
     if (selectedWork) {
@@ -1138,6 +1159,162 @@ export function ParentWorks() {
     console.log('フィルタリング後のメディアタイプ別カウント:', counts);
   }, [filteredWorks, works, filter]);
 
+  // 子供一覧を取得する関数
+  const fetchChildren = async () => {
+    if (!supabase) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('ユーザーが認証されていません');
+        return;
+      }
+
+      // 親プロファイルを取得
+      const { data: parentProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', 'parent')
+        .maybeSingle();
+
+      if (!parentProfile) {
+        console.log('親プロファイルが見つかりません');
+        return;
+      }
+
+      // 子供のプロフィールを取得
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('parent_id', parentProfile.id)
+        .eq('role', 'child');
+
+      if (error) {
+        console.error('子供情報の取得エラー:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setChildren(data);
+        
+        // URLパラメータから子供のIDを取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const childId = urlParams.get('child');
+        
+        // URLパラメータに子供IDがある場合はそれを選択、なければ最初の子供を選択
+        if (childId && data.some(child => child.id === childId)) {
+          setSelectedChildId(childId);
+        } else {
+          setSelectedChildId(data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('子供一覧の取得エラー:', error);
+    }
+  };
+
+  // 子供を切り替える関数
+  const handleChildChange = (childId: string) => {
+    setSelectedChildId(childId);
+    // URLを更新
+    const url = new URL(window.location.href);
+    url.searchParams.set('child', childId);
+    window.history.pushState({}, '', url.toString());
+    // 作品を再取得
+    setLoading(true);
+  };
+
+  // 全ての子供の作品を取得する関数
+  const fetchAllChildrenWorks = async () => {
+    if (!supabase || children.length <= 1) return;
+
+    try {
+      setLoadingChildrenWorks(true);
+      const worksData: Record<string, Work[]> = {};
+
+      for (const child of children) {
+        // 各子供の作品を取得
+        let query = supabase
+          .from('works')
+          .select('*')
+          .eq('user_id', child.id)
+          .order('created_at', { ascending: false });
+
+        if (filter !== 'all') {
+          query = query.eq('type', filter);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error(`${child.username}の作品取得エラー:`, error);
+          worksData[child.id] = [];
+        } else {
+          worksData[child.id] = data || [];
+        }
+      }
+
+      setChildrenWorks(worksData);
+    } catch (error) {
+      console.error('全ての子供の作品取得エラー:', error);
+    } finally {
+      setLoadingChildrenWorks(false);
+    }
+  };
+
+  // 比較モードを切り替える関数
+  const toggleCompareMode = () => {
+    setCompareMode(!compareMode);
+  };
+
+  // タイムラインデータを生成する関数
+  const generateTimelineData = () => {
+    if (!childrenWorks || Object.keys(childrenWorks).length === 0) return;
+
+    // 選択された子供の作品を取得してマージ
+    const allWorks: (Work & { childName: string, childAvatar?: string })[] = [];
+
+    selectedChildrenForTimeline.forEach(childId => {
+      const child = children.find(c => c.id === childId);
+      if (child && childrenWorks[childId]) {
+        const childWorks = childrenWorks[childId].map(work => ({
+          ...work,
+          childName: child.username,
+          childAvatar: child.avatar_url
+        }));
+        allWorks.push(...childWorks);
+      }
+    });
+
+    // 日付順にソート（新しい順）
+    const sortedWorks = allWorks.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    setTimelineWorks(sortedWorks);
+  };
+
+  // 子供の選択状態を切り替える関数
+  const toggleChildSelection = (childId: string) => {
+    setSelectedChildrenForTimeline(prev => {
+      if (prev.includes(childId)) {
+        return prev.filter(id => id !== childId);
+      } else {
+        return [...prev, childId];
+      }
+    });
+  };
+
+  // 表示モードを切り替える関数
+  const toggleViewMode = (mode: 'grid' | 'timeline') => {
+    setViewMode(mode);
+    if (mode === 'timeline' && selectedChildrenForTimeline.length === 0) {
+      // デフォルトで最初の2人の子供を選択
+      setSelectedChildrenForTimeline(children.slice(0, 2).map(child => child.id));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
       <Header 
@@ -1148,28 +1325,285 @@ export function ParentWorks() {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {loading ? (
-          <div className="bg-white rounded-lg shadow-md p-8 flex justify-center items-center min-h-[50vh]">
-            <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-              <p className="mt-4 text-gray-600">作品を読み込んでいます...</p>
-            </div>
-          </div>
-        ) : filteredWorks.length === 0 ? (
-          <EmptyState filter={filter} />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredWorks.map((work, index) => (
-              <div key={work.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                <WorkCard 
-                  work={work} 
-                  onFeedbackClick={setSelectedWork}
-                  feedbackCount={feedbackCounts[work.id] || 0}
-                  getSafeMediaUrl={getSafeMediaUrl}
-                />
+        {/* 子供選択タブ */}
+        {children.length > 1 && (
+          <div className="mb-6 bg-white rounded-lg shadow-sm p-4 animate-fadeIn">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                お子様の作品を選択
+              </h2>
+              <div className="flex items-center gap-2">
+                {compareMode && (
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => toggleViewMode('grid')}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                        viewMode === 'grid' 
+                          ? 'bg-white text-indigo-700 shadow-sm' 
+                          : 'text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      グリッド表示
+                    </button>
+                    <button
+                      onClick={() => toggleViewMode('timeline')}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                        viewMode === 'timeline' 
+                          ? 'bg-white text-indigo-700 shadow-sm' 
+                          : 'text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      タイムライン表示
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={toggleCompareMode}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    compareMode 
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                      : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                  }`}
+                >
+                  {compareMode ? '通常表示に戻る' : '作品を比較する'}
+                </button>
               </div>
-            ))}
+            </div>
+            {!compareMode && (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {children.map(child => (
+                    <button
+                      key={child.id}
+                      onClick={() => handleChildChange(child.id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                        selectedChildId === child.id 
+                          ? 'bg-indigo-100 text-indigo-700 font-medium shadow-sm' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden">
+                        {child.avatar_url ? (
+                          <img 
+                            src={child.avatar_url} 
+                            alt={child.username} 
+                            className="w-6 h-6 object-cover"
+                          />
+                        ) : (
+                          <User className="h-3 w-3 text-indigo-600" />
+                        )}
+                      </div>
+                      {child.username}
+                    </button>
+                  ))}
+                </div>
+                {selectedChildId && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    {children.find(c => c.id === selectedChildId)?.username}の作品を表示しています
+                  </p>
+                )}
+              </>
+            )}
+            {compareMode && viewMode === 'timeline' && (
+              <div className="mt-4 border-t pt-4 border-gray-100">
+                <p className="text-sm font-medium text-gray-700 mb-2">タイムラインに表示する子供を選択してください：</p>
+                <div className="flex flex-wrap gap-2">
+                  {children.map(child => (
+                    <button
+                      key={child.id}
+                      onClick={() => toggleChildSelection(child.id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                        selectedChildrenForTimeline.includes(child.id) 
+                          ? 'bg-indigo-100 text-indigo-700 font-medium shadow-sm' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden">
+                        {child.avatar_url ? (
+                          <img 
+                            src={child.avatar_url} 
+                            alt={child.username} 
+                            className="w-6 h-6 object-cover"
+                          />
+                        ) : (
+                          <User className="h-3 w-3 text-indigo-600" />
+                        )}
+                      </div>
+                      {child.username}
+                    </button>
+                  ))}
+                </div>
+                {selectedChildrenForTimeline.length > 0 && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    {selectedChildrenForTimeline.length}人の子供の作品をタイムラインで表示しています
+                  </p>
+                )}
+              </div>
+            )}
           </div>
+        )}
+
+        {/* 通常モード */}
+        {!compareMode ? (
+          loading ? (
+            <div className="bg-white rounded-lg shadow-md p-8 flex justify-center items-center min-h-[50vh]">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+                <p className="mt-4 text-gray-600">作品を読み込んでいます...</p>
+              </div>
+            </div>
+          ) : filteredWorks.length === 0 ? (
+            <EmptyState filter={filter} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredWorks.map((work, index) => (
+                <div key={work.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
+                  <WorkCard 
+                    work={work} 
+                    onFeedbackClick={setSelectedWork}
+                    feedbackCount={feedbackCounts[work.id] || 0}
+                    getSafeMediaUrl={getSafeMediaUrl}
+                  />
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          /* 比較モード */
+          loadingChildrenWorks ? (
+            <div className="bg-white rounded-lg shadow-md p-8 flex justify-center items-center min-h-[50vh]">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+                <p className="mt-4 text-gray-600">全ての子供の作品を読み込んでいます...</p>
+              </div>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="space-y-8">
+              {children.map(child => (
+                <div key={child.id} className="bg-white rounded-lg shadow-sm p-4 animate-fadeIn">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden">
+                      {child.avatar_url ? (
+                        <img 
+                          src={child.avatar_url} 
+                          alt={child.username} 
+                          className="w-8 h-8 object-cover"
+                        />
+                      ) : (
+                        <User className="h-4 w-4 text-indigo-600" />
+                      )}
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">{child.username}の作品</h3>
+                    <span className="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full">
+                      {childrenWorks[child.id]?.length || 0}件
+                    </span>
+                  </div>
+                  
+                  {!childrenWorks[child.id] || childrenWorks[child.id].length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>まだ作品がありません</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {childrenWorks[child.id].slice(0, 4).map((work, index) => (
+                        <div key={work.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
+                          <WorkCard 
+                            work={work} 
+                            onFeedbackClick={setSelectedWork}
+                            feedbackCount={feedbackCounts[work.id] || 0}
+                            getSafeMediaUrl={getSafeMediaUrl}
+                          />
+                        </div>
+                      ))}
+                      {childrenWorks[child.id].length > 4 && (
+                        <div className="flex items-center justify-center h-full">
+                          <Link 
+                            to={`/parent/works?child=${child.id}`}
+                            className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-sm font-medium"
+                            onClick={() => {
+                              setCompareMode(false);
+                              handleChildChange(child.id);
+                            }}
+                          >
+                            すべての作品を見る ({childrenWorks[child.id].length}件) →
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* タイムライン表示 */
+            <div className="bg-white rounded-lg shadow-sm p-4 animate-fadeIn">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-indigo-600" />
+                作品タイムライン
+              </h3>
+              
+              {timelineWorks.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>表示する作品がありません。子供を選択してください。</p>
+                </div>
+              ) : (
+                <div className="relative pl-8 border-l-2 border-indigo-100 space-y-8 py-4">
+                  {timelineWorks.map((work, index) => (
+                    <div key={work.id} className="relative animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
+                      <div className="absolute -left-10 w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white">
+                        {work.childAvatar ? (
+                          <img 
+                            src={work.childAvatar} 
+                            alt={work.childName} 
+                            className="w-6 h-6 object-cover"
+                          />
+                        ) : (
+                          <User className="h-3 w-3 text-indigo-600" />
+                        )}
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+                              {work.childName}
+                            </span>
+                            <h4 className="text-lg font-medium text-gray-900 mt-1">{work.title}</h4>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(work.created_at)}
+                          </span>
+                        </div>
+                        <div className="bg-white rounded-lg overflow-hidden border border-gray-100">
+                          {(work.media_type === 'drawing' || work.media_type === 'photo') && (
+                            <img 
+                              src={getSafeMediaUrl(work.media_url || work.content_url || '')} 
+                              alt={work.title} 
+                              className="w-full h-48 object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="mt-2 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">
+                              {work.media_type === 'drawing' ? 'おえかき' : 
+                               work.media_type === 'photo' ? 'しゃしん' : 'おんがく'}
+                            </span>
+                          </div>
+                          <Link 
+                            to={`/parent/works/${work.id}?child=${work.user_id}`}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                          >
+                            詳細を見る →
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
         )}
       </div>
 
