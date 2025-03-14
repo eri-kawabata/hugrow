@@ -26,6 +26,7 @@ const ParentLayout = lazy(() => import('./components/layouts/ParentLayout').then
 const ChildLayout = lazy(() => import('./components/layouts/ChildLayout').then(module => ({ default: module.ChildLayout })));
 const ParentDashboard = lazy(() => import('./components/ParentDashboard').then(module => ({ default: module.ParentDashboard })));
 const SELQuest = lazy(() => import('./components/SELQuest').then(module => ({ default: module.SELQuest })));
+const ChildSelectionScreen = lazy(() => import('./components/ChildSelectionScreen').then(module => ({ default: module.ChildSelectionScreen })));
 
 // ルート定義
 const router = createBrowserRouter(
@@ -42,6 +43,9 @@ const router = createBrowserRouter(
 
       {/* ルートパスのリダイレクト */}
       <Route path="/" element={<Navigate to="/auth/login" replace />} />
+
+      {/* 子供選択画面 */}
+      <Route path="/select-child" element={<ChildSelectionScreen />} />
 
       {/* 保護者用ルート */}
       <Route path="/parent" element={<ParentLayout />}>

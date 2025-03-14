@@ -1,15 +1,34 @@
 import { useRecommendations } from '../../hooks/useRecommendations';
 import { RecommendedLesson } from './RecommendedLesson';
 import { RecentWorks } from './RecentWorks';
+import { useChildProfile } from '../../hooks/useChildProfile';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export function ChildHome() {
   const { recommendations } = useRecommendations();
+  const { childProfile, loading } = useChildProfile();
+  const [childName, setChildName] = useState<string>('');
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // ローカルストレージから子供の名前を取得
+    const savedChildName = localStorage.getItem('childName');
+    if (savedChildName) {
+      setChildName(savedChildName);
+    } else if (!loading && !childProfile) {
+      // 子供プロフィールが選択されていない場合、選択画面に遷移
+      navigate('/select-child');
+    }
+  }, [childProfile, loading, navigate]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       {/* ウェルカムメッセージ */}
       <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-8 mb-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">おかえりなさい！</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          おかえりなさい、{childName || childProfile?.username || ''}！
+        </h1>
         <p>今日も一緒に楽しく学びましょう</p>
       </div>
 

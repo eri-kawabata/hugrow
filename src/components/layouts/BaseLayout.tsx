@@ -230,8 +230,14 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({ children, hideHeader }) 
   }, [signOut, navigate]);
 
   const handleModeChange = useCallback((mode: 'parent' | 'child') => {
-    navigate(mode === 'parent' ? '/parent/dashboard' : '/child/home');
-    toast.success(`${mode === 'parent' ? '保護者' : '子供'}モードに切り替えました`);
+    if (mode === 'parent') {
+      navigate('/parent/dashboard');
+      toast.success('保護者モードに切り替えました');
+    } else {
+      // 子供モードに切り替える場合、子供選択画面に遷移
+      navigate('/select-child');
+      toast.success('子供選択画面に移動しました');
+    }
   }, [navigate]);
 
   return (

@@ -6,6 +6,12 @@ export const NAVIGATION_RULES = {
     redirect: '/login'
   },
 
+  // 子供選択画面
+  childSelection: {
+    routes: ['/select-child'],
+    redirect: '/select-child'
+  },
+
   // 子供モード用のルート
   child: {
     routes: [
@@ -82,8 +88,9 @@ export const LEARNING_ROUTES = {
 } as const;
 
 // ルートの種類を判定する関数
-export function getRouteType(path: string): 'public' | 'child' | 'parent' | null {
+export function getRouteType(path: string): 'public' | 'childSelection' | 'child' | 'parent' | null {
   if (NAVIGATION_RULES.public.routes.includes(path)) return 'public';
+  if (NAVIGATION_RULES.childSelection.routes.includes(path)) return 'childSelection';
   if (NAVIGATION_RULES.child.routes.includes(path)) return 'child';
   if (NAVIGATION_RULES.parent.routes.includes(path)) return 'parent';
   return null;
@@ -92,7 +99,7 @@ export function getRouteType(path: string): 'public' | 'child' | 'parent' | null
 // アクセス可能かチェックする関数
 export function canAccess(path: string, isParentMode: boolean): boolean {
   const routeType = getRouteType(path);
-  if (routeType === 'public') return true;
+  if (routeType === 'public' || routeType === 'childSelection') return true;
   if (isParentMode) return routeType === 'parent';
   return routeType === 'child';
 }
