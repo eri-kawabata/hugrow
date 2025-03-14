@@ -40,6 +40,11 @@ export const ParentDashboard: React.FC = () => {
   const [selectedChildId, setSelectedChildId] = useState<string>('');
   const [isChildrenDropdownOpen, setIsChildrenDropdownOpen] = useState(false);
   const [childrenStats, setChildrenStats] = useState<{[key: string]: {totalWorks: number, totalEmotions: number, totalLearning: number}}>({});
+  const [growthStats, setGrowthStats] = useState({
+    emotionalUnderstanding: 0,
+    learningProgress: 0,
+    creativity: 0
+  });
 
   useEffect(() => {
     fetchChildren();
@@ -50,8 +55,9 @@ export const ParentDashboard: React.FC = () => {
       fetchRecentActivities(selectedChildId);
       fetchChildName(selectedChildId);
       fetchStats(selectedChildId);
+      calculateGrowthStats(selectedChildId);
     }
-  }, [selectedChildId]);
+  }, [selectedChildId, childrenStats]);
   
   useEffect(() => {
     if (children.length > 0) {
@@ -505,6 +511,36 @@ export const ParentDashboard: React.FC = () => {
     }
   };
 
+  // 成長統計を計算する関数
+  const calculateGrowthStats = (childId: string) => {
+    // 子供の統計データを取得
+    const childStats = childrenStats[childId];
+    
+    if (!childStats) {
+      setGrowthStats({
+        emotionalUnderstanding: 0,
+        learningProgress: 0,
+        creativity: 0
+      });
+      return;
+    }
+    
+    // 感情理解: 感情記録の数に基づいて計算（最大100件で100%）
+    const emotionalScore = Math.min(childStats.totalEmotions, 100);
+    
+    // 学習進捗: 学習活動の数に基づいて計算（最大100件で100%）
+    const learningScore = Math.min(childStats.totalLearning, 100);
+    
+    // 創造性: 作品数に基づいて計算（最大100件で100%）
+    const creativityScore = Math.min(childStats.totalWorks, 100);
+    
+    setGrowthStats({
+      emotionalUnderstanding: emotionalScore,
+      learningProgress: learningScore,
+      creativity: creativityScore
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-20">
       {/* ヘッダーセクション - 改良版 */}
@@ -698,7 +734,11 @@ export const ParentDashboard: React.FC = () => {
                 
                 <div className="bg-indigo-50 px-2.5 py-1 rounded-full text-xs text-indigo-700 flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {recentActivities.length > 0 ? '最終: ' + recentActivities[0].date.split(' ')[0] : '活動なし'}
+                  {recentActivities.length > 0 
+                    ? `最終: ${recentActivities[0].date.split(' ')[0]}` 
+                    : children.find(c => c.id === selectedChildId)?.last_active_at 
+                      ? `最終: ${formatDate(children.find(c => c.id === selectedChildId)?.last_active_at || '').split(' ')[0]}`
+                      : '活動なし'}
                 </div>
               </div>
               
@@ -713,7 +753,10 @@ export const ParentDashboard: React.FC = () => {
                   <p className="text-2xl font-bold text-indigo-900">{stats.totalWorks}<span className="text-sm font-normal text-indigo-700 ml-1">件</span></p>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs text-indigo-600">最近: {recentActivities.filter(a => a.type === '作品').length}件</p>
-                    <Link to={`/parent/works?child=${selectedChildId}`} className="text-xs text-indigo-700 flex items-center hover:underline">
+                    <Link to={recentActivities.length > 0 && recentActivities.filter(a => a.type === '作品').length > 0
+                      ? `/parent/works/${recentActivities.filter(a => a.type === '作品')[0]?.id}?child=${selectedChildId}`
+                      : `/parent/works?child=${selectedChildId}`} 
+                      className="text-xs text-indigo-700 flex items-center hover:underline">
                       詳細 <span className="ml-0.5">→</span>
                     </Link>
                   </div>
@@ -768,8 +811,17 @@ export const ParentDashboard: React.FC = () => {
                         +{recentActivities.length - 3}
                       </div>
                     )}
+                    {recentActivities.length === 0 && (
+                      <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center">
+                        <AlertCircle className="h-3 w-3 text-gray-400" />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-gray-500">最近の活動</p>
+                  <p className="text-xs text-gray-500">
+                    {recentActivities.length > 0 
+                      ? `最近の活動: ${recentActivities.length}件` 
+                      : '最近の活動はありません'}
+                  </p>
                 </div>
                 <Link to={`/parent/analytics?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center hover:underline">
                   詳細分析を見る <span className="ml-0.5">→</span>
@@ -1139,29 +1191,36 @@ export const ParentDashboard: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-600">感情理解</span>
                 <div className="w-2/3 bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div className="bg-pink-500 h-2 rounded-full transition-all duration-1000" style={{ width: '70%' }}></div>
+                  <div className="bg-pink-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${growthStats.emotionalUnderstanding}%` }}></div>
                 </div>
-                <span className="text-xs font-medium text-gray-700 ml-1">70%</span>
+                <span className="text-xs font-medium text-gray-700 ml-1">{growthStats.emotionalUnderstanding}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-600">学習進捗</span>
                 <div className="w-2/3 bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div className="bg-blue-500 h-2 rounded-full transition-all duration-1000" style={{ width: '45%' }}></div>
+                  <div className="bg-blue-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${growthStats.learningProgress}%` }}></div>
                 </div>
-                <span className="text-xs font-medium text-gray-700 ml-1">45%</span>
+                <span className="text-xs font-medium text-gray-700 ml-1">{growthStats.learningProgress}%</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-600">創造性</span>
                 <div className="w-2/3 bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div className="bg-purple-500 h-2 rounded-full transition-all duration-1000" style={{ width: '85%' }}></div>
+                  <div className="bg-purple-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${growthStats.creativity}%` }}></div>
                 </div>
-                <span className="text-xs font-medium text-gray-700 ml-1">85%</span>
+                <span className="text-xs font-medium text-gray-700 ml-1">{growthStats.creativity}%</span>
               </div>
             </div>
             <div className="mt-3 pt-2 border-t border-gray-100">
-              <Link to={`/parent/analytics?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center justify-center hover:underline">
-                詳細を見る <span className="ml-0.5">→</span>
-              </Link>
+              <div className="flex justify-between items-center">
+                <p className="text-xs text-gray-500">
+                  {stats.totalWorks + stats.totalEmotions + stats.totalLearning > 0 
+                    ? `総活動数: ${stats.totalWorks + stats.totalEmotions + stats.totalLearning}件` 
+                    : '活動記録がありません'}
+                </p>
+                <Link to={`/parent/analytics?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center hover:underline">
+                  詳細を見る <span className="ml-0.5">→</span>
+                </Link>
+              </div>
             </div>
           </div>
           
