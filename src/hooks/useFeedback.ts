@@ -302,6 +302,72 @@ export function useFeedback(workId?: string) {
       });
       
       console.log('加工後のフィードバックデータ:', enrichedFeedbacks);
+
+      // いいね情報を取得
+      try {
+        if (currentUser) {
+          console.log('いいね情報取得開始');
+          
+          // 取得対象のフィードバックIDリスト
+          const feedbackIds = enrichedFeedbacks.map(f => f.id);
+          console.log('フィードバックID一覧:', feedbackIds);
+          
+          if (feedbackIds.length > 0) {
+            // いいね数を取得（直接カウントする方法に変更）
+            const { data: likesData, error: likesError } = await supabase
+              .from('feedback_likes')
+              .select('feedback_id')
+              .in('feedback_id', feedbackIds);
+              
+            if (likesError) {
+              console.error('いいね数取得エラー:', likesError);
+            } else if (likesData) {
+              console.log('いいねデータ:', likesData);
+              
+              // フィードバックIDごとにいいね数をカウント
+              const likesCount = new Map();
+              likesData.forEach(item => {
+                const count = likesCount.get(item.feedback_id) || 0;
+                likesCount.set(item.feedback_id, count + 1);
+              });
+              
+              console.log('いいね数カウント結果:', Object.fromEntries(likesCount));
+              
+              // 自分のいいね情報を取得
+              const { data: myLikesData, error: myLikesError } = await supabase
+                .from('feedback_likes')
+                .select('feedback_id')
+                .eq('user_id', currentUser.id)
+                .in('feedback_id', feedbackIds);
+                
+              if (myLikesError) {
+                console.error('自分のいいね情報取得エラー:', myLikesError);
+              } else {
+                console.log('自分のいいねデータ:', myLikesData);
+                
+                // 自分がいいねしたフィードバックIDのセットを作成
+                const myLikesSet = new Set();
+                if (myLikesData) {
+                  myLikesData.forEach(item => {
+                    myLikesSet.add(item.feedback_id);
+                  });
+                }
+                
+                // いいね情報を追加
+                enrichedFeedbacks.forEach(feedback => {
+                  feedback.likes = likesCount.get(feedback.id) || 0;
+                  feedback.liked_by_me = myLikesSet.has(feedback.id);
+                });
+              }
+            }
+          } else {
+            console.log('フィードバックがないため、いいね情報の取得をスキップします');
+          }
+        }
+      } catch (likesError) {
+        console.error('いいね情報取得中にエラーが発生:', likesError);
+      }
+
       setFeedbacks(enrichedFeedbacks);
     } catch (err) {
       console.error('Error fetching feedbacks:', err);

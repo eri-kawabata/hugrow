@@ -5,6 +5,9 @@ export interface Feedback {
   feedback: string;
   created_at: string;
   username?: string;
+  likes?: number;
+  liked_by_me?: boolean;
+  isLikeLoading?: boolean;
   user_profile?: {
     display_name: string;
     avatar_url?: string;

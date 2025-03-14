@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Image as ImageIcon, MessageCircle, Calendar, Filter, Search, X, Music, Camera, Palette, Heart, ThumbsUp, Star, Award, Smile } from 'lucide-react';
+import { Image as ImageIcon, MessageCircle, Calendar, Filter, Search, X, Music, Camera, Palette, Heart, ThumbsUp, Star, Award, Smile, PenLine, MessageSquare, Sparkles, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -187,41 +187,43 @@ const FeedbackItem = memo(({ feedback, onLike }: {
   const stamp = stampId ? STAMPS.find(s => s.id === stampId) : null;
   
   return (
-    <div className="bg-gray-50 rounded-lg p-4 mb-3 animate-fadeIn">
+    <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2">
-          <div className="bg-indigo-100 rounded-full p-2">
-            <MessageCircle className="h-4 w-4 text-indigo-600" />
+          <div className="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full p-2 shadow-sm">
+            <User className="h-4 w-4 text-indigo-600" />
           </div>
-          <span className="font-medium text-gray-700">{feedback.username || '匿名'}</span>
+          <span className="font-medium text-gray-800">{feedback.username || '匿名'}</span>
         </div>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
           {new Date(feedback.created_at).toLocaleDateString('ja-JP')}
         </span>
       </div>
       
-      {feedbackText && feedbackText !== 'スタンプを送りました' && (
-        <p className="mt-2 text-gray-700">{feedbackText}</p>
-      )}
-      
-      {stamp && (
-        <div className="mt-2 flex items-center gap-1">
-          <span className={`${stamp.color}`}>{stamp.icon}</span>
-          <span className="text-sm text-gray-600">{stamp.label}</span>
-        </div>
-      )}
+      <div className="mt-3">
+        {stamp && (
+          <div className="mb-2 inline-flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
+            <span className={`${stamp.color}`}>{stamp.icon}</span>
+            <span className="text-sm text-amber-700 font-medium">{stamp.label}</span>
+          </div>
+        )}
+        
+        {feedbackText && feedbackText !== 'スタンプを送りました' && (
+          <p className="text-gray-700 whitespace-pre-wrap">{feedbackText}</p>
+        )}
+      </div>
       
       <div className="mt-3 flex justify-end">
         <button 
           onClick={() => onLike(feedback.id)}
-          className={`flex items-center gap-1 text-sm px-2 py-1 rounded-md ${
+          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full transition-all duration-200 ${
             feedback.liked_by_me 
-              ? 'text-indigo-600 bg-indigo-50' 
-              : 'text-gray-500 hover:bg-gray-100'
+              ? 'text-rose-600 bg-rose-50 border border-rose-200' 
+              : 'text-gray-500 hover:bg-gray-100 border border-transparent hover:border-gray-200'
           }`}
           data-feedback-id={feedback.id}
         >
-          <Heart className="h-4 w-4 heart-icon" />
+          <Heart className={`h-4 w-4 heart-icon ${feedback.liked_by_me ? 'fill-rose-600' : ''}`} />
           <span>{feedback.likes || 0}</span>
         </button>
       </div>
@@ -840,11 +842,24 @@ export function ParentWorks() {
     
     // 各メディアタイプの数をカウント
     const typeCounts = {
-      drawing: works.filter(w => w.type === 'drawing' || (!w.type && w.media_type === 'drawing')).length,
-      photo: works.filter(w => w.type === 'photo' || (!w.type && w.media_type === 'photo')).length,
-      audio: works.filter(w => w.type === 'audio' || (!w.type && w.media_type === 'audio')).length,
-      all: works.length
+      drawing: 0,
+      image: 0,
+      photo: 0,
+      video: 0,
+      audio: 0,
+      other: 0
     };
+    
+    works.forEach(work => {
+      console.log(`作品: ${work.title}, メディアタイプ: ${work.media_type}`);
+      if (work.media_type === 'drawing') typeCounts.drawing++;
+      else if (work.media_type === 'image') typeCounts.image++;
+      else if (work.media_type === 'photo') typeCounts.photo++;
+      else if (work.media_type === 'video') typeCounts.video++;
+      else if (work.media_type === 'audio') typeCounts.audio++;
+      else typeCounts.other++;
+    });
+    
     console.log('メディアタイプ別カウント:', typeCounts);
     
     return works.filter(work => {
@@ -1071,7 +1086,12 @@ export function ParentWorks() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-scaleIn">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
-              <h3 className="text-xl font-semibold text-indigo-900">{selectedWork.title}へのフィードバック</h3>
+              <h3 className="text-xl font-semibold text-indigo-900 flex items-center gap-2">
+                <span className="bg-indigo-100 p-1.5 rounded-full">
+                  <MessageCircle className="h-5 w-5 text-indigo-600" />
+                </span>
+                {selectedWork.title}へのフィードバック
+              </h3>
               <button
                 onClick={() => {
                   setSelectedWork(null);
@@ -1079,7 +1099,7 @@ export function ParentWorks() {
                   setSelectedStamp(null);
                   setFeedback('');
                 }}
-                className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-full hover:bg-white"
+                className="text-gray-500 hover:text-gray-700 transition-colors p-1.5 rounded-full hover:bg-white"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1090,15 +1110,21 @@ export function ParentWorks() {
               <div className="flex border-b border-gray-200 mb-4">
                 <button
                   onClick={() => setShowFeedbacks(false)}
-                  className={`px-4 py-2 font-medium text-sm transition-all duration-200 ${!showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 py-2 font-medium text-sm transition-all duration-200 flex items-center gap-1.5 ${!showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                 >
+                  <PenLine className="h-4 w-4" />
                   新規フィードバック
                 </button>
                 <button
                   onClick={() => setShowFeedbacks(true)}
-                  className={`px-4 py-2 font-medium text-sm transition-all duration-200 ${showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-4 py-2 font-medium text-sm transition-all duration-200 flex items-center gap-1.5 ${showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
                 >
-                  フィードバック一覧 {feedbackList.length > 0 && `(${feedbackList.length})`}
+                  <MessageSquare className="h-4 w-4" />
+                  フィードバック一覧 {feedbackList.length > 0 && (
+                    <span className="bg-indigo-100 text-indigo-600 text-xs px-1.5 py-0.5 rounded-full">
+                      {feedbackList.length}
+                    </span>
+                  )}
                 </button>
               </div>
               
@@ -1110,11 +1136,13 @@ export function ParentWorks() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                     </div>
                   ) : feedbackList.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      まだフィードバックはありません
+                    <div className="text-center py-8 text-gray-500 flex flex-col items-center">
+                      <MessageCircle className="h-12 w-12 text-gray-300 mb-2" />
+                      <p className="text-lg font-medium mb-1">まだフィードバックはありません</p>
+                      <p className="text-sm">新規フィードバックタブからメッセージを送ってみましょう</p>
                     </div>
                   ) : (
-                    <div>
+                    <div className="space-y-4">
                       {feedbackList.map((item, index) => (
                         <div key={item.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
                           <FeedbackItem 
@@ -1129,22 +1157,26 @@ export function ParentWorks() {
               ) : (
                 // 新規フィードバック入力
                 <div className="animate-fadeIn">
-                  <p className="text-gray-600 mb-4">子どもの作品に対するフィードバックを送信します。励ましのメッセージや感想を書いてみましょう。</p>
+                  <div className="bg-indigo-50 rounded-lg p-4 mb-6 border border-indigo-100">
+                    <p className="text-indigo-700 text-sm">子どもの作品に対するフィードバックを送信します。励ましのメッセージや感想を書いてみましょう。</p>
+                  </div>
                   
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-amber-500" />
                       スタンプ（オプション）
                     </label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
                       {STAMPS.map(stamp => (
                         <button
                           key={stamp.id}
                           onClick={() => setSelectedStamp(stamp.id === selectedStamp ? null : stamp.id)}
                           className={`p-3 rounded-full transition-all duration-300 transform ${
                             stamp.id === selectedStamp 
-                              ? 'bg-indigo-100 ring-2 ring-indigo-500 ring-offset-2 scale-110' 
-                              : 'bg-gray-50 hover:bg-gray-100 hover:scale-105'
+                              ? 'bg-indigo-100 ring-2 ring-indigo-500 ring-offset-2 scale-110 shadow-md' 
+                              : 'bg-white hover:bg-gray-100 hover:scale-105 shadow-sm border border-gray-200'
                           }`}
+                          title={stamp.label}
                         >
                           <div className={stamp.color}>{stamp.icon}</div>
                         </button>
@@ -1153,14 +1185,15 @@ export function ParentWorks() {
                   </div>
                   
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                      <MessageSquare className="h-4 w-4 text-indigo-500" />
                       メッセージ（オプション）
                     </label>
                     <textarea
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
                       placeholder="子どもへのメッセージを書いてください..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-inner bg-gray-50"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-sm bg-white"
                       rows={4}
                     />
                   </div>
@@ -1176,7 +1209,7 @@ export function ParentWorks() {
                   setSelectedStamp(null);
                   setFeedback('');
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors rounded-full hover:bg-white"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors rounded-full hover:bg-white border border-gray-200 shadow-sm"
               >
                 キャンセル
               </button>
@@ -1185,7 +1218,7 @@ export function ParentWorks() {
                 <button
                   onClick={handleFeedbackSubmit}
                   disabled={!feedback.trim() && !selectedStamp}
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-md transform hover:scale-105 disabled:hover:scale-100 flex items-center gap-2"
+                  className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-md transform hover:scale-105 disabled:hover:scale-100 flex items-center gap-2"
                 >
                   <MessageCircle className="h-4 w-4" />
                   <span>送信する</span>

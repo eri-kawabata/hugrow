@@ -144,9 +144,18 @@ const WorkContent = memo(({ work, onAddFeedback }: {
 WorkContent.displayName = 'WorkContent';
 
 const FeedbackSection = memo(({ workId }: { workId: string }) => {
-  const { feedbacks, loading, error, fetchFeedbacks } = useFeedback(workId);
+  const { feedbacks: feedbacksData, loading, error, fetchFeedbacks } = useFeedback(workId);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const { user, profile } = useAuth();
   const [isExpanded, setIsExpanded] = useState(true);
+  const [likesLoading, setLikesLoading] = useState<Record<string, boolean>>({});
+  
+  // useFeedbackから取得したデータをローカルの状態に反映
+  useEffect(() => {
+    if (feedbacksData) {
+      setFeedbacks(feedbacksData);
+    }
+  }, [feedbacksData]);
   
   // コンポーネントがマウントされたときにフィードバックを再取得
   useEffect(() => {
@@ -168,6 +177,118 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
     console.log('フィードバック再取得');
     fetchFeedbacks();
   }, [fetchFeedbacks]);
+
+  // いいねを追加/削除する関数
+  const handleLikeToggle = async (feedbackId: string) => {
+    if (!supabase) return;
+    
+    try {
+      // 現在のいいね状態を取得
+      const currentFeedback = feedbacks.find(f => f.id === feedbackId);
+      if (!currentFeedback) return;
+      
+      // いいね処理中のフィードバックを記録
+      setLikesLoading(prev => ({ ...prev, [feedbackId]: true }));
+      
+      // フィードバックにisLikeLoadingプロパティを追加
+      const updatedFeedbacksWithLoading = feedbacks.map(item => 
+        item.id === feedbackId 
+          ? { ...item, isLikeLoading: true }
+          : item
+      );
+      setFeedbacks(updatedFeedbacksWithLoading);
+      
+      if (!user) {
+        toast.error('ログインが必要です');
+        return;
+      }
+      
+      if (currentFeedback.liked_by_me) {
+        // いいねを削除
+        const { error } = await supabase
+          .from('feedback_likes')
+          .delete()
+          .eq('feedback_id', feedbackId)
+          .eq('user_id', user.id);
+          
+        if (error) throw error;
+        
+        // フィードバックリストを更新（再取得せずに状態を更新）
+        const updatedFeedbacks = feedbacks.map(item => 
+          item.id === feedbackId 
+            ? { ...item, likes: Math.max(0, (item.likes || 0) - 1), liked_by_me: false, isLikeLoading: false }
+            : item
+        );
+        
+        // 状態を直接更新
+        setFeedbacks(updatedFeedbacks);
+      } else {
+        // いいねを追加
+        const { error } = await supabase
+          .from('feedback_likes')
+          .insert([{
+            feedback_id: feedbackId,
+            user_id: user.id
+          }]);
+          
+        if (error) throw error;
+        
+        // フィードバックリストを更新（再取得せずに状態を更新）
+        const updatedFeedbacks = feedbacks.map(item => 
+          item.id === feedbackId 
+            ? { ...item, likes: (item.likes || 0) + 1, liked_by_me: true, isLikeLoading: false }
+            : item
+        );
+        
+        // 状態を直接更新
+        setFeedbacks(updatedFeedbacks);
+        
+        // いいねアニメーションのためのDOM要素を取得
+        setTimeout(() => {
+          // ボタンのIDを使用して要素を取得（より確実）
+          const likeButton = document.getElementById(`like-button-${feedbackId}`);
+          const heartElement = likeButton?.querySelector('.heart-icon');
+          
+          console.log('いいねボタン要素:', likeButton);
+          console.log('ハートアイコン要素:', heartElement);
+          
+          if (heartElement) {
+            // 一度クラスを削除してから追加することでアニメーションをリセット
+            heartElement.classList.remove('animate-heartBeat');
+            
+            // 強制的にリフロー（再描画）を発生させる
+            void heartElement.offsetWidth;
+            
+            // アニメーションクラスを追加
+            heartElement.classList.add('animate-heartBeat');
+            
+            // アニメーション終了後にクラスを削除
+            setTimeout(() => {
+              heartElement.classList.remove('animate-heartBeat');
+            }, 1000);
+            
+            console.log('ハートビートアニメーション適用完了');
+          } else {
+            console.warn('ハートアイコン要素が見つかりませんでした');
+          }
+        }, 100); // DOM更新を待つために少し遅延させる
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      toast.error('いいねの処理に失敗しました');
+      
+      // エラー時にローディング状態を解除
+      const resetLoadingFeedbacks = feedbacks.map(item => 
+        item.id === feedbackId 
+          ? { ...item, isLikeLoading: false }
+          : item
+      );
+      setFeedbacks(resetLoadingFeedbacks);
+    } finally {
+      // いいね処理中のフィードバックを解除
+      setLikesLoading(prev => ({ ...prev, [feedbackId]: false }));
+    }
+  };
 
   return (
     <div className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden">
@@ -221,7 +342,7 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
             </button>
           </div>
         ) : (
-          <FeedbackList feedbacks={feedbacks} loading={loading} />
+          <FeedbackList feedbacks={feedbacks} loading={loading} onLike={handleLikeToggle} />
         )}
       </div>
     </div>

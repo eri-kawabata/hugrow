@@ -1,13 +1,14 @@
 import React, { memo } from 'react';
-import { MessageCircle, User } from 'lucide-react';
+import { MessageCircle, User, Heart } from 'lucide-react';
 import type { Feedback } from '@/types/feedback';
 
 interface FeedbackListProps {
   feedbacks: Feedback[];
   loading: boolean;
+  onLike?: (feedbackId: string) => void;
 }
 
-export const FeedbackList = memo(({ feedbacks, loading }: FeedbackListProps) => {
+export const FeedbackList = memo(({ feedbacks, loading, onLike }: FeedbackListProps) => {
   if (loading) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -33,7 +34,7 @@ export const FeedbackList = memo(({ feedbacks, loading }: FeedbackListProps) => 
   return (
     <div className="space-y-4 p-4">
       {feedbacks.map((feedback) => (
-        <FeedbackItem key={feedback.id} feedback={feedback} />
+        <FeedbackItem key={feedback.id} feedback={feedback} onLike={onLike} />
       ))}
     </div>
   );
@@ -43,9 +44,10 @@ FeedbackList.displayName = 'FeedbackList';
 
 interface FeedbackItemProps {
   feedback: Feedback;
+  onLike?: (feedbackId: string) => void;
 }
 
-const FeedbackItem = memo(({ feedback }: FeedbackItemProps) => {
+const FeedbackItem = memo(({ feedback, onLike }: FeedbackItemProps) => {
   // スタンプ情報を抽出（[スタンプ名] 形式）
   const stampMatch = feedback.feedback.match(/^\[(.*?)\]\s*/);
   const hasStamp = !!stampMatch;
@@ -78,6 +80,13 @@ const FeedbackItem = memo(({ feedback }: FeedbackItemProps) => {
     
     // どれもない場合は「保護者」と表示
     return '保護者';
+  };
+
+  // いいねボタンのクリックハンドラー
+  const handleLikeClick = () => {
+    if (onLike) {
+      onLike(feedback.id);
+    }
   };
 
   return (
@@ -118,6 +127,34 @@ const FeedbackItem = memo(({ feedback }: FeedbackItemProps) => {
           <p className="text-gray-700 whitespace-pre-wrap break-words">
             {feedbackText}
           </p>
+          
+          {onLike && (
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLikeClick();
+                }}
+                className={`flex items-center gap-1 text-gray-500 hover:text-pink-500 transition-colors`}
+                data-feedback-id={feedback.id}
+                id={`like-button-${feedback.id}`}
+              >
+                <div className="relative">
+                  <Heart
+                    className={`heart-icon w-5 h-5 ${
+                      feedback.liked_by_me ? 'text-pink-500 fill-pink-500' : 'text-gray-400'
+                    }`}
+                  />
+                  {feedback.isLikeLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-3 h-3 border-2 border-t-transparent border-pink-500 rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+                <span>{feedback.likes || 0}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
