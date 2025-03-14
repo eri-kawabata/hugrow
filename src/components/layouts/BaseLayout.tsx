@@ -1,5 +1,5 @@
 import React, { useCallback, memo, useState, useEffect } from 'react';
-import { LogOut, User, ChevronDown } from 'lucide-react';
+import { LogOut, User, ChevronDown, Shield, Menu, X } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
@@ -18,6 +18,7 @@ type HeaderProps = {
 
 const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { pathname } = useLocation();
   const [childName, setChildName] = useState<string | null>(null);
   
@@ -81,13 +82,14 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
         <div className="h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link 
-              to="/" 
-              className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
+              to={isParentMode ? "/parent/dashboard" : "/child/home"}
+              className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity flex items-center"
             >
-              Hugrow
+              <span className="mr-2">Hugrow</span>
+              {isParentMode && <Shield className="h-5 w-5 text-indigo-600" />}
             </Link>
             {displayName && (
-              <div className="hidden sm:flex items-center gap-2 py-1 px-3 bg-indigo-50 rounded-full">
+              <div className="hidden sm:flex items-center gap-2 py-1 px-3 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-full">
                 <span className="text-gray-600">ようこそ、</span>
                 <span className="font-medium text-indigo-700">{displayName}</span>
                 <span className="text-gray-600">さん</span>
@@ -95,26 +97,30 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
             )}
           </div>
 
-          <div className="flex items-center gap-4">
+          {/* デスクトップメニュー */}
+          <div className="hidden md:flex items-center gap-3">
             {onModeChange && (
               <div className="relative">
                 <button
                   onClick={() => setIsOpen(!isOpen)}
-                  className="flex items-center gap-2 py-2 px-4 rounded-full text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-2 py-2 px-4 rounded-full text-gray-600 hover:bg-gray-50 transition-colors border border-gray-200"
                 >
-                  <User className="h-5 w-5" />
+                  <div className={`p-1 rounded-full ${isParentMode ? 'bg-indigo-100' : 'bg-amber-100'}`}>
+                    <User className={`h-4 w-4 ${isParentMode ? 'text-indigo-600' : 'text-amber-600'}`} />
+                  </div>
                   <span>{isParentMode ? '保護者モード' : '子供モード'}</span>
                   <ChevronDown className="h-4 w-4" />
                 </button>
                 {isOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 border border-gray-100">
                     <button
                       onClick={() => {
                         onModeChange('parent');
                         setIsOpen(false);
                       }}
-                      className={`w-full px-4 py-2 text-left ${isParentMode ? 'text-indigo-600 font-medium bg-indigo-50' : 'text-gray-700 hover:bg-gray-50'}`}
+                      className={`w-full px-4 py-3 text-left flex items-center gap-2 ${isParentMode ? 'text-indigo-600 font-medium bg-indigo-50' : 'text-gray-700 hover:bg-gray-50'}`}
                     >
+                      <Shield className="h-4 w-4" />
                       保護者モード
                     </button>
                     <button
@@ -122,8 +128,9 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
                         onModeChange('child');
                         setIsOpen(false);
                       }}
-                      className={`w-full px-4 py-2 text-left ${!isParentMode ? 'text-indigo-600 font-medium bg-indigo-50' : 'text-gray-700 hover:bg-gray-50'}`}
+                      className={`w-full px-4 py-3 text-left flex items-center gap-2 ${!isParentMode ? 'text-amber-600 font-medium bg-amber-50' : 'text-gray-700 hover:bg-gray-50'}`}
                     >
+                      <User className="h-4 w-4" />
                       子供モード
                     </button>
                   </div>
@@ -132,13 +139,74 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
             )}
             <button
               onClick={onLogout}
-              className="flex items-center gap-2 py-2 px-4 rounded-full text-gray-600 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 py-2 px-4 rounded-full text-gray-600 hover:bg-gray-50 transition-colors border border-gray-200"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4" />
               <span>ログアウト</span>
             </button>
           </div>
+
+          {/* モバイルメニューボタン */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-full text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* モバイルメニュー */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden py-3 border-t border-gray-100">
+            {displayName && (
+              <div className="flex items-center gap-2 py-2 px-3 mb-3">
+                <span className="text-gray-600">ようこそ、</span>
+                <span className="font-medium text-indigo-700">{displayName}</span>
+                <span className="text-gray-600">さん</span>
+              </div>
+            )}
+            {onModeChange && (
+              <div className="space-y-1 mb-3">
+                <button
+                  onClick={() => {
+                    onModeChange('parent');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full px-4 py-2 text-left flex items-center gap-2 rounded-lg ${isParentMode ? 'text-indigo-600 font-medium bg-indigo-50' : 'text-gray-700 hover:bg-gray-50'}`}
+                >
+                  <Shield className="h-4 w-4" />
+                  保護者モード
+                </button>
+                <button
+                  onClick={() => {
+                    onModeChange('child');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full px-4 py-2 text-left flex items-center gap-2 rounded-lg ${!isParentMode ? 'text-amber-600 font-medium bg-amber-50' : 'text-gray-700 hover:bg-gray-50'}`}
+                >
+                  <User className="h-4 w-4" />
+                  子供モード
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                onLogout();
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-full px-4 py-2 text-left flex items-center gap-2 text-gray-700 hover:bg-gray-50 rounded-lg"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>ログアウト</span>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
