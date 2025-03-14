@@ -127,7 +127,15 @@ export const CameraCapture = () => {
 
       // ファイル名に一意性を持たせる
       const fileName = `photo_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-      const filePath = `works/${user.id}/${fileName}`;
+      
+      // 子供モードの場合は選択された子供のIDを使用
+      const childUserId = localStorage.getItem('selectedChildUserId');
+      const effectiveUserId = childUserId || user.id;
+      
+      // ユーザーIDをフォルダ名として含める
+      const filePath = `${effectiveUserId}/${fileName}`;
+      
+      console.log('【デバッグ】写真保存時のファイルパス:', filePath);
 
       // 画像サイズの最適化
       const optimizedBlob = await new Promise<Blob>((resolve, reject) => {
@@ -173,7 +181,7 @@ export const CameraCapture = () => {
       // アップロード前にストレージの状態確認
       const { error: storageError } = await supabase.storage
         .from('works')
-        .list(`${user.id}`);
+        .list(`${effectiveUserId}`);
 
       if (storageError) {
         console.error('Storage check error:', storageError);
@@ -209,9 +217,9 @@ export const CameraCapture = () => {
         .insert([{
           title: title.trim(),
           description: description.trim() || null,
-          media_url: publicUrl,
-          media_type: 'photo',
-          user_id: user.id,
+          content_url: publicUrl,
+          type: 'photo',
+          user_id: localStorage.getItem('selectedChildUserId') || user.id,
           created_at: new Date().toISOString()
         }]);
 

@@ -8,8 +8,10 @@ import {
   RouterProvider,
 } from 'react-router-dom';
 import { AuthProvider } from '@/hooks/useAuth';
+import { SupabaseAuthProvider } from '@/hooks/useSupabaseAuth';
 import { Toaster } from 'react-hot-toast';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
+import { SupabaseTest } from './components/SupabaseTest';
 
 // 遅延ロードするコンポーネント
 const Auth = lazy(() => import('./components/Auth').then(module => ({ default: module.Auth })));
@@ -31,7 +33,11 @@ const ChildSelectionScreen = lazy(() => import('./components/ChildSelectionScree
 // ルート定義
 const router = createBrowserRouter(
   createRoutesFromElements(
-    <Route element={<AuthProvider />}>
+    <Route element={
+      <SupabaseAuthProvider>
+        <AuthProvider />
+      </SupabaseAuthProvider>
+    }>
       {/* 認証ルート */}
       <Route path="/auth">
         <Route index element={<Navigate to="/auth/login" replace />} />
@@ -40,6 +46,9 @@ const router = createBrowserRouter(
         <Route path="reset-password" element={<PasswordReset />} />
         <Route path="update-password" element={<UpdatePassword />} />
       </Route>
+
+      {/* Supabaseテスト用ルート */}
+      <Route path="/supabase-test" element={<SupabaseTest />} />
 
       {/* ルートパスのリダイレクト */}
       <Route path="/" element={<Navigate to="/auth/login" replace />} />
@@ -77,7 +86,7 @@ const router = createBrowserRouter(
   }
 );
 
-export function App() {
+export default function App() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
@@ -101,5 +110,3 @@ export function App() {
     </Suspense>
   );
 }
-
-export default App;

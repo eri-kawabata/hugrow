@@ -2,6 +2,7 @@ import React, { useState, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, RotateCcw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import toast from 'react-hot-toast';
 
 const InputField = memo(({ 
@@ -65,6 +66,9 @@ export function PasswordReset() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const { resetPassword, loading: authLoading } = useSupabaseAuth();
+
+  const isLoading = loading || authLoading;
 
   const handleReset = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,11 +81,13 @@ export function PasswordReset() {
 
     try {
       setLoading(true);
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
-      });
-
-      if (error) throw error;
+      
+      // Supabase認証フックを使用してパスワードリセット
+      const { success, error } = await resetPassword(trimmedEmail);
+      
+      if (!success) {
+        throw new Error(error || 'パスワードリセットに失敗しました');
+      }
 
       setSent(true);
       toast.success('パスワードリセットメールを送信しました');
@@ -91,7 +97,7 @@ export function PasswordReset() {
     } finally {
       setLoading(false);
     }
-  }, [email]);
+  }, [email, resetPassword]);
 
   if (sent) {
     return (
@@ -131,17 +137,17 @@ export function PasswordReset() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="example@email.com"
-              disabled={loading}
+              disabled={isLoading}
             />
 
-            <ResetButton loading={loading} disabled={!email.trim()} />
+            <ResetButton loading={isLoading} disabled={!email.trim()} />
           </form>
 
           <div className="mt-6 text-center">
             <Link 
               to="/auth/login"
               className="text-sm text-indigo-600 hover:text-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={(e) => loading && e.preventDefault()}
+              onClick={(e) => isLoading && e.preventDefault()}
             >
               ログイン画面に戻る
             </Link>

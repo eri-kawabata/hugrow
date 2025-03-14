@@ -481,6 +481,13 @@ export const ParentDashboard: React.FC = () => {
   // 子供を切り替える関数
   const handleChildChange = (childId: string) => {
     setSelectedChildId(childId);
+    // 選択した子供のIDをlocalStorageに保存
+    localStorage.setItem('selectedChildId', childId);
+    // 子供の名前もlocalStorageに保存
+    const selectedChild = children.find(child => child.id === childId);
+    if (selectedChild && selectedChild.username) {
+      localStorage.setItem('childName', selectedChild.username);
+    }
     setIsChildrenDropdownOpen(false);
   };
 

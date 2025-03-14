@@ -2,6 +2,7 @@ import React, { useState, useCallback, memo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, UserPlus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import toast from 'react-hot-toast';
 
 const InputField = memo(({ 
@@ -74,6 +75,9 @@ export function SignUp() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [role, setRole] = useState<'parent' | 'child'>('parent');
+  const { signUp: supabaseSignUp, loading: supabaseLoading } = useSupabaseAuth();
+
+  const isLoading = loading || supabaseLoading;
 
   const handleSignUp = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,21 +94,27 @@ export function SignUp() {
     try {
       setLoading(true);
 
-      // ユーザー登録
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: trimmedEmail,
-        password: trimmedPassword,
-      });
+      // Supabase認証フックを使用してユーザー登録
+      const { success, error } = await supabaseSignUp(trimmedEmail, trimmedPassword);
+      
+      if (!success) {
+        throw new Error(error || 'ユーザー登録に失敗しました');
+      }
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('ユーザー登録に失敗しました');
+      // セッション情報を取得
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      
+      if (!userId) {
+        throw new Error('ユーザーIDの取得に失敗しました');
+      }
 
       // プロフィール作成
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([
           {
-            user_id: authData.user.id,
+            user_id: userId,
             username: trimmedUsername,
             role: role,
           },
@@ -120,7 +130,7 @@ export function SignUp() {
     } finally {
       setLoading(false);
     }
-  }, [email, password, username, role, navigate]);
+  }, [email, password, username, role, navigate, supabaseSignUp]);
 
   const isFormValid = email.trim() && password.trim().length >= 6 && username.trim();
 

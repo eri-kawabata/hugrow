@@ -538,11 +538,103 @@ export function ParentWorks() {
     try {
       setLoading(true);
       
-      // 適切なヘッダーを設定してリクエスト
-      const { data, error } = await supabase
+      // URLパラメータから子供のIDを取得
+      const urlParams = new URLSearchParams(window.location.search);
+      const childId = urlParams.get('child');
+      
+      console.log('【デバッグ】URLパラメータから取得した子供ID:', childId);
+      
+      // 子供のIDがURLパラメータにある場合、localStorageに保存
+      if (childId) {
+        localStorage.setItem('selectedChildId', childId);
+        localStorage.setItem('selectedChildProfileId', childId);
+        console.log('【デバッグ】localStorageに保存した子供ID:', childId);
+        
+        // 子供の名前とuser_idも取得して保存
+        const { data: childData } = await supabase
+          .from('profiles')
+          .select('username, user_id')
+          .eq('id', childId)
+          .maybeSingle();
+          
+        console.log('【デバッグ】取得した子供データ:', childData);
+        
+        if (childData) {
+          if (childData.username) {
+            localStorage.setItem('childName', childData.username);
+            console.log('【デバッグ】localStorageに保存した子供名:', childData.username);
+          }
+          if (childData.user_id) {
+            localStorage.setItem('selectedChildUserId', childData.user_id);
+            console.log('【デバッグ】localStorageに保存した子供のユーザーID:', childData.user_id);
+          }
+        }
+      } else {
+        console.log('【デバッグ】URLパラメータに子供IDがありません');
+      }
+      
+      // クエリを構築
+      let query = supabase
         .from('works')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      // 子供のIDでフィルタリング
+      if (childId) {
+        // 子供のuser_idを取得
+        const childUserId = localStorage.getItem('selectedChildUserId');
+        if (childUserId) {
+          query = query.eq('user_id', childUserId);
+          console.log(`【デバッグ】子供のユーザーID: ${childUserId} でフィルタリングします`);
+        } else {
+          console.log(`【デバッグ】子供のユーザーIDが見つかりません。プロファイルID: ${childId} でフィルタリングを試みます`);
+          query = query.eq('user_id', childId);
+        }
+      } else {
+        // 子供IDがない場合は、親に関連するすべての子供の作品を取得
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('【デバッグ】現在のユーザーID:', user?.id);
+        
+        if (user) {
+          const { data: parentProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('role', 'parent')
+            .maybeSingle();
+            
+          console.log('【デバッグ】取得した親プロファイル:', parentProfile);
+            
+          if (parentProfile) {
+            const { data: children } = await supabase
+              .from('profiles')
+              .select('id, username')
+              .eq('parent_id', parentProfile.id)
+              .eq('role', 'child');
+              
+            console.log('【デバッグ】取得した子供リスト:', children);
+              
+            if (children && children.length > 0) {
+              const childIds = children.map(child => child.id);
+              query = query.in('user_id', childIds);
+              console.log(`【デバッグ】複数の子供ID: ${childIds.join(', ')} でフィルタリングします`);
+            } else {
+              console.log('【デバッグ】子供が見つかりません');
+            }
+          } else {
+            console.log('【デバッグ】親プロファイルが見つかりません');
+          }
+        } else {
+          console.log('【デバッグ】ユーザーが認証されていません');
+        }
+      }
+      
+      // クエリを実行
+      console.log('【デバッグ】実行するクエリ:', query);
+      const { data, error } = await query;
+      
+      console.log('【デバッグ】クエリ結果:', data);
+      console.log('【デバッグ】クエリエラー:', error);
 
       if (error) {
         console.error('作品の取得エラー:', error);

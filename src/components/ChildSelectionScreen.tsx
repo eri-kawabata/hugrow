@@ -163,8 +163,32 @@ export function ChildSelectionScreen() {
   const selectChild = (childId: string, childName: string) => {
     // 選択した子供の情報をローカルストレージに保存
     localStorage.setItem('selectedChildId', childId);
+    localStorage.setItem('selectedChildProfileId', childId); // 元のIDもprofileIdとして保存
     localStorage.setItem('childName', childName);
-    navigate('/child/home');
+    
+    // 子供のuser_idを取得して保存
+    supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('id', childId)
+      .single()
+      .then(({ data, error }) => {
+        if (data && data.user_id) {
+          console.log('【デバッグ】子供のuser_id:', data.user_id);
+          localStorage.setItem('selectedChildUserId', data.user_id);
+          
+          // カスタムイベントを発火して子供変更を通知
+          const event = new CustomEvent('selectedChildChanged', {
+            detail: { childUserId: data.user_id }
+          });
+          window.dispatchEvent(event);
+        }
+        if (error) {
+          console.error('子供のuser_id取得エラー:', error);
+        }
+        // 画面遷移
+        navigate('/child/home');
+      });
   };
 
   // パステルカラーの背景色

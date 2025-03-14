@@ -1,0 +1,1 @@
+-- profile_idがnullの作品を確認\nSELECT * FROM works WHERE profile_id IS NULL;\n\n-- 既存の作品データを更新（より確実な方法）\nUPDATE works w\nSET profile_id = (\n  SELECT p.id \n  FROM profiles p \n  WHERE p.user_id = w.user_id \n  LIMIT 1\n)\nWHERE profile_id IS NULL;

@@ -159,10 +159,17 @@ export function AudioRecorder() {
 
       // ファイル名を生成
       const fileName = `audio_${Date.now()}_${Math.random().toString(36).substring(7)}.wav`;
-      const filePath = `${user.id}/${fileName}`;  // パスを修正: user.idディレクトリ直下に保存
+      
+      // 子供モードの場合は選択された子供のIDを使用
+      const childUserId = localStorage.getItem('selectedChildUserId');
+      const effectiveUserId = childUserId || user.id;
+      
+      // ユーザーIDをフォルダ名として含める
+      const filePath = `${effectiveUserId}/${fileName}`;
 
       console.log('Uploading to path:', filePath);
       console.log('User ID:', user.id);
+      console.log('Effective User ID:', effectiveUserId);
       
       // Supabaseにアップロード
       const { error: uploadError, data: uploadData } = await supabase.storage
@@ -201,7 +208,7 @@ export function AudioRecorder() {
           description: description.trim() || null,
           type: 'audio',
           content_url: publicUrl,
-          user_id: user.id,
+          user_id: localStorage.getItem('selectedChildUserId') || user.id,
           status: 'published',  // ステータスを明示的に設定
           visibility: 'public', // 可視性を明示的に設定
           created_at: new Date().toISOString()

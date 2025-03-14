@@ -1,7 +1,8 @@
 import React, { useState, useCallback, memo } from 'react';
 import { Loader2, LogIn } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import toast from 'react-hot-toast';
 
 const InputField = memo(({ 
@@ -70,7 +71,11 @@ LoginButton.displayName = 'LoginButton';
 export function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { signIn, loading } = useAuth();
+  const { signIn: legacySignIn, loading: legacyLoading } = useAuth();
+  const { signIn: supabaseSignIn, loading: supabaseLoading } = useSupabaseAuth();
+  const navigate = useNavigate();
+  
+  const loading = legacyLoading || supabaseLoading;
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,8 +88,23 @@ export function Auth() {
       return;
     }
 
-    await signIn(trimmedEmail, trimmedPassword);
-  }, [email, password, signIn]);
+    try {
+      // Supabase認証を試みる
+      const result = await supabaseSignIn(trimmedEmail, trimmedPassword);
+      
+      if (result.success) {
+        // 成功した場合はダッシュボードへリダイレクト
+        navigate('/parent/dashboard');
+        return;
+      }
+      
+      // Supabase認証に失敗した場合は既存の認証を試みる
+      await legacySignIn(trimmedEmail, trimmedPassword);
+    } catch (error) {
+      console.error('認証エラー:', error);
+      toast.error('ログインに失敗しました。メールアドレスとパスワードを確認してください。');
+    }
+  }, [email, password, supabaseSignIn, legacySignIn, navigate]);
 
   const isFormValid = email.trim() && password.trim().length >= 6;
 

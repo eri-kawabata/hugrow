@@ -158,52 +158,21 @@ export function AuthProvider() {
   const signIn = useCallback(async (email: string, password: string) => {
     try {
       setLoading(true);
-      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password.trim(),
+        email,
+        password,
       });
 
       if (error) throw error;
 
-      if (data.user) {
+      if (data.session) {
         const profile = await fetchProfile(data.user.id);
-        
         if (profile) {
           updateAuthState(data.user, profile, true);
           notifyTabs('signIn');
           toast.success('ログインしました');
-          navigate(profile.role === 'parent' ? '/parent/dashboard' : '/child/home', { replace: true });
         } else {
-          // プロフィールが存在しない場合は新規作成
-          try {
-            const { data: newProfile, error: createError } = await supabase
-              .from('profiles')
-              .insert([
-                {
-                  user_id: data.user.id,
-                  username: email.split('@')[0],
-                  role: 'parent',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                }
-              ])
-              .select()
-              .single();
-
-            if (createError) {
-              console.error('プロフィール作成エラー:', createError);
-              throw new Error('プロフィールの作成に失敗しました');
-            }
-
-            updateAuthState(data.user, newProfile, true);
-            notifyTabs('signIn');
-            toast.success('ログインしました');
-            navigate('/parent/dashboard', { replace: true });
-          } catch (createError) {
-            console.error('プロフィール作成エラー:', createError);
-            throw new Error('プロフィールの作成に失敗しました');
-          }
+          throw new Error('プロフィールが見つかりません');
         }
       }
     } catch (error) {
@@ -212,7 +181,7 @@ export function AuthProvider() {
     } finally {
       setLoading(false);
     }
-  }, [navigate, fetchProfile, handleError, updateAuthState, notifyTabs]);
+  }, [fetchProfile, handleError, updateAuthState, notifyTabs]);
 
   // サインアウト
   const signOut = useCallback(async () => {
@@ -258,7 +227,7 @@ export function AuthProvider() {
     }
   }, [tabId, navigate, updateAuthState, refreshSession]);
 
-  // 認証の初期化
+  // 初期化処理
   useEffect(() => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout;
@@ -363,10 +332,14 @@ export function AuthProvider() {
   );
 }
 
-export function useAuth() {
+// useAuthフックをconst関数式として定義
+const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuthは AuthProvider 内で使用する必要があります');
   }
   return context;
-} 
+};
+
+// 名前付きエクスポート
+export { useAuth }; 

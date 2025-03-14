@@ -2,6 +2,7 @@ import React, { useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Key } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
 import toast from 'react-hot-toast';
 
 const InputField = memo(({ 
@@ -72,6 +73,9 @@ export function UpdatePassword() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { updatePassword, loading: authLoading } = useSupabaseAuth();
+
+  const isLoading = loading || authLoading;
 
   const handleUpdate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,11 +100,13 @@ export function UpdatePassword() {
 
     try {
       setLoading(true);
-      const { error } = await supabase.auth.updateUser({
-        password: trimmedPassword
-      });
-
-      if (error) throw error;
+      
+      // Supabase認証フックを使用してパスワード更新
+      const { success, error } = await updatePassword(trimmedPassword);
+      
+      if (!success) {
+        throw new Error(error || 'パスワードの更新に失敗しました');
+      }
 
       toast.success('パスワードを更新しました');
       navigate('/auth/login');
@@ -110,7 +116,7 @@ export function UpdatePassword() {
     } finally {
       setLoading(false);
     }
-  }, [password, confirmPassword, navigate]);
+  }, [password, confirmPassword, navigate, updatePassword]);
 
   const isFormValid = password.trim() && 
     confirmPassword.trim() && 
@@ -135,7 +141,7 @@ export function UpdatePassword() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               minLength={6}
-              disabled={loading}
+              disabled={isLoading}
             />
 
             <InputField
@@ -146,10 +152,10 @@ export function UpdatePassword() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
               minLength={6}
-              disabled={loading}
+              disabled={isLoading}
             />
 
-            <UpdateButton loading={loading} disabled={!isFormValid} />
+            <UpdateButton loading={isLoading} disabled={!isFormValid} />
           </form>
         </div>
       </div>

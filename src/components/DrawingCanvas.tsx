@@ -291,6 +291,14 @@ export function DrawingCanvas() {
     setHistoryIndex(newHistory.length - 1);
   };
 
+  const resetCanvas = () => {
+    clearCanvas();
+    setIsEraser(false);
+    setColor('#000000');
+    setBrushSize(BRUSH_SIZES.default);
+    setShowColorPicker(false);
+  };
+
   const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -323,95 +331,85 @@ export function DrawingCanvas() {
   };
 
   const handleSave = async () => {
-    if (!canvasRef.current || !title.trim()) {
-      toast.error('タイトルを入力してください');
-      return;
-    }
-
+    if (!canvasRef.current) return;
+    
     try {
       setLoading(true);
-
-      // ユーザー情報の取得
-      if (!user) {
-        toast.error('ログインが必要です');
-        return;
-      }
-
-      // キャンバスデータをBlobに変換
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvasRef.current?.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(new Error('画像の変換に失敗しました'));
-            }
-          },
-          'image/png',
-          1.0
-        );
-      });
-
-      // ファイル名の生成（一意のIDを使用）
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2);
-      const fileName = `drawing-${timestamp}-${randomId}.png`;
-      const filePath = `${user.id}/${fileName}`;
-
-      // Storageにファイルをアップロード
-      const { error: uploadError, data: uploadData } = await supabase.storage
+      
+      // キャンバスの内容をデータURLとして取得
+      const dataUrl = canvasRef.current.toDataURL('image/png');
+      
+      // ファイル名を生成（タイムスタンプを含む）
+      const timestamp = new Date().getTime();
+      const fileName = `drawing_${timestamp}.png`;
+      
+      // データURLをBlobに変換
+      const blob = await (await fetch(dataUrl)).blob();
+      
+      // 子供モードの場合は選択された子供のIDを使用
+      const childUserId = localStorage.getItem('selectedChildUserId');
+      const effectiveUserId = childUserId || user.id;
+      
+      // ユーザーIDをフォルダ名として含める
+      const filePath = `${effectiveUserId}/${fileName}`;
+      
+      console.log('【デバッグ】作品保存時のファイルパス:', filePath);
+      
+      // Supabaseのストレージにアップロード
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('works')
         .upload(filePath, blob, {
           contentType: 'image/png',
           cacheControl: '3600',
-          upsert: false
         });
-
+      
       if (uploadError) {
         console.error('アップロードエラー:', uploadError);
         throw uploadError;
       }
-
-      // 公開URLの取得
-      const { data: urlData } = supabase.storage
-        .from('works')
-        .getPublicUrl(filePath);
-
-      if (!urlData?.publicUrl) {
-        throw new Error('公開URLの取得に失敗しました');
-      }
-
+      
+      // アップロードされたファイルのURLを取得
+      const { data: { publicUrl } } = supabase.storage.from('works').getPublicUrl(filePath);
+      
+      console.log('【デバッグ】作品保存時のユーザーID:', {
+        childUserId,
+        userId: user.id,
+        effectiveUserId
+      });
+      
       // データベースに作品情報を保存
-      const { error: dbError } = await supabase
+      const { data: workData, error: workError } = await supabase
         .from('works')
-        .insert({
-          user_id: user.id,
-          title: title.trim(),
-          description: description.trim() || null,
-          type: 'drawing',
-          content_url: urlData.publicUrl,
-          status: 'published',
-          visibility: 'public',
-          metadata: {
-            original_width: canvasRef.current.width,
-            original_height: canvasRef.current.height,
-            file_path: filePath
-          }
-        });
-
-      if (dbError) {
-        console.error('データベース保存エラー:', dbError);
-        throw dbError;
+        .insert([
+          {
+            title: title || '無題の絵',
+            description: description || null,
+            content_url: publicUrl,
+            type: 'drawing',
+            user_id: effectiveUserId,
+          },
+        ])
+        .select();
+      
+      if (workError) {
+        throw workError;
       }
-
-      toast.success('作品を保存しました！');
+      
+      toast.success('絵を保存しました！');
+      
+      // 保存後に新しいキャンバスを用意
+      resetCanvas();
+      setTitle('');
+      setDescription('');
+      setShowSaveModal(false);
+      
+      // 作品一覧に戻る
       navigate('/child/works');
     } catch (error) {
       console.error('保存エラー:', error);
-      toast.error('保存に失敗しました。もう一度お試しください。');
+      toast.error('保存中にエラーが発生しました');
     } finally {
       setLoading(false);
-      setShowSaveModal(false);
     }
   };
 

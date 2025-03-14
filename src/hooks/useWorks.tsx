@@ -24,6 +24,37 @@ export function useWorks(prefetch = false) {
   const [loading, setLoading] = useState(!prefetch);
   const [error, setError] = useState<Error | null>(null);
   const [lastFetch, setLastFetch] = useState<Date | null>(null);
+  const [selectedChildUserId, setSelectedChildUserId] = useState<string | null>(
+    localStorage.getItem('selectedChildUserId')
+  );
+
+  // 子供切り替え時のイベントリスナー
+  useEffect(() => {
+    // ローカルストレージの変更を監視
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'selectedChildUserId') {
+        console.log('【デバッグ】useWorks: selectedChildUserIdが変更されました:', e.newValue);
+        setSelectedChildUserId(e.newValue);
+        fetchWorks(true); // 強制的に再取得
+      }
+    };
+
+    // カスタムイベントを監視
+    const handleChildChange = () => {
+      const newSelectedChildUserId = localStorage.getItem('selectedChildUserId');
+      console.log('【デバッグ】useWorks: selectedChildUserIdが変更されました (カスタムイベント):', newSelectedChildUserId);
+      setSelectedChildUserId(newSelectedChildUserId);
+      fetchWorks(true); // 強制的に再取得
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('selectedChildChanged', handleChildChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('selectedChildChanged', handleChildChange);
+    };
+  }, []);
 
   const handleError = (error: unknown) => {
     const workError = error as WorkError;
@@ -45,24 +76,47 @@ export function useWorks(prefetch = false) {
       setLoading(true);
       setError(null);
 
+      console.log('【デバッグ】useWorks: fetchWorks開始');
+      console.log('【デバッグ】useWorks: ユーザー情報:', user);
+      console.log('【デバッグ】useWorks: プロファイル情報:', profile);
+      console.log('【デバッグ】useWorks: 選択中の子供ID:', selectedChildUserId);
+
       let query = supabase
         .from('works')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (profile?.role === 'parent') {
+        console.log('【デバッグ】useWorks: 親モードでの取得');
         const { data: children } = await supabase
           .from('parent_child_relations')
           .select('child_id')
           .eq('parent_id', user.id);
 
+        console.log('【デバッグ】useWorks: 取得した子供関係:', children);
+
         const childIds = children?.map(relation => relation.child_id) || [];
+        console.log('【デバッグ】useWorks: 子供IDリスト:', childIds);
+        
         query = query.in('user_id', [user.id, ...childIds]);
+        console.log('【デバッグ】useWorks: 親モードでのクエリ:', query);
       } else {
-        query = query.eq('user_id', user.id);
+        // 子供モードの場合、選択された子供のIDを使用
+        if (selectedChildUserId) {
+          query = query.eq('user_id', selectedChildUserId);
+          console.log('【デバッグ】useWorks: 子供のユーザーIDでフィルタリング:', selectedChildUserId);
+        } else {
+          query = query.eq('user_id', user.id);
+          console.log('【デバッグ】useWorks: ユーザーIDでフィルタリング:', user.id);
+        }
+        
+        console.log('【デバッグ】useWorks: 子供モードでのクエリ:', query);
       }
 
       const { data, error } = await query;
+      console.log('【デバッグ】useWorks: クエリ結果:', data);
+      console.log('【デバッグ】useWorks: クエリエラー:', error);
+      
       if (error) throw error;
 
       setWorks(data || []);
@@ -72,7 +126,7 @@ export function useWorks(prefetch = false) {
     } finally {
       setLoading(false);
     }
-  }, [user, profile?.role, lastFetch]);
+  }, [user, profile?.role, lastFetch, selectedChildUserId]);
 
   const createWork = async (work: Omit<Work, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return null;
