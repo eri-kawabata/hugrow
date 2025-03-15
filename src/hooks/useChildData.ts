@@ -232,11 +232,11 @@ export function useChildData() {
       const cachedStats = localStorage.getItem(`stats_${childId}`);
       const cacheTime = localStorage.getItem(`stats_${childId}_time`);
       
-      // キャッシュが5分以内なら使用
+      // キャッシュが10分以内なら使用
       if (cachedStats && cacheTime) {
         const now = new Date().getTime();
         const cacheAge = now - parseInt(cacheTime);
-        if (cacheAge < 5 * 60 * 1000) { // 5分
+        if (cacheAge < 10 * 60 * 1000) { // 10分
           setStats(JSON.parse(cachedStats));
           return;
         }
@@ -300,19 +300,13 @@ export function useChildData() {
         totalLearning: learningCount
       };
       
-      // キャッシュに保存
+      // キャッシュを更新
       localStorage.setItem(`stats_${childId}`, JSON.stringify(newStats));
       localStorage.setItem(`stats_${childId}_time`, new Date().getTime().toString());
       
       setStats(newStats);
     } catch (error) {
       console.error('統計データの取得中にエラーが発生しました:', error);
-      // エラー時はデフォルト値を設定
-      setStats({
-        totalWorks: 0,
-        totalEmotions: 0,
-        totalLearning: 0
-      });
     }
   }, []);
 

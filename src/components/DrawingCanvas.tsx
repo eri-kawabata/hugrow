@@ -377,6 +377,23 @@ export function DrawingCanvas() {
         effectiveUserId
       });
       
+      // プロファイルIDを取得
+      let profileId = null;
+      
+      // 子供のプロファイルIDを取得
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', effectiveUserId)
+        .single();
+        
+      if (profileError) {
+        console.error('プロファイル取得エラー:', profileError);
+      } else if (profileData) {
+        profileId = profileData.id;
+        console.log('【デバッグ】取得したプロファイルID:', profileId);
+      }
+      
       // データベースに作品情報を保存
       const { data: workData, error: workError } = await supabase
         .from('works')
@@ -387,6 +404,7 @@ export function DrawingCanvas() {
             content_url: publicUrl,
             type: 'drawing',
             user_id: effectiveUserId,
+            profile_id: profileId, // プロファイルIDを設定
           },
         ])
         .select();

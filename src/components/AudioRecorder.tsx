@@ -200,6 +200,26 @@ export function AudioRecorder() {
 
       console.log('Public URL:', publicUrl);
       
+      // 子供のユーザーIDはすでに上で宣言されているので、ここでは再宣言しない
+      // const effectiveUserId = localStorage.getItem('selectedChildUserId') || user.id;
+
+      // プロファイルIDを取得
+      let profileId = null;
+      
+      // 子供のプロファイルIDを取得
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', effectiveUserId)
+        .single();
+        
+      if (profileError) {
+        console.error('プロファイル取得エラー:', profileError);
+      } else if (profileData) {
+        profileId = profileData.id;
+        console.log('【デバッグ】取得したプロファイルID:', profileId);
+      }
+      
       // データベースに記録
       const { error: dbError, data: insertData } = await supabase
         .from('works')
@@ -208,7 +228,8 @@ export function AudioRecorder() {
           description: description.trim() || null,
           type: 'audio',
           content_url: publicUrl,
-          user_id: localStorage.getItem('selectedChildUserId') || user.id,
+          user_id: effectiveUserId,
+          profile_id: profileId, // プロファイルIDを設定
           status: 'published',  // ステータスを明示的に設定
           visibility: 'public', // 可視性を明示的に設定
           created_at: new Date().toISOString()

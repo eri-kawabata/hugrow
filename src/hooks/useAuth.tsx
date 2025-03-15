@@ -321,7 +321,7 @@ export function AuthProvider() {
 
   // 認証済みで認証ページにアクセスした場合は適切なダッシュボードへリダイレクト
   if (isAuthenticated && isPublicPath) {
-    const redirectPath = profile?.role === 'parent' ? '/parent/dashboard' : '/child/home';
+    const redirectPath = profile?.role === 'parent' ? '/parent/dashboard' : '/select-child';
     return <Navigate to={redirectPath} replace />;
   }
 

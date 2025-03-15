@@ -21,57 +21,113 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { pathname } = useLocation();
   const [childName, setChildName] = useState<string | null>(null);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(
+    localStorage.getItem('selectedChildId') || localStorage.getItem('selectedChildProfileId')
+  );
   
   // 現在のモードを判定
   const isParentMode = pathname.includes('/parent');
   
-  // 子供モードの場合、子供の名前を取得
+  // localStorageの変更を監視
   useEffect(() => {
-    const fetchChildName = async () => {
-      try {
-        // 子供モードの場合、localStorageから子供の名前を取得
-        if (!isParentMode) {
-          const savedChildName = localStorage.getItem('childName');
-          if (savedChildName) {
-            setChildName(savedChildName);
-            return;
-          }
-        }
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'selectedChildId' || e.key === 'selectedChildProfileId') {
+        const newChildId = e.newValue || localStorage.getItem('selectedChildId') || localStorage.getItem('selectedChildProfileId');
+        console.log('BaseLayout - 子供ID変更検知:', e.key, newChildId);
+        setSelectedChildId(newChildId);
         
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
-        // 子供のプロフィールを取得
-        let query = supabase
-          .from('profiles')
-          .select('username');
-          
-        // 現在のモードに応じてクエリを変更
-        if (isParentMode) {
-          // 保護者モードの場合は何もしない
-        } else {
-          // 子供モードの場合は子供のプロフィールを取得
-          query = query.eq('role', 'child');
+        // 子供IDが変更されたら子供の名前を再取得
+        if (newChildId) {
+          fetchChildName(newChildId);
         }
-        
-        const { data: profile } = await query
-          .eq('user_id', user.id)
-          .maybeSingle();
-          
-        if (profile) {
-          setChildName(profile.username);
-          // 子供モードの場合、localStorageに子供の名前を保存
-          if (!isParentMode) {
-            localStorage.setItem('childName', profile.username || '');
-          }
-        }
-      } catch (error) {
-        console.error('プロフィール取得エラー:', error);
+      }
+      if (e.key === 'childName') {
+        console.log('BaseLayout - childName変更検知:', e.newValue);
+        setChildName(e.newValue);
+      }
+    };
+
+    // カスタムイベントの監視
+    const handleChildChange = () => {
+      const newChildId = localStorage.getItem('selectedChildId') || localStorage.getItem('selectedChildProfileId');
+      const newChildName = localStorage.getItem('childName');
+      console.log('BaseLayout - selectedChildChanged イベント検知:', newChildId, newChildName);
+      setSelectedChildId(newChildId);
+      if (newChildName) {
+        setChildName(newChildName);
+      } else if (newChildId) {
+        fetchChildName(newChildId);
       }
     };
     
-    fetchChildName();
-  }, [pathname, isParentMode]);
+    // 子供プロフィール更新イベントの監視
+    const handleChildProfileUpdated = (e: CustomEvent) => {
+      console.log('BaseLayout - childProfileUpdated イベント検知:', e.detail);
+      if (e.detail && e.detail.childName) {
+        setChildName(e.detail.childName);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('selectedChildChanged', handleChildChange);
+    window.addEventListener('childProfileUpdated', handleChildProfileUpdated as EventListener);
+
+    // 初期値を設定
+    const initialChildId = localStorage.getItem('selectedChildId') || localStorage.getItem('selectedChildProfileId');
+    if (initialChildId && initialChildId !== selectedChildId) {
+      console.log('BaseLayout - 初期値設定:', initialChildId);
+      setSelectedChildId(initialChildId);
+      fetchChildName(initialChildId);
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('selectedChildChanged', handleChildChange);
+      window.removeEventListener('childProfileUpdated', handleChildProfileUpdated as EventListener);
+    };
+  }, []);
+  
+  // 子供の名前を取得する関数
+  const fetchChildName = async (childId: string) => {
+    try {
+      // まずlocalStorageから子供の名前を取得
+      const savedChildName = localStorage.getItem('childName');
+      if (savedChildName) {
+        console.log('BaseLayout - localStorageから子供の名前を取得:', savedChildName);
+        setChildName(savedChildName);
+        return;
+      }
+      
+      console.log('BaseLayout - 子供IDから名前を取得:', childId);
+      const { data: childProfile, error } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', childId)
+        .eq('role', 'child')
+        .maybeSingle();
+        
+      if (error) {
+        console.error('BaseLayout - 子供プロフィール取得エラー:', error);
+        return;
+      }
+        
+      if (childProfile && childProfile.username) {
+        console.log('BaseLayout - 子供プロフィールから名前を取得:', childProfile.username);
+        setChildName(childProfile.username);
+        localStorage.setItem('childName', childProfile.username);
+        return;
+      }
+    } catch (error) {
+      console.error('BaseLayout - 子供名前取得エラー:', error);
+    }
+  };
+  
+  // 子供モードの場合、子供の名前を取得
+  useEffect(() => {
+    if (!isParentMode && selectedChildId) {
+      fetchChildName(selectedChildId);
+    }
+  }, [isParentMode, selectedChildId]);
   
   // 表示する名前を決定
   const displayName = isParentMode ? username : childName || username;

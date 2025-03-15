@@ -1,12 +1,18 @@
-import React, { memo, useCallback, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle } from 'lucide-react';
+import React, { memo, useCallback, useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle, Pencil, Mic } from 'lucide-react';
 import { useWorks, Work } from '@/hooks/useWorks';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { ErrorMessage } from '@/components/Common/ErrorMessage';
 import { EmptyState } from '@/components/Common/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { motion } from 'framer-motion';
+import { FaPlus, FaTrash, FaEye } from 'react-icons/fa';
+import { formatDate } from '../utils/formatDate';
+import { useConfirm } from '../hooks/useConfirm';
+import toast from 'react-hot-toast';
+import { useProfile } from '@/hooks/useProfile';
 
 // 作品タイプのフィルター型
 type WorkTypeFilter = 'all' | Work['type'] | 'drawing' | 'audio' | 'photo';
@@ -51,16 +57,20 @@ const WorkCard = memo(({ work }: { work: Work }) => {
       if (!user) return;
       
       try {
-        // お気に入り状態を確認
-        const { data: favoriteData, error: favoriteError } = await supabase
-          .from('favorites')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('work_id', work.id)
-          .single();
-          
-        if (!favoriteError) {
-          setIsFavorite(true);
+        // お気に入り状態を確認 - favoritesテーブルが存在しない場合はエラーを無視
+        try {
+          const { data: favoriteData, error: favoriteError } = await supabase
+            .from('favorites')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('work_id', work.id);
+            
+          if (!favoriteError && favoriteData && favoriteData.length > 0) {
+            setIsFavorite(true);
+          }
+        } catch (favError) {
+          console.log('お気に入り情報の取得に失敗しました:', favError);
+          // エラーを無視して処理を続行
         }
         
         // フィードバック数を確認
@@ -68,8 +78,6 @@ const WorkCard = memo(({ work }: { work: Work }) => {
           .from('work_feedback')
           .select('id, user_id')
           .eq('work_id', work.id);
-          
-        console.log('作品ID:', work.id, 'フィードバックデータ:', feedbackData);
           
         if (!feedbackError && feedbackData && feedbackData.length > 0) {
           setHasFeedback(true);
@@ -86,10 +94,8 @@ const WorkCard = memo(({ work }: { work: Work }) => {
               .eq('user_id', userId);
               
             if (!profileError && profileData && profileData.length > 0 && profileData[0].display_name) {
-              console.log('保護者名を設定:', profileData[0].display_name);
               setParentName(profileData[0].display_name);
             } else {
-              console.log('保護者プロフィールが見つかりません');
               setParentName('保護者');
             }
           } catch (profileErr) {
@@ -109,7 +115,7 @@ const WorkCard = memo(({ work }: { work: Work }) => {
   const renderThumbnail = () => {
     if (work.content_url) {
       // 実際のコンテンツURLがある場合
-      if (workType === 'drawing' || workType === 'photo') {
+      if (work.type === 'drawing' || work.type === 'photo') {
         return (
           <div className="w-full h-40 overflow-hidden rounded-t-[24px] relative">
             <img 
@@ -121,7 +127,7 @@ const WorkCard = memo(({ work }: { work: Work }) => {
           </div>
         );
       }
-    } else if (workType === 'drawing') {
+    } else if (work.type === 'drawing') {
       // お絵かきのデフォルトサムネイル
       return (
         <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#8ec5d6]/30 to-white flex items-center justify-center relative">
@@ -133,7 +139,7 @@ const WorkCard = memo(({ work }: { work: Work }) => {
           <Palette className="h-16 w-16 text-[#5d7799]/40" />
         </div>
       );
-    } else if (workType === 'audio') {
+    } else if (work.type === 'audio') {
       // 音声のデフォルトサムネイル
       return (
         <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#f5f6bf]/30 to-white flex items-center justify-center relative">
@@ -154,7 +160,7 @@ const WorkCard = memo(({ work }: { work: Work }) => {
           </div>
         </div>
       );
-    } else if (workType === 'photo') {
+    } else if (work.type === 'photo') {
       // 写真のデフォルトサムネイル
       return (
         <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#f7c5c2]/30 to-white flex items-center justify-center relative">
@@ -178,7 +184,7 @@ const WorkCard = memo(({ work }: { work: Work }) => {
 
   // 作品タイプに応じたラベルとカラーを取得
   const getTypeInfo = () => {
-    switch (workType) {
+    switch (work.type) {
       case 'drawing':
         return {
           label: 'お絵かき',
@@ -371,92 +377,221 @@ const Header = memo(({
 
 Header.displayName = 'Header';
 
-export function MyWorks() {
-  const { works, loading, error, fetchWorks } = useWorks();
-  const [activeFilter, setActiveFilter] = useState<WorkTypeFilter>('all');
-  const [filteredWorks, setFilteredWorks] = useState<Work[]>([]);
+const MyWorks = () => {
+  const { works, loading, error, createWork, deleteWork } = useWorks(true);
+  const [selectedType, setSelectedType] = useState<WorkTypeFilter>('all');
+  const [selectedChildProfileId, setSelectedChildProfileId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isParentMode = pathname.includes('/parent');
 
-  // フィルターが変更されたときに作品をフィルタリング
+  // 子供プロファイルIDの変更を監視
   useEffect(() => {
-    if (activeFilter === 'all') {
-      setFilteredWorks(works);
-    } else {
-      setFilteredWorks(works.filter(work => work.type === activeFilter));
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'selectedChildProfileId' || e.key === 'selectedChildId') {
+        const newProfileId = e.newValue || localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
+        console.log('MyWorks - ローカルストレージから子供プロファイルID変更検知:', newProfileId);
+        setSelectedChildProfileId(newProfileId);
+      }
+    };
+
+    const handleChildChange = () => {
+      const newProfileId = localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
+      console.log('MyWorks - 子供変更イベント検知 - profileId:', newProfileId);
+      setSelectedChildProfileId(newProfileId);
+    };
+
+    // 初期値を設定
+    const initialProfileId = localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
+    console.log('MyWorks - 初期値設定 - profileId:', initialProfileId);
+    setSelectedChildProfileId(initialProfileId);
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('selectedChildChanged', handleChildChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('selectedChildChanged', handleChildChange);
+    };
+  }, []);
+
+  // 作品を種類でフィルタリング
+  const filteredWorks = useMemo(() => {
+    if (selectedType === 'all') return works;
+    return works.filter(work => work.type === selectedType);
+  }, [works, selectedType]);
+
+  // 選択中の子供のプロファイルIDに一致する作品のみをフィルタリング
+  const childFilteredWorks = useMemo(() => {
+    if (!selectedChildProfileId) return filteredWorks;
+    
+    const filtered = filteredWorks.filter(work => work.profile_id === selectedChildProfileId);
+    console.log('MyWorks - 子供プロファイルIDでフィルタリング:', selectedChildProfileId);
+    console.log('MyWorks - フィルタリング前の作品数:', filteredWorks.length, 'フィルタリング後の作品数:', filtered.length);
+    
+    return filtered;
+  }, [filteredWorks, selectedChildProfileId]);
+
+  // 作品の削除
+  const handleDelete = async (id: string) => {
+    if (window.confirm('本当にこの作品を削除しますか？')) {
+      await deleteWork(id);
     }
-  }, [activeFilter, works]);
+  };
 
-  const handleRetry = useCallback(() => {
-    fetchWorks();
-  }, [fetchWorks]);
+  // 作品の詳細表示
+  const handleViewWork = (work: Work) => {
+    navigate(`/child/works/${work.id}`);
+  };
 
-  if (loading) {
+  // 新しい作品の作成
+  const handleCreateWork = (type: 'drawing' | 'audio' | 'photo') => {
+    navigate(`/child/works/new?type=${type}`);
+  };
+
+  // フィルター情報を取得する関数
+  const getFilterInfo = () => {
+    return [
+      {
+        type: 'all' as WorkTypeFilter,
+        label: 'すべて',
+        icon: <Filter className="h-4 w-4" />
+      },
+      {
+        type: 'drawing' as WorkTypeFilter,
+        label: 'お絵かき',
+        icon: <Palette className="h-4 w-4" />
+      },
+      {
+        type: 'audio' as WorkTypeFilter,
+        label: '音声',
+        icon: <Music className="h-4 w-4" />
+      },
+      {
+        type: 'photo' as WorkTypeFilter,
+        label: '写真',
+        icon: <Camera className="h-4 w-4" />
+      }
+    ];
+  };
+
+  // 作品がない場合のメッセージ
+  if (childFilteredWorks.length === 0 && !loading) {
+    console.log('MyWorks - 表示する作品がありません - selectedChildProfileId:', selectedChildProfileId);
     return (
-      <div className="min-h-screen bg-[#f8fbfd]">
-        <div className="max-w-5xl mx-auto">
-          <Header activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-          <div className="px-6 pt-8">
-            <div className="flex justify-center items-center min-h-[50vh] bg-white rounded-[32px] shadow-sm p-8">
-              <LoadingSpinner size="lg" message="作品を読み込んでいます..." />
-            </div>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="mb-4">
+            <Image className="w-16 h-16 text-gray-400 mx-auto" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">作品がありません</h2>
+          <p className="text-gray-500 mb-6">新しい作品を作成してみましょう！</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              onClick={() => handleCreateWork('drawing')}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition-colors"
+            >
+              <Pencil className="w-4 h-4" />
+              お絵かき
+            </button>
+            <button
+              onClick={() => handleCreateWork('audio')}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-full hover:bg-amber-200 transition-colors"
+            >
+              <Mic className="w-4 h-4" />
+              ボイスメモ
+            </button>
+            <button
+              onClick={() => handleCreateWork('photo')}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition-colors"
+            >
+              <Camera className="w-4 h-4" />
+              写真
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#f8fbfd]">
-        <div className="max-w-5xl mx-auto">
-          <Header activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-          <div className="px-6 pt-8">
-            <div className="bg-white rounded-[32px] shadow-sm p-8">
-              <ErrorMessage
-                title="作品の読み込みに失敗しました"
-                message="ネットワーク接続を確認して、もう一度お試しください。"
-                actionLabel="再試行"
-                onAction={handleRetry}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // 作品一覧の表示
   return (
-    <div className="min-h-screen bg-[#f8fbfd]">
-      <div className="max-w-5xl mx-auto">
-        <Header activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-        <div className="space-y-12 pb-28">
-          <div className="px-6 pt-8">
-            {filteredWorks.length === 0 ? (
-              <div className="bg-white rounded-[32px] shadow-sm p-8 mt-6">
-                <EmptyState
-                  title={`${filterTypeToJapanese(activeFilter)}作品がありません`}
-                  message="新しい作品を作ってみましょう！"
-                  actionLabel="作品を作る"
-                  actionTo="/child/works/new"
-                  icon={<Image className="h-16 w-16 text-[#5d7799]/50" />}
-                />
-              </div>
-            ) : (
-              <div className="mt-6">
-                <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-xl font-bold text-[#5d7799]">
-                    {activeFilter === 'all' ? 'すべての作品' : `${filterTypeToJapanese(activeFilter)}作品`}
-                    <span className="ml-2 text-sm font-normal text-[#5d7799]/70">
-                      ({filteredWorks.length}件)
-                    </span>
-                  </h2>
-                  <CreateWorkButton />
-                </div>
-                <WorksGrid works={filteredWorks} />
-              </div>
-            )}
-          </div>
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">作品一覧</h1>
+        
+        <div className="flex gap-2">
+          {getFilterInfo().map(filter => (
+            <button
+              key={filter.type}
+              onClick={() => setSelectedType(filter.type)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
+                selectedType === filter.type
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              } transition-colors`}
+            >
+              {filter.icon}
+              {filter.label}
+              {filter.type === 'all' && (
+                <span className="ml-1 px-1.5 py-0.5 bg-indigo-200 text-indigo-800 rounded-full text-xs">
+                  {works.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
+
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {childFilteredWorks.map(work => (
+              <WorkCard
+                key={work.id}
+                work={work}
+                onView={() => handleViewWork(work)}
+                onDelete={() => handleDelete(work.id)}
+              />
+            ))}
+          </div>
+
+          <div className="mt-8 flex justify-center">
+            <div className="fixed bottom-24 sm:static flex gap-3">
+              <button
+                onClick={() => handleCreateWork('drawing')}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors shadow-lg"
+              >
+                <Pencil className="w-4 h-4" />
+                お絵かき
+              </button>
+              <button
+                onClick={() => handleCreateWork('audio')}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-full hover:bg-amber-700 transition-colors shadow-lg"
+              >
+                <Mic className="w-4 h-4" />
+                ボイスメモ
+              </button>
+              <button
+                onClick={() => handleCreateWork('photo')}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-colors shadow-lg"
+              >
+                <Camera className="w-4 h-4" />
+                写真
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
-} 
+};
+
+export default MyWorks; 
+
+// 名前付きエクスポートを追加
+export { MyWorks }; 

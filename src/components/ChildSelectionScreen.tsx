@@ -160,35 +160,30 @@ export function ChildSelectionScreen() {
     }
   };
 
-  const selectChild = (childId: string, childName: string) => {
-    // 選択した子供の情報をローカルストレージに保存
-    localStorage.setItem('selectedChildId', childId);
-    localStorage.setItem('selectedChildProfileId', childId); // 元のIDもprofileIdとして保存
-    localStorage.setItem('childName', childName);
+  const handleSelectChild = (child: Profile) => {
+    console.log('子供選択:', child.username, 'プロファイルID:', child.id);
     
-    // 子供のuser_idを取得して保存
-    supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('id', childId)
-      .single()
-      .then(({ data, error }) => {
-        if (data && data.user_id) {
-          console.log('【デバッグ】子供のuser_id:', data.user_id);
-          localStorage.setItem('selectedChildUserId', data.user_id);
-          
-          // カスタムイベントを発火して子供変更を通知
-          const event = new CustomEvent('selectedChildChanged', {
-            detail: { childUserId: data.user_id }
-          });
-          window.dispatchEvent(event);
-        }
-        if (error) {
-          console.error('子供のuser_id取得エラー:', error);
-        }
-        // 画面遷移
-        navigate('/child/home');
-      });
+    // 選択した子供のIDをローカルストレージに保存
+    localStorage.setItem('selectedChildId', child.id);
+    localStorage.setItem('selectedChildProfileId', child.id);
+    
+    // 子供の名前も保存
+    if (child.username) {
+      localStorage.setItem('childName', child.username);
+    }
+    
+    // カスタムイベントを発火して他のコンポーネントに通知（詳細情報を含める）
+    const event = new CustomEvent('selectedChildChanged', {
+      detail: {
+        childId: child.id,
+        childName: child.username,
+        childProfileId: child.id
+      }
+    });
+    window.dispatchEvent(event);
+    
+    // 子供モードに遷移
+    navigate('/child');
   };
 
   // パステルカラーの背景色
@@ -311,7 +306,7 @@ export function ChildSelectionScreen() {
             {children.map((child, index) => (
               <button
                 key={child.id}
-                onClick={() => selectChild(child.id, child.username)}
+                onClick={() => handleSelectChild(child)}
                 className="group relative bg-white bg-opacity-90 backdrop-blur-sm rounded-3xl shadow-lg hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105 overflow-hidden border-4 border-transparent hover:border-transparent animate-fade-in-up"
                 style={{ animationDelay: `${index * 150}ms` }}
               >

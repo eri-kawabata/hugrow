@@ -211,6 +211,23 @@ export const CameraCapture = () => {
         throw new Error('公開URLの取得に失敗しました');
       }
 
+      // プロファイルIDを取得
+      let profileId = null;
+      
+      // 子供のプロファイルIDを取得
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', effectiveUserId)
+        .single();
+        
+      if (profileError) {
+        console.error('プロファイル取得エラー:', profileError);
+      } else if (profileData) {
+        profileId = profileData.id;
+        console.log('【デバッグ】取得したプロファイルID:', profileId);
+      }
+
       // データベースに保存
       const { error: dbError } = await supabase
         .from('works')
@@ -219,7 +236,8 @@ export const CameraCapture = () => {
           description: description.trim() || null,
           content_url: publicUrl,
           type: 'photo',
-          user_id: localStorage.getItem('selectedChildUserId') || user.id,
+          user_id: effectiveUserId,
+          profile_id: profileId, // プロファイルIDを設定
           created_at: new Date().toISOString()
         }]);
 

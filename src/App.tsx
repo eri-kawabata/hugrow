@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { 
   Routes, 
   Route, 
@@ -12,6 +12,8 @@ import { SupabaseAuthProvider } from '@/hooks/useSupabaseAuth';
 import { Toaster } from 'react-hot-toast';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { SupabaseTest } from './components/SupabaseTest';
+import { ConfirmDialog } from './components/Common/ConfirmDialog';
+import { useConfirm } from './hooks/useConfirm';
 
 // 遅延ロードするコンポーネント
 const Auth = lazy(() => import('./components/Auth').then(module => ({ default: module.Auth })));
@@ -29,6 +31,9 @@ const ChildLayout = lazy(() => import('./components/layouts/ChildLayout').then(m
 const ParentDashboard = lazy(() => import('./components/ParentDashboard').then(module => ({ default: module.ParentDashboard })));
 const SELQuest = lazy(() => import('./components/SELQuest').then(module => ({ default: module.SELQuest })));
 const ChildSelectionScreen = lazy(() => import('./components/ChildSelectionScreen').then(module => ({ default: module.ChildSelectionScreen })));
+
+// グローバルな確認ダイアログのコンテキスト
+export const ConfirmContext = React.createContext<ReturnType<typeof useConfirm> | null>(null);
 
 // ルート定義
 const router = createBrowserRouter(
@@ -51,7 +56,7 @@ const router = createBrowserRouter(
       <Route path="/supabase-test" element={<SupabaseTest />} />
 
       {/* ルートパスのリダイレクト */}
-      <Route path="/" element={<Navigate to="/auth/login" replace />} />
+      <Route path="/" element={<Navigate to="/select-child" replace />} />
 
       {/* 子供選択画面 */}
       <Route path="/select-child" element={<ChildSelectionScreen />} />
@@ -87,26 +92,23 @@ const router = createBrowserRouter(
 );
 
 export default function App() {
+  const confirmDialog = useConfirm();
+  
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    }>
-      <RouterProvider router={router} />
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#fff',
-            color: '#363636',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            borderRadius: '0.5rem',
-            padding: '1rem',
-          },
-        }}
-      />
-    </Suspense>
+    <>
+      <ConfirmContext.Provider value={confirmDialog}>
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><LoadingSpinner size="lg" message="読み込み中..." /></div>}>
+          <RouterProvider router={router} />
+        </Suspense>
+        <Toaster position="top-center" />
+        <ConfirmDialog 
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={confirmDialog.onCancel}
+        />
+      </ConfirmContext.Provider>
+    </>
   );
 }

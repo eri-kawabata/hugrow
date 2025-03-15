@@ -43,7 +43,7 @@ export function useWorks() {
     return undefined;
   };
 
-  const fetchWorks = useCallback(async () => {
+  const fetchWorks = useCallback(async (userId?: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -51,11 +51,21 @@ export function useWorks() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('認証が必要です');
 
-      const { data, error } = await supabase
+      // クエリを構築
+      let query = supabase
         .from('works')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+      
+      // ユーザーIDが指定されている場合は、そのユーザーの作品のみを取得
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        // ユーザーIDが指定されていない場合は、現在のユーザーの作品のみを取得
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       

@@ -15,8 +15,17 @@ interface Work {
   media_type: 'drawing' | 'photo' | 'audio' | 'image' | 'video';
   type?: 'drawing' | 'photo' | 'audio';
   user_id: string;
+  profile_id?: string;
   created_at: string;
   updated_at: string;
+}
+
+// 子供プロファイル型の定義
+interface ChildProfile {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  user_id: string;
 }
 
 type Feedback = {
@@ -404,1356 +413,358 @@ const EmptyState = memo(({ filter }: { filter: WorkTypeFilter }) => {
 
 EmptyState.displayName = 'EmptyState';
 
-export function ParentWorks() {
+export default function ParentWorks() {
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedWork, setSelectedWork] = useState<Work | null>(null);
-  const [feedback, setFeedback] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<Error | null>(null);
   const [filter, setFilter] = useState<WorkTypeFilter>('all');
-  const [isParentMode, setIsParentMode] = useState(false);
-  const [workToDelete, setWorkToDelete] = useState<Work | null>(null);
-  const [previewWork, setPreviewWork] = useState<Work | null>(null);
-  const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [feedbackCounts, setFeedbackCounts] = useState<Record<string, number>>({});
-  const [likesLoading, setLikesLoading] = useState<Record<string, boolean>>({});
-  const [selectedStamp, setSelectedStamp] = useState<string | null>(null);
-  const [showFeedbacks, setShowFeedbacks] = useState(false);
-  const [children, setChildren] = useState<{id: string, username: string, avatar_url?: string}[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<string>('');
-  const [compareMode, setCompareMode] = useState(false);
-  const [childrenWorks, setChildrenWorks] = useState<Record<string, Work[]>>({});
-  const [loadingChildrenWorks, setLoadingChildrenWorks] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
-  const [selectedChildrenForTimeline, setSelectedChildrenForTimeline] = useState<string[]>([]);
-  const [timelineWorks, setTimelineWorks] = useState<(Work & { childName: string, childAvatar?: string })[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [children, setChildren] = useState<ChildProfile[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [childrenStats, setChildrenStats] = useState<{[key: string]: {total: number, drawing: number, photo: number, audio: number}}>({});
 
+  // 子供一覧を取得
   useEffect(() => {
-    checkParentMode();
+    const fetchChildren = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // 親のプロファイルIDを取得
+        const { data: parentProfile, error: parentError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('role', 'parent')
+          .single();
+
+        if (parentError) {
+          console.error('親プロファイル取得エラー:', parentError);
+          return;
+        }
+
+        // 親に関連付けられた子供を取得
+        const { data: childProfiles, error: childrenError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url, user_id')
+          .eq('parent_id', parentProfile.id)
+          .eq('role', 'child');
+
+        if (childrenError) {
+          console.error('子供プロファイル取得エラー:', childrenError);
+          return;
+        }
+
+        setChildren(childProfiles || []);
+        
+        // 最初の子供を選択
+        if (childProfiles && childProfiles.length > 0) {
+          setSelectedChildId(childProfiles[0].id);
+        }
+      } catch (err) {
+        console.error('子供データ取得エラー:', err);
+      }
+    };
+
     fetchChildren();
+  }, []);
+
+  // 子供ごとの作品統計を取得
+  useEffect(() => {
+    const fetchChildrenStats = async () => {
+      if (children.length === 0) return;
+      
+      const stats: {[key: string]: {total: number, drawing: number, photo: number, audio: number}} = {};
+      
+      for (const child of children) {
+        try {
+          // 子供の作品数を取得
+          const { data, error } = await supabase
+            .from('works')
+            .select('id, type')
+            .eq('profile_id', child.id);
+            
+          if (error) {
+            console.error(`${child.username}の作品統計取得エラー:`, error);
+            continue;
+          }
+          
+          // 作品タイプごとにカウント
+          const typeCounts = {
+            total: data.length,
+            drawing: data.filter(w => w.type === 'drawing').length,
+            photo: data.filter(w => w.type === 'photo').length,
+            audio: data.filter(w => w.type === 'audio').length
+          };
+          
+          stats[child.id] = typeCounts;
+        } catch (err) {
+          console.error(`${child.username}の作品統計取得中にエラー:`, err);
+        }
+      }
+      
+      setChildrenStats(stats);
+    };
+    
+    fetchChildrenStats();
+  }, [children]);
+
+  // 選択した子供の作品を取得
+  useEffect(() => {
+    const fetchWorks = async () => {
+      if (!selectedChildId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 選択した子供の作品を取得
+        const { data, error } = await supabase
+          .from('works')
+          .select('*')
+          .eq('profile_id', selectedChildId)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        
+        // メディアタイプの正規化
+        const normalizedWorks = (data || []).map(work => {
+          // 元のメディアタイプを保存
+          const originalType = work.media_type;
+          let normalizedType = originalType;
+          
+          // 正規化ロジック
+          if (originalType === 'image') {
+            normalizedType = 'drawing';
+          } else if (originalType === 'video') {
+            normalizedType = 'photo';
+          }
+          
+          // typeフィールドがある場合はそれを優先
+          if (work.type) {
+            normalizedType = work.type;
+          }
+          
+          return {
+            ...work,
+            type: normalizedType,
+            media_type: normalizedType
+          };
+        });
+        
+        setWorks(normalizedWorks);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchWorks();
   }, [selectedChildId]);
 
-  useEffect(() => {
-    if (compareMode && children.length > 1) {
-      fetchAllChildrenWorks();
-    }
-  }, [compareMode]);
-
-  useEffect(() => {
-    if (compareMode && viewMode === 'timeline' && selectedChildrenForTimeline.length > 0) {
-      generateTimelineData();
-    }
-  }, [viewMode, selectedChildrenForTimeline, childrenWorks]);
-
-  useEffect(() => {
-    if (selectedWork) {
-      fetchFeedbackForWork(selectedWork.id);
-    }
-  }, [selectedWork]);
-
-  // 画像をプリロードする関数
-  const preloadImages = (works: Work[]) => {
-    works.forEach(work => {
-      if (work.media_type === 'drawing' || work.media_type === 'photo') {
-        const img = new window.Image();
-        // media_urlとcontent_urlの両方をチェック
-        const mediaUrl = work.media_url || work.content_url;
-        img.src = getSafeMediaUrl(mediaUrl);
-      }
-    });
-  };
-
-  // 作品データが更新されたらプリロード
-  useEffect(() => {
-    if (works.length > 0) {
-      preloadImages(works);
-    }
-  }, [works]);
-
-  // フィルターが変更されたときにコンソールに出力
-  useEffect(() => {
-    console.log('フィルター変更:', filter);
-    console.log('作品数:', works.length);
+  // 作品をフィルタリング
+  const filteredWorks = works.filter(work => {
+    // タイプでフィルタリング
+    const typeMatch = filter === 'all' || work.type === filter;
     
-    // 各メディアタイプの数をカウント
-    const counts = {
-      drawing: 0,
-      image: 0,
-      photo: 0,
-      video: 0,
-      audio: 0,
-      other: 0
-    };
+    // 検索語でフィルタリング
+    const searchMatch = !searchTerm || 
+      work.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      work.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    works.forEach(work => {
-      console.log(`作品: ${work.title}, メディアタイプ: ${work.media_type}`);
-      if (work.media_type === 'drawing') counts.drawing++;
-      else if (work.media_type === 'image') counts.image++;
-      else if (work.media_type === 'photo') counts.photo++;
-      else if (work.media_type === 'video') counts.video++;
-      else if (work.media_type === 'audio') counts.audio++;
-      else counts.other++;
-    });
+    return typeMatch && searchMatch;
+  });
+
+  // 子供選択コンポーネント
+  const ChildSelector = () => (
+    <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+      <h3 className="text-lg font-semibold text-[#5d7799] mb-4">お子様を選択</h3>
+      <div className="flex flex-wrap gap-3">
+        {children.map(child => (
+          <button
+            key={child.id}
+            onClick={() => setSelectedChildId(child.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+              selectedChildId === child.id 
+                ? 'bg-[#5d7799] text-white' 
+                : 'bg-gray-100 text-[#5d7799] hover:bg-gray-200'
+            }`}
+          >
+            {child.avatar_url ? (
+              <img 
+                src={child.avatar_url} 
+                alt={child.username} 
+                className="w-6 h-6 rounded-full object-cover"
+              />
+            ) : (
+              <User className="w-5 h-5" />
+            )}
+            <span>{child.username}</span>
+            {childrenStats[child.id] && (
+              <span className="text-xs opacity-80">({childrenStats[child.id].total})</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  // 子供の作品統計コンポーネント
+  const ChildStats = () => {
+    if (!selectedChildId || !childrenStats[selectedChildId]) return null;
     
-    console.log('メディアタイプ別カウント:', counts);
-  }, [filter, works]);
-
-  const checkParentMode = async () => {
-    if (!supabase) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('ユーザーが認証されていません');
-        return;
-      }
-
-      console.log('認証ユーザーID:', user.id);
-
-      // 複数行の結果を処理できるように修正
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id);
-        
-      if (error) {
-        console.error('プロファイル取得エラー:', error);
-        setIsParentMode(true);
-        return;
-      }
-
-      console.log('取得したプロファイル:', profiles);
-
-      // データが存在し、少なくとも1つのプロファイルがある場合
-      if (profiles && profiles.length > 0) {
-        // 親ロールのプロファイルを探す
-        const parentProfile = profiles.find(profile => profile.role === 'parent');
-        console.log('親ロールのプロファイル:', parentProfile);
-        
-        // 親ロールのプロファイルが見つかった場合は親モードに設定
-        if (parentProfile) {
-          setIsParentMode(true);
-        } else {
-          // 親ロールのプロファイルが見つからない場合は子モードに設定
-          setIsParentMode(false);
-        }
-      } else {
-        // プロファイルが見つからない場合はデフォルトで親モードに設定
-        console.warn('プロファイルが見つかりません');
-        setIsParentMode(true);
-      }
-    } catch (error) {
-      console.error('認証チェックエラー:', error);
-      setIsParentMode(true);
-    }
-  };
-
-  const fetchWorks = async () => {
-    if (!supabase) {
-      toast.error('データベース接続エラーが発生しました');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      // URLパラメータから子供のIDを取得
-      const urlParams = new URLSearchParams(window.location.search);
-      const childId = urlParams.get('child');
-      
-      console.log('【デバッグ】URLパラメータから取得した子供ID:', childId);
-      
-      // 子供のIDがURLパラメータにある場合、localStorageに保存
-      if (childId) {
-        localStorage.setItem('selectedChildId', childId);
-        localStorage.setItem('selectedChildProfileId', childId);
-        console.log('【デバッグ】localStorageに保存した子供ID:', childId);
-        
-        // 子供の名前とuser_idも取得して保存
-        const { data: childData } = await supabase
-          .from('profiles')
-          .select('username, user_id')
-          .eq('id', childId)
-          .maybeSingle();
-          
-        console.log('【デバッグ】取得した子供データ:', childData);
-        
-        if (childData) {
-          if (childData.username) {
-            localStorage.setItem('childName', childData.username);
-            console.log('【デバッグ】localStorageに保存した子供名:', childData.username);
-          }
-          if (childData.user_id) {
-            localStorage.setItem('selectedChildUserId', childData.user_id);
-            console.log('【デバッグ】localStorageに保存した子供のユーザーID:', childData.user_id);
-          }
-        }
-      } else {
-        console.log('【デバッグ】URLパラメータに子供IDがありません');
-      }
-      
-      // クエリを構築
-      let query = supabase
-        .from('works')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      // 子供のIDでフィルタリング
-      if (childId) {
-        // 子供のuser_idを取得
-        const childUserId = localStorage.getItem('selectedChildUserId');
-        if (childUserId) {
-          query = query.eq('user_id', childUserId);
-          console.log(`【デバッグ】子供のユーザーID: ${childUserId} でフィルタリングします`);
-        } else {
-          console.log(`【デバッグ】子供のユーザーIDが見つかりません。プロファイルID: ${childId} でフィルタリングを試みます`);
-          query = query.eq('user_id', childId);
-        }
-      } else {
-        // 子供IDがない場合は、親に関連するすべての子供の作品を取得
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('【デバッグ】現在のユーザーID:', user?.id);
-        
-        if (user) {
-          const { data: parentProfile } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('role', 'parent')
-            .maybeSingle();
-            
-          console.log('【デバッグ】取得した親プロファイル:', parentProfile);
-            
-          if (parentProfile) {
-            const { data: children } = await supabase
-              .from('profiles')
-              .select('id, username')
-              .eq('parent_id', parentProfile.id)
-              .eq('role', 'child');
-              
-            console.log('【デバッグ】取得した子供リスト:', children);
-              
-            if (children && children.length > 0) {
-              const childIds = children.map(child => child.id);
-              query = query.in('user_id', childIds);
-              console.log(`【デバッグ】複数の子供ID: ${childIds.join(', ')} でフィルタリングします`);
-            } else {
-              console.log('【デバッグ】子供が見つかりません');
-            }
-          } else {
-            console.log('【デバッグ】親プロファイルが見つかりません');
-          }
-        } else {
-          console.log('【デバッグ】ユーザーが認証されていません');
-        }
-      }
-      
-      // クエリを実行
-      console.log('【デバッグ】実行するクエリ:', query);
-      const { data, error } = await query;
-      
-      console.log('【デバッグ】クエリ結果:', data);
-      console.log('【デバッグ】クエリエラー:', error);
-
-      if (error) {
-        console.error('作品の取得エラー:', error);
-        toast.error('作品の読み込みに失敗しました');
-        return;
-      }
-      
-      if (!data) {
-        console.warn('作品データが取得できませんでした');
-        setWorks([]);
-        return;
-      }
-      
-      console.log('取得した作品データ:', data);
-      
-      // データベースのカラム名を確認
-      if (data.length > 0) {
-        console.log('データベースのカラム名:', Object.keys(data[0]));
-        console.log('最初の作品の詳細データ:', JSON.stringify(data[0], null, 2));
-      }
-      
-      // 各作品のメディアURLをログに出力
-      data.forEach(work => {
-        // content_urlとmedia_urlの両方をチェック
-        const mediaUrl = work.media_url || work.content_url;
-        console.log(`作品「${work.title}」のメディアURL:`, mediaUrl);
-        console.log(`作品「${work.title}」のメディアタイプ:`, work.media_type);
-        console.log(`作品「${work.title}」のタイプ:`, work.type);
-      });
-      
-      // メディアタイプの正規化
-      const normalizedData = data.map(work => {
-        // 元のメディアタイプを保存
-        const originalType = work.media_type;
-        let normalizedType = originalType;
-        
-        // メディアタイプのデバッグ出力
-        console.log(`作品「${work.title}」の元のメディアタイプ: ${originalType}`);
-        
-        // content_urlとmedia_urlの両方をチェック
-        let mediaUrl = work.media_url || work.content_url;
-        console.log(`作品「${work.title}」のメディアURL: ${mediaUrl}`);
-        
-        // 正規化ロジック
-        if (originalType === 'image') {
-          normalizedType = 'drawing';
-          console.log(`  → 'image'を'drawing'に変換`);
-        } else if (originalType === 'video') {
-          normalizedType = 'photo';
-          console.log(`  → 'video'を'photo'に変換`);
-        }
-        
-        // typeフィールドがある場合はそれを優先
-        if (work.type) {
-          normalizedType = work.type;
-          console.log(`  → 'type'フィールドを使用: ${work.type}`);
-        }
-        
-        // media_urlが相対パスの場合、完全なURLに変換
-        if (mediaUrl && !mediaUrl.startsWith('http://') && !mediaUrl.startsWith('https://') && !mediaUrl.startsWith('data:')) {
-          mediaUrl = getSafeMediaUrl(mediaUrl);
-          console.log(`  → メディアURLを変換: ${mediaUrl}`);
-        }
-        
-        return {
-          ...work,
-          media_type: normalizedType,
-          media_url: mediaUrl
-        };
-      });
-      
-      console.log('正規化されたデータ:', normalizedData);
-      setWorks(normalizedData);
-      
-      // 作品のIDリストを取得してフィードバック数を取得
-      if (normalizedData.length > 0) {
-        const workIds = normalizedData.map(work => work.id);
-        fetchFeedbackCounts(workIds);
-      }
-    } catch (error) {
-      console.error('予期せぬエラーが発生しました:', error);
-      toast.error('予期せぬエラーが発生しました');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchFeedbackForWork = async (workId: string) => {
-    if (!supabase) {
-      toast.error('データベース接続エラーが発生しました');
-      return;
-    }
-
-    try {
-      setFeedbackLoading(true);
-      
-      const { data, error } = await supabase
-        .from('work_feedback')
-        .select('*')
-        .eq('work_id', workId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('フィードバックの取得エラー:', error);
-        toast.error('フィードバックの読み込みに失敗しました');
-        return;
-      }
-      
-      if (!data || data.length === 0) {
-        setFeedbackList([]);
-        return;
-      }
-      
-      // ユーザー情報を取得
-      const userIds = [...new Set(data.map(item => item.user_id))];
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, username')
-        .in('user_id', userIds);
-        
-      if (profilesError) {
-        console.error('プロファイル情報の取得エラー:', profilesError);
-      }
-      
-      // プロファイル情報をマッピング
-      const userMap = new Map();
-      if (profilesData) {
-        profilesData.forEach(profile => {
-          userMap.set(profile.user_id, profile.username);
-        });
-      }
-      
-      // いいね情報を取得
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.warn('ユーザー情報が取得できませんでした');
-        return;
-      }
-      
-      const { data: likesData, error: likesError } = await supabase
-        .from('feedback_likes')
-        .select('feedback_id, count')
-        .in('feedback_id', data.map(item => item.id));
-        
-      if (likesError) {
-        console.error('いいね情報の取得エラー:', likesError);
-      }
-      
-      // 自分のいいね情報を取得
-      const { data: myLikesData, error: myLikesError } = await supabase
-        .from('feedback_likes')
-        .select('feedback_id')
-        .eq('user_id', user.id)
-        .in('feedback_id', data.map(item => item.id));
-        
-      if (myLikesError) {
-        console.error('自分のいいね情報の取得エラー:', myLikesError);
-      }
-      
-      // いいね情報をマッピング
-      const likesMap = new Map();
-      if (likesData) {
-        likesData.forEach(item => {
-          likesMap.set(item.feedback_id, item.count);
-        });
-      }
-      
-      const myLikesSet = new Set();
-      if (myLikesData) {
-        myLikesData.forEach(item => {
-          myLikesSet.add(item.feedback_id);
-        });
-      }
-      
-      // フィードバックリストを更新
-      const updatedFeedbackList = data.map(item => ({
-        ...item,
-        username: userMap.get(item.user_id) || '匿名',
-        likes: likesMap.get(item.id) || 0,
-        liked_by_me: myLikesSet.has(item.id)
-      }));
-      
-      setFeedbackList(updatedFeedbackList);
-    } catch (error) {
-      console.error('予期せぬエラーが発生しました:', error);
-      toast.error('予期せぬエラーが発生しました');
-    } finally {
-      setFeedbackLoading(false);
-    }
-  };
-
-  // スタンプ付きフィードバックを送信する関数
-  const handleFeedbackSubmit = async () => {
-    if (!supabase || !selectedWork || (!feedback.trim() && !selectedStamp)) {
-      toast.error('フィードバックまたはスタンプを入力してください');
-      return;
-    }
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('ログインが必要です');
-        return;
-      }
-      
-      // スタンプ情報をフィードバックテキストに含める
-      let feedbackText = feedback.trim();
-      if (selectedStamp) {
-        const stamp = STAMPS.find(s => s.id === selectedStamp);
-        if (stamp) {
-          // スタンプ情報をテキストの先頭に追加
-          feedbackText = `[${stamp.label}] ${feedbackText}`;
-        }
-      }
-      
-      const { data, error } = await supabase
-        .from('work_feedback')
-        .insert([{
-          work_id: selectedWork.id,
-          user_id: user.id,
-          feedback: feedbackText || 'スタンプを送りました' // スタンプのみの場合はデフォルトテキスト
-        }])
-        .select();
-
-      if (error) {
-        console.error('フィードバック送信エラー:', error);
-        toast.error('フィードバックの送信に失敗しました');
-        return;
-      }
-
-      toast.success('フィードバックを送信しました');
-      setFeedback('');
-      setSelectedStamp(null);
-      
-      // フィードバックリストを更新
-      if (selectedWork) {
-        fetchFeedbackForWork(selectedWork.id);
-      }
-      
-      // フィードバック数を更新
-      setFeedbackCounts(prev => ({
-        ...prev,
-        [selectedWork.id]: (prev[selectedWork.id] || 0) + 1
-      }));
-      
-      // モーダルは閉じない（フィードバック一覧を表示するため）
-      setShowFeedbacks(true);
-    } catch (error) {
-      console.error('予期せぬエラー:', error);
-      toast.error('フィードバックの送信に失敗しました');
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!supabase || !workToDelete) return;
-
-    try {
-      // まず、作品のレコードを削除
-      const { error: deleteError } = await supabase
-        .from('works')
-        .delete()
-        .eq('id', workToDelete.id);
-
-      if (deleteError) throw deleteError;
-
-      // 次に、関連するストレージのファイルを削除
-      if (workToDelete.media_url) {
-        // URLからファイルパスを抽出
-        const url = new URL(workToDelete.media_url);
-        const pathParts = url.pathname.split('/');
-        // "works" バケット名を除外して、実際のファイルパスを取得
-        const filePath = pathParts.slice(2).join('/');
-
-        if (filePath) {
-          const { error: storageError } = await supabase.storage
-            .from('works')
-            .remove([filePath]);
-
-          if (storageError) {
-            console.error('Storage deletion error:', storageError);
-            // ストレージの削除に失敗しても、レコードは削除されているのでエラーは表示しない
-          }
-        }
-      }
-
-      toast.success('作品を削除しました');
-      setWorkToDelete(null);
-      fetchWorks();
-    } catch (error) {
-      console.error('Error deleting work:', error);
-      toast.error('削除に失敗しました');
-    }
-  };
-
-  const filteredWorks = React.useMemo(() => {
-    console.log('フィルタリング実行:', filter);
+    const stats = childrenStats[selectedChildId];
+    const selectedChild = children.find(c => c.id === selectedChildId);
     
-    // 各メディアタイプの数をカウント
-    const typeCounts = {
-      drawing: 0,
-      image: 0,
-      photo: 0,
-      video: 0,
-      audio: 0,
-      other: 0
-    };
-    
-    works.forEach(work => {
-      console.log(`作品: ${work.title}, メディアタイプ: ${work.media_type}`);
-      if (work.media_type === 'drawing') typeCounts.drawing++;
-      else if (work.media_type === 'image') typeCounts.image++;
-      else if (work.media_type === 'photo') typeCounts.photo++;
-      else if (work.media_type === 'video') typeCounts.video++;
-      else if (work.media_type === 'audio') typeCounts.audio++;
-      else typeCounts.other++;
-    });
-    
-    console.log('メディアタイプ別カウント:', typeCounts);
-    
-    return works.filter(work => {
-      // 検索条件に一致するか
-      const matchesSearch = work.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (work.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // フィルター条件に一致するか
-      let matchesFilter = false;
-      
-      if (filter === 'all') {
-        matchesFilter = true;
-      } else {
-        // typeフィールドがある場合はそれを使用し、ない場合はmedia_typeを使用
-        const workType = work.type || work.media_type;
-        matchesFilter = workType === filter;
-      }
-      
-      // デバッグ出力
-      console.log(`作品「${work.title}」: タイプ=${work.type || work.media_type}, フィルター=${filter}, 一致=${matchesFilter}`);
-      
-      return matchesSearch && matchesFilter;
-    });
-  }, [works, searchTerm, filter]);
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  // メディアタイプに応じたアイコンを返す関数
-  const getMediaTypeIcon = (type: Work['media_type']) => {
-    switch (type) {
-      case 'drawing':
-        return <ImageIcon className="h-12 w-12 text-gray-400" />;
-      case 'photo':
-        return <ImageIcon className="h-12 w-12 text-gray-400" />;
-      case 'audio':
-        return <ImageIcon className="h-12 w-12 text-gray-400" />;
-      default:
-        return <ImageIcon className="h-12 w-12 text-gray-400" />;
-    }
-  };
-
-  const fetchFeedbackCounts = async (workIds: string[]) => {
-    if (!supabase || workIds.length === 0) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('work_feedback')
-        .select('work_id, id')
-        .in('work_id', workIds);
-
-      if (error) {
-        console.error('Error fetching feedback counts:', error);
-        return;
-      }
-
-      // 各作品のフィードバック数をカウント
-      const counts: Record<string, number> = {};
-      data.forEach(item => {
-        counts[item.work_id] = (counts[item.work_id] || 0) + 1;
-      });
-
-      setFeedbackCounts(counts);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
-  // いいねを追加/削除する関数
-  const handleLikeToggle = async (feedbackId: string) => {
-    if (!supabase) return;
-    
-    try {
-      // 現在のいいね状態を取得
-      const currentFeedback = feedbackList.find(f => f.id === feedbackId);
-      if (!currentFeedback) return;
-      
-      // いいね処理中のフィードバックを記録
-      setLikesLoading(prev => ({ ...prev, [feedbackId]: true }));
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('ログインが必要です');
-        return;
-      }
-      
-      if (currentFeedback.liked_by_me) {
-        // いいねを削除
-        const { error } = await supabase
-          .from('feedback_likes')
-          .delete()
-          .eq('feedback_id', feedbackId)
-          .eq('user_id', user.id);
-          
-        if (error) throw error;
-        
-        // フィードバックリストを更新
-        setFeedbackList(prev => 
-          prev.map(item => 
-            item.id === feedbackId 
-              ? { ...item, likes: Math.max(0, (item.likes || 0) - 1), liked_by_me: false }
-              : item
-          )
-        );
-      } else {
-        // いいねを追加
-        const { error } = await supabase
-          .from('feedback_likes')
-          .insert([{
-            feedback_id: feedbackId,
-            user_id: user.id
-          }]);
-          
-        if (error) throw error;
-        
-        // フィードバックリストを更新
-        setFeedbackList(prev => 
-          prev.map(item => 
-            item.id === feedbackId 
-              ? { ...item, likes: (item.likes || 0) + 1, liked_by_me: true }
-              : item
-          )
-        );
-        
-        // いいねアニメーションのためのDOM要素を取得
-        const heartElement = document.querySelector(`[data-feedback-id="${feedbackId}"] .heart-icon`);
-        if (heartElement) {
-          heartElement.classList.add('animate-heartBeat');
-          // アニメーション終了後にクラスを削除
-          setTimeout(() => {
-            heartElement.classList.remove('animate-heartBeat');
-          }, 1000);
-        }
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      toast.error('いいねの処理に失敗しました');
-    } finally {
-      // いいね処理中のフィードバックを解除
-      setLikesLoading(prev => ({ ...prev, [feedbackId]: false }));
-    }
-  };
-
-  // 作品詳細ページへのリンクを生成
-  const getWorkDetailLink = (workId: string) => {
-    return `/parent/works/${workId}`;
-  };
-
-  // フィルタリング結果をログに出力
-  useEffect(() => {
-    console.log('フィルタリング結果:', {
-      全作品数: works.length,
-      フィルター後の作品数: filteredWorks.length,
-      現在のフィルター: filter
-    });
-    
-    // フィルタリング後の作品のメディアタイプを出力
-    const filteredTypes = filteredWorks.map(work => work.type || work.media_type);
-    console.log('フィルタリング後のメディアタイプ:', filteredTypes);
-    
-    // 各メディアタイプの数をカウント
-    const counts = {
-      drawing: 0,
-      photo: 0,
-      audio: 0,
-      other: 0
-    };
-    
-    filteredWorks.forEach(work => {
-      const type = work.type || work.media_type;
-      if (type === 'drawing') counts.drawing++;
-      else if (type === 'photo') counts.photo++;
-      else if (type === 'audio') counts.audio++;
-      else counts.other++;
-    });
-    
-    console.log('フィルタリング後のメディアタイプ別カウント:', counts);
-  }, [filteredWorks, works, filter]);
-
-  // 子供一覧を取得する関数
-  const fetchChildren = async () => {
-    if (!supabase) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('ユーザーが認証されていません');
-        return;
-      }
-
-      // 親プロファイルを取得
-      const { data: parentProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('role', 'parent')
-        .maybeSingle();
-
-      if (!parentProfile) {
-        console.log('親プロファイルが見つかりません');
-        return;
-      }
-
-      // 子供のプロフィールを取得
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .eq('parent_id', parentProfile.id)
-        .eq('role', 'child');
-
-      if (error) {
-        console.error('子供情報の取得エラー:', error);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        setChildren(data);
-        
-        // URLパラメータから子供のIDを取得
-        const urlParams = new URLSearchParams(window.location.search);
-        const childId = urlParams.get('child');
-        
-        // URLパラメータに子供IDがある場合はそれを選択、なければ最初の子供を選択
-        if (childId && data.some(child => child.id === childId)) {
-          setSelectedChildId(childId);
-        } else {
-          setSelectedChildId(data[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('子供一覧の取得エラー:', error);
-    }
-  };
-
-  // 子供を切り替える関数
-  const handleChildChange = (childId: string) => {
-    setSelectedChildId(childId);
-    // URLを更新
-    const url = new URL(window.location.href);
-    url.searchParams.set('child', childId);
-    window.history.pushState({}, '', url.toString());
-    // 作品を再取得
-    setLoading(true);
-  };
-
-  // 全ての子供の作品を取得する関数
-  const fetchAllChildrenWorks = async () => {
-    if (!supabase || children.length <= 1) return;
-
-    try {
-      setLoadingChildrenWorks(true);
-      const worksData: Record<string, Work[]> = {};
-
-      for (const child of children) {
-        // 各子供の作品を取得
-        let query = supabase
-          .from('works')
-          .select('*')
-          .eq('user_id', child.id)
-          .order('created_at', { ascending: false });
-
-        if (filter !== 'all') {
-          query = query.eq('type', filter);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error(`${child.username}の作品取得エラー:`, error);
-          worksData[child.id] = [];
-        } else {
-          worksData[child.id] = data || [];
-        }
-      }
-
-      setChildrenWorks(worksData);
-    } catch (error) {
-      console.error('全ての子供の作品取得エラー:', error);
-    } finally {
-      setLoadingChildrenWorks(false);
-    }
-  };
-
-  // 比較モードを切り替える関数
-  const toggleCompareMode = () => {
-    setCompareMode(!compareMode);
-  };
-
-  // タイムラインデータを生成する関数
-  const generateTimelineData = () => {
-    if (!childrenWorks || Object.keys(childrenWorks).length === 0) return;
-
-    // 選択された子供の作品を取得してマージ
-    const allWorks: (Work & { childName: string, childAvatar?: string })[] = [];
-
-    selectedChildrenForTimeline.forEach(childId => {
-      const child = children.find(c => c.id === childId);
-      if (child && childrenWorks[childId]) {
-        const childWorks = childrenWorks[childId].map(work => ({
-          ...work,
-          childName: child.username,
-          childAvatar: child.avatar_url
-        }));
-        allWorks.push(...childWorks);
-      }
-    });
-
-    // 日付順にソート（新しい順）
-    const sortedWorks = allWorks.sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <h3 className="text-lg font-semibold text-[#5d7799] mb-2">
+          {selectedChild?.username}の作品統計
+        </h3>
+        <div className="grid grid-cols-4 gap-3 mt-4">
+          <div className="bg-blue-50 p-3 rounded-lg text-center">
+            <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+            <div className="text-sm text-blue-700">合計</div>
+          </div>
+          <div className="bg-purple-50 p-3 rounded-lg text-center">
+            <div className="text-2xl font-bold text-purple-600">{stats.drawing}</div>
+            <div className="text-sm text-purple-700">お絵かき</div>
+          </div>
+          <div className="bg-green-50 p-3 rounded-lg text-center">
+            <div className="text-2xl font-bold text-green-600">{stats.photo}</div>
+            <div className="text-sm text-green-700">写真</div>
+          </div>
+          <div className="bg-amber-50 p-3 rounded-lg text-center">
+            <div className="text-2xl font-bold text-amber-600">{stats.audio}</div>
+            <div className="text-sm text-amber-700">音声</div>
+          </div>
+        </div>
+      </div>
     );
-
-    setTimelineWorks(sortedWorks);
-  };
-
-  // 子供の選択状態を切り替える関数
-  const toggleChildSelection = (childId: string) => {
-    setSelectedChildrenForTimeline(prev => {
-      if (prev.includes(childId)) {
-        return prev.filter(id => id !== childId);
-      } else {
-        return [...prev, childId];
-      }
-    });
-  };
-
-  // 表示モードを切り替える関数
-  const toggleViewMode = (mode: 'grid' | 'timeline') => {
-    setViewMode(mode);
-    if (mode === 'timeline' && selectedChildrenForTimeline.length === 0) {
-      // デフォルトで最初の2人の子供を選択
-      setSelectedChildrenForTimeline(children.slice(0, 2).map(child => child.id));
-    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
-      <Header 
-        activeFilter={filter} 
-        setActiveFilter={setFilter}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-      />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* 子供選択タブ */}
-        {children.length > 1 && (
-          <div className="mb-6 bg-white rounded-lg shadow-sm p-4 animate-fadeIn">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Users className="h-5 w-5 text-indigo-600" />
-                お子様の作品を選択
-              </h2>
-              <div className="flex items-center gap-2">
-                {compareMode && (
-                  <div className="flex bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => toggleViewMode('grid')}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                        viewMode === 'grid' 
-                          ? 'bg-white text-indigo-700 shadow-sm' 
-                          : 'text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      グリッド表示
-                    </button>
-                    <button
-                      onClick={() => toggleViewMode('timeline')}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                        viewMode === 'timeline' 
-                          ? 'bg-white text-indigo-700 shadow-sm' 
-                          : 'text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      タイムライン表示
-                    </button>
-                  </div>
-                )}
+    <div className="min-h-screen bg-[#f8fbfd] pb-20">
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-[#5d7799]">お子様の作品一覧</h1>
+          <div className="flex gap-2">
+            {/* 検索ボックス */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="作品を検索..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#5d7799] w-64"
+              />
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              {searchTerm && (
                 <button
-                  onClick={toggleCompareMode}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    compareMode 
-                      ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-                      : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                  }`}
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-2.5"
                 >
-                  {compareMode ? '通常表示に戻る' : '作品を比較する'}
+                  <X className="h-5 w-5 text-gray-400" />
                 </button>
-              </div>
-            </div>
-            {!compareMode && (
-              <>
-                <div className="flex flex-wrap gap-2">
-                  {children.map(child => (
-                    <button
-                      key={child.id}
-                      onClick={() => handleChildChange(child.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
-                        selectedChildId === child.id 
-                          ? 'bg-indigo-100 text-indigo-700 font-medium shadow-sm' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden">
-                        {child.avatar_url ? (
-                          <img 
-                            src={child.avatar_url} 
-                            alt={child.username} 
-                            className="w-6 h-6 object-cover"
-                          />
-                        ) : (
-                          <User className="h-3 w-3 text-indigo-600" />
-                        )}
-                      </div>
-                      {child.username}
-                    </button>
-                  ))}
-                </div>
-                {selectedChildId && (
-                  <p className="mt-2 text-sm text-gray-500">
-                    {children.find(c => c.id === selectedChildId)?.username}の作品を表示しています
-                  </p>
-                )}
-              </>
-            )}
-            {compareMode && viewMode === 'timeline' && (
-              <div className="mt-4 border-t pt-4 border-gray-100">
-                <p className="text-sm font-medium text-gray-700 mb-2">タイムラインに表示する子供を選択してください：</p>
-                <div className="flex flex-wrap gap-2">
-                  {children.map(child => (
-                    <button
-                      key={child.id}
-                      onClick={() => toggleChildSelection(child.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
-                        selectedChildrenForTimeline.includes(child.id) 
-                          ? 'bg-indigo-100 text-indigo-700 font-medium shadow-sm' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden">
-                        {child.avatar_url ? (
-                          <img 
-                            src={child.avatar_url} 
-                            alt={child.username} 
-                            className="w-6 h-6 object-cover"
-                          />
-                        ) : (
-                          <User className="h-3 w-3 text-indigo-600" />
-                        )}
-                      </div>
-                      {child.username}
-                    </button>
-                  ))}
-                </div>
-                {selectedChildrenForTimeline.length > 0 && (
-                  <p className="mt-2 text-sm text-gray-500">
-                    {selectedChildrenForTimeline.length}人の子供の作品をタイムラインで表示しています
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 通常モード */}
-        {!compareMode ? (
-          loading ? (
-            <div className="bg-white rounded-lg shadow-md p-8 flex justify-center items-center min-h-[50vh]">
-              <div className="flex flex-col items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-                <p className="mt-4 text-gray-600">作品を読み込んでいます...</p>
-              </div>
-            </div>
-          ) : filteredWorks.length === 0 ? (
-            <EmptyState filter={filter} />
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredWorks.map((work, index) => (
-                <div key={work.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                  <WorkCard 
-                    work={work} 
-                    onFeedbackClick={setSelectedWork}
-                    feedbackCount={feedbackCounts[work.id] || 0}
-                    getSafeMediaUrl={getSafeMediaUrl}
-                  />
-                </div>
-              ))}
-            </div>
-          )
-        ) : (
-          /* 比較モード */
-          loadingChildrenWorks ? (
-            <div className="bg-white rounded-lg shadow-md p-8 flex justify-center items-center min-h-[50vh]">
-              <div className="flex flex-col items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-                <p className="mt-4 text-gray-600">全ての子供の作品を読み込んでいます...</p>
-              </div>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="space-y-8">
-              {children.map(child => (
-                <div key={child.id} className="bg-white rounded-lg shadow-sm p-4 animate-fadeIn">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden">
-                      {child.avatar_url ? (
-                        <img 
-                          src={child.avatar_url} 
-                          alt={child.username} 
-                          className="w-8 h-8 object-cover"
-                        />
-                      ) : (
-                        <User className="h-4 w-4 text-indigo-600" />
-                      )}
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900">{child.username}の作品</h3>
-                    <span className="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full">
-                      {childrenWorks[child.id]?.length || 0}件
-                    </span>
-                  </div>
-                  
-                  {!childrenWorks[child.id] || childrenWorks[child.id].length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>まだ作品がありません</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {childrenWorks[child.id].slice(0, 4).map((work, index) => (
-                        <div key={work.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                          <WorkCard 
-                            work={work} 
-                            onFeedbackClick={setSelectedWork}
-                            feedbackCount={feedbackCounts[work.id] || 0}
-                            getSafeMediaUrl={getSafeMediaUrl}
-                          />
-                        </div>
-                      ))}
-                      {childrenWorks[child.id].length > 4 && (
-                        <div className="flex items-center justify-center h-full">
-                          <Link 
-                            to={`/parent/works?child=${child.id}`}
-                            className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-sm font-medium"
-                            onClick={() => {
-                              setCompareMode(false);
-                              handleChildChange(child.id);
-                            }}
-                          >
-                            すべての作品を見る ({childrenWorks[child.id].length}件) →
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            /* タイムライン表示 */
-            <div className="bg-white rounded-lg shadow-sm p-4 animate-fadeIn">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-indigo-600" />
-                作品タイムライン
-              </h3>
-              
-              {timelineWorks.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>表示する作品がありません。子供を選択してください。</p>
-                </div>
-              ) : (
-                <div className="relative pl-8 border-l-2 border-indigo-100 space-y-8 py-4">
-                  {timelineWorks.map((work, index) => (
-                    <div key={work.id} className="relative animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                      <div className="absolute -left-10 w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white">
-                        {work.childAvatar ? (
-                          <img 
-                            src={work.childAvatar} 
-                            alt={work.childName} 
-                            className="w-6 h-6 object-cover"
-                          />
-                        ) : (
-                          <User className="h-3 w-3 text-indigo-600" />
-                        )}
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
-                              {work.childName}
-                            </span>
-                            <h4 className="text-lg font-medium text-gray-900 mt-1">{work.title}</h4>
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {formatDate(work.created_at)}
-                          </span>
-                        </div>
-                        <div className="bg-white rounded-lg overflow-hidden border border-gray-100">
-                          {(work.media_type === 'drawing' || work.media_type === 'photo') && (
-                            <img 
-                              src={getSafeMediaUrl(work.media_url || work.content_url || '')} 
-                              alt={work.title} 
-                              className="w-full h-48 object-cover"
-                            />
-                          )}
-                        </div>
-                        <div className="mt-2 flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">
-                              {work.media_type === 'drawing' ? 'おえかき' : 
-                               work.media_type === 'photo' ? 'しゃしん' : 'おんがく'}
-                            </span>
-                          </div>
-                          <Link 
-                            to={`/parent/works/${work.id}?child=${work.user_id}`}
-                            className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                          >
-                            詳細を見る →
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        )}
-      </div>
-
-      {/* Feedback Modal */}
-      {selectedWork && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-scaleIn">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
-              <h3 className="text-xl font-semibold text-indigo-900 flex items-center gap-2">
-                <span className="bg-indigo-100 p-1.5 rounded-full">
-                  <MessageCircle className="h-5 w-5 text-indigo-600" />
-                </span>
-                {selectedWork.title}へのフィードバック
-              </h3>
-              <button
-                onClick={() => {
-                  setSelectedWork(null);
-                  setShowFeedbacks(false);
-                  setSelectedStamp(null);
-                  setFeedback('');
-                }}
-                className="text-gray-500 hover:text-gray-700 transition-colors p-1.5 rounded-full hover:bg-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            <div className="p-4 max-h-[calc(90vh-8rem)] overflow-y-auto">
-              {/* タブ切り替え */}
-              <div className="flex border-b border-gray-200 mb-4">
-                <button
-                  onClick={() => setShowFeedbacks(false)}
-                  className={`px-4 py-2 font-medium text-sm transition-all duration-200 flex items-center gap-1.5 ${!showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  <PenLine className="h-4 w-4" />
-                  新規フィードバック
-                </button>
-                <button
-                  onClick={() => setShowFeedbacks(true)}
-                  className={`px-4 py-2 font-medium text-sm transition-all duration-200 flex items-center gap-1.5 ${showFeedbacks ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  フィードバック一覧 {feedbackList.length > 0 && (
-                    <span className="bg-indigo-100 text-indigo-600 text-xs px-1.5 py-0.5 rounded-full">
-                      {feedbackList.length}
-                    </span>
-                  )}
-                </button>
-              </div>
-              
-              {showFeedbacks ? (
-                // フィードバック一覧
-                <div>
-                  {feedbackLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                    </div>
-                  ) : feedbackList.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 flex flex-col items-center">
-                      <MessageCircle className="h-12 w-12 text-gray-300 mb-2" />
-                      <p className="text-lg font-medium mb-1">まだフィードバックはありません</p>
-                      <p className="text-sm">新規フィードバックタブからメッセージを送ってみましょう</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {feedbackList.map((item, index) => (
-                        <div key={item.id} className="animate-fadeIn" style={{ animationDelay: `${index * 0.05}s` }}>
-                          <FeedbackItem 
-                            feedback={item} 
-                            onLike={handleLikeToggle} 
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                // 新規フィードバック入力
-                <div className="animate-fadeIn">
-                  <div className="bg-indigo-50 rounded-lg p-4 mb-6 border border-indigo-100">
-                    <p className="text-indigo-700 text-sm">子どもの作品に対するフィードバックを送信します。励ましのメッセージや感想を書いてみましょう。</p>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-amber-500" />
-                      スタンプ（オプション）
-                    </label>
-                    <div className="flex flex-wrap gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                      {STAMPS.map(stamp => (
-                        <button
-                          key={stamp.id}
-                          onClick={() => setSelectedStamp(stamp.id === selectedStamp ? null : stamp.id)}
-                          className={`p-3 rounded-full transition-all duration-300 transform ${
-                            stamp.id === selectedStamp 
-                              ? 'bg-indigo-100 ring-2 ring-indigo-500 ring-offset-2 scale-110 shadow-md' 
-                              : 'bg-white hover:bg-gray-100 hover:scale-105 shadow-sm border border-gray-200'
-                          }`}
-                          title={stamp.label}
-                        >
-                          <div className={stamp.color}>{stamp.icon}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
-                      <MessageSquare className="h-4 w-4 text-indigo-500" />
-                      メッセージ（オプション）
-                    </label>
-                    <textarea
-                      value={feedback}
-                      onChange={(e) => setFeedback(e.target.value)}
-                      placeholder="子どもへのメッセージを書いてください..."
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent shadow-sm bg-white"
-                      rows={4}
-                    />
-                  </div>
-                </div>
               )}
             </div>
             
-            <div className="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
-              <button
-                onClick={() => {
-                  setSelectedWork(null);
-                  setShowFeedbacks(false);
-                  setSelectedStamp(null);
-                  setFeedback('');
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors rounded-full hover:bg-white border border-gray-200 shadow-sm"
-              >
-                キャンセル
-              </button>
-              
-              {!showFeedbacks && (
-                <button
-                  onClick={handleFeedbackSubmit}
-                  disabled={!feedback.trim() && !selectedStamp}
-                  className="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-all duration-300 shadow-md transform hover:scale-105 disabled:hover:scale-100 flex items-center gap-2"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  <span>送信する</span>
-                </button>
-              )}
-            </div>
+            {/* フィルターボタン */}
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50"
+            >
+              <Filter className="h-5 w-5 text-[#5d7799]" />
+              <span className="text-[#5d7799]">
+                {filter === 'all' ? 'すべて' : 
+                 filter === 'drawing' ? 'お絵かき' : 
+                 filter === 'photo' ? '写真' : '音声'}
+              </span>
+            </button>
           </div>
         </div>
-      )}
+        
+        {/* フィルターメニュー */}
+        {isFilterOpen && (
+          <div className="bg-white rounded-xl shadow-md p-4 mb-6 flex gap-3">
+            {['all', 'drawing', 'photo', 'audio'].map((type) => (
+              <button
+                key={type}
+                onClick={() => {
+                  setFilter(type as WorkTypeFilter);
+                  setIsFilterOpen(false);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                  filter === type 
+                    ? 'bg-[#5d7799] text-white' 
+                    : 'bg-gray-100 text-[#5d7799] hover:bg-gray-200'
+                }`}
+              >
+                {type === 'all' && <Filter className="h-5 w-5" />}
+                {type === 'drawing' && <Palette className="h-5 w-5" />}
+                {type === 'photo' && <Camera className="h-5 w-5" />}
+                {type === 'audio' && <Music className="h-5 w-5" />}
+                <span>
+                  {type === 'all' ? 'すべて' : 
+                   type === 'drawing' ? 'お絵かき' : 
+                   type === 'photo' ? '写真' : '音声'}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        
+        {/* 子供選択UI */}
+        <ChildSelector />
+        
+        {/* 選択した子供の統計 */}
+        {selectedChildId && <ChildStats />}
+        
+        {/* 作品一覧 */}
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#5d7799]"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6">
+            <p className="font-semibold">エラーが発生しました</p>
+            <p className="text-sm">{error.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 rounded-full text-sm"
+            >
+              再読み込み
+            </button>
+          </div>
+        ) : filteredWorks.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="bg-gray-100 p-4 rounded-full">
+                <ImageIcon className="h-10 w-10 text-gray-400" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              {searchTerm ? '検索結果がありません' : '作品がありません'}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {searchTerm 
+                ? '検索条件を変更してみてください' 
+                : 'お子様がまだ作品を作成していません'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredWorks.map((work) => (
+              <WorkCard key={work.id} work={work} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+// 名前付きエクスポートを追加
+export { ParentWorks };
