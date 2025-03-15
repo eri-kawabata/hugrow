@@ -40,52 +40,80 @@
     display: none;
   }
 
-  /* アニメーション */
-  .animate-fadeIn {
-    animation: fadeIn 0.5s ease-in-out;
+  /* アニメーション効果 */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
   }
 
-  .animate-slideUp {
-    animation: slideUp 0.5s ease-out;
+  /* キラキラ効果のアニメーション */
+  .animate-twinkle {
+    animation: twinkle 2s infinite ease-in-out;
   }
 
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* バウンス効果のアニメーション */
+  .animate-bounce-in {
+    animation: bounceIn 0.5s ease-out forwards;
   }
 
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  /* スケール効果のアニメーション */
+  .animate-scale {
+    animation: scale 0.3s ease-in-out forwards;
+  }
+
+  /* キラキラ星のコンテナ */
+  .stars-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
   }
 
   @keyframes fadeIn {
     from {
       opacity: 0;
+      transform: translateY(10px);
     }
     to {
       opacity: 1;
-    }
-  }
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(20px);
-      opacity: 0;
-    }
-    to {
       transform: translateY(0);
-      opacity: 1;
     }
   }
 
-  @keyframes float {
+  @keyframes twinkle {
+    0%, 100% { 
+      opacity: 0.2; 
+      transform: scale(0.8); 
+    }
+    50% { 
+      opacity: 1; 
+      transform: scale(1.2); 
+    }
+  }
+
+  @keyframes bounceIn {
     0% {
-      transform: translateY(0px) scale(1);
+      opacity: 0;
+      transform: scale(0.3);
     }
     50% {
-      transform: translateY(-10px) scale(1.05);
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
     }
     100% {
-      transform: translateY(0px) scale(1);
+      transform: scale(1);
+    }
+  }
+
+  @keyframes scale {
+    from {
+      transform: scale(0.8);
+    }
+    to {
+      transform: scale(1);
     }
   }
 

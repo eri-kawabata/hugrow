@@ -8,11 +8,12 @@ import { EmptyState } from '@/components/Common/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
-import { FaPlus, FaTrash, FaEye } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaEye, FaStar, FaMagic, FaSparkles } from 'react-icons/fa';
 import { formatDate } from '../utils/formatDate';
 import { useConfirm } from '../hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { useProfile } from '@/hooks/useProfile';
+import { BaseLayout } from '@/components/layouts/BaseLayout';
 
 // 作品タイプのフィルター型
 type WorkTypeFilter = 'all' | Work['type'] | 'drawing' | 'audio' | 'photo';
@@ -32,7 +33,7 @@ const filterTypeToJapanese = (type: WorkTypeFilter): string => {
 const CreateWorkButton = memo(() => (
   <Link
     to="/child/works/new"
-    className="flex items-center gap-2 bg-gradient-to-r from-[#8ec5d6] to-[#5d7799] text-white px-4 py-2 rounded-full hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+    className="flex items-center gap-2 bg-gradient-to-r from-[#8ec5d6] to-[#5d7799] text-white px-6 py-3 rounded-full hover:shadow-lg transition-all duration-300 transform hover:scale-105 animate-pulse"
   >
     <Plus className="h-5 w-5" />
     <span className="font-medium">新しい作品を作る</span>
@@ -42,7 +43,7 @@ const CreateWorkButton = memo(() => (
 CreateWorkButton.displayName = 'CreateWorkButton';
 
 // 作品カードコンポーネント
-const WorkCard = memo(({ work }: { work: Work }) => {
+const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) => {
   // 作品タイプを決定（互換性のため）
   const workType = work.type || 'drawing';
   const { user } = useAuth();
@@ -50,6 +51,8 @@ const WorkCard = memo(({ work }: { work: Work }) => {
   const [hasFeedback, setHasFeedback] = useState(false);
   const [feedbackCount, setFeedbackCount] = useState(0);
   const [parentName, setParentName] = useState<string>('');
+  const [feedbackContent, setFeedbackContent] = useState<string>('');
+  const [isHovered, setIsHovered] = useState(false);
   
   // お気に入り状態とフィードバック状態を読み込む
   useEffect(() => {
@@ -76,12 +79,17 @@ const WorkCard = memo(({ work }: { work: Work }) => {
         // フィードバック数を確認
         const { data: feedbackData, error: feedbackError } = await supabase
           .from('work_feedback')
-          .select('id, user_id')
+          .select('id, user_id, content')
           .eq('work_id', work.id);
           
         if (!feedbackError && feedbackData && feedbackData.length > 0) {
           setHasFeedback(true);
           setFeedbackCount(feedbackData.length);
+          
+          // 最新のフィードバックの内容を保存
+          if (feedbackData[0].content) {
+            setFeedbackContent(feedbackData[0].content);
+          }
           
           try {
             // 保護者のユーザーIDを取得
@@ -98,161 +106,238 @@ const WorkCard = memo(({ work }: { work: Work }) => {
             } else {
               setParentName('保護者');
             }
-          } catch (profileErr) {
-            console.error('プロフィール取得エラー:', profileErr);
+          } catch (profileError) {
+            console.log('プロフィール情報の取得に失敗しました:', profileError);
             setParentName('保護者');
           }
         }
-      } catch (err) {
-        console.error('状態の読み込みに失敗しました:', err);
+      } catch (error) {
+        console.error('作品情報の読み込みに失敗しました:', error);
       }
     };
     
     loadFavoriteAndFeedbackStatus();
   }, [work.id, user]);
-
-  // サムネイルをレンダリングする関数
+  
+  // サムネイル表示
   const renderThumbnail = () => {
-    if (work.content_url) {
-      // 実際のコンテンツURLがある場合
-      if (work.type === 'drawing' || work.type === 'photo') {
-        return (
-          <div className="w-full h-40 overflow-hidden rounded-t-[24px] relative">
-            <img 
-              src={work.content_url} 
-              alt={work.title} 
-              className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-              loading="lazy"
-            />
-          </div>
-        );
-      }
-    } else if (work.type === 'drawing') {
-      // お絵かきのデフォルトサムネイル
+    const thumbnailHeight = 'h-48';
+    
+    // 画像URLがある場合
+    if (work.thumbnail_url) {
       return (
-        <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#8ec5d6]/30 to-white flex items-center justify-center relative">
-          <div className="absolute inset-0 flex items-center justify-center opacity-10">
-            <div className="w-32 h-32 border-4 border-[#8ec5d6]/30 rounded-full"></div>
-            <div className="w-24 h-24 border-4 border-[#8ec5d6]/40 rounded-full absolute"></div>
-            <div className="w-16 h-16 border-4 border-[#8ec5d6]/50 rounded-full absolute"></div>
-          </div>
-          <Palette className="h-16 w-16 text-[#5d7799]/40" />
-        </div>
-      );
-    } else if (work.type === 'audio') {
-      // 音声のデフォルトサムネイル
-      return (
-        <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#f5f6bf]/30 to-white flex items-center justify-center relative">
-          <div className="flex flex-col items-center">
-            <Music className="h-16 w-16 text-[#5d7799]/40" />
-            <div className="flex space-x-1 mt-2">
-              {[3, 5, 4, 6, 2, 4, 3].map((h, i) => (
+        <div className={`${thumbnailHeight} overflow-hidden bg-gray-100 relative`}>
+          <img 
+            src={work.thumbnail_url} 
+            alt={work.title || '作品'} 
+            className={`w-full h-full object-cover transition-transform duration-300 ${isHovered ? 'scale-110' : 'scale-100'}`}
+          />
+          {isHovered && (
+            <div className="absolute inset-0">
+              {[...Array(8)].map((_, i) => (
                 <div 
                   key={i} 
-                  className="w-1 bg-[#5d7799]/30 rounded-full animate-pulse" 
-                  style={{ 
-                    height: `${h * 4}px`,
-                    animationDelay: `${i * 0.1}s`
+                  className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
+                  style={{
+                    top: `${Math.random() * 100}%`,
+                    left: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${1 + Math.random() * 2}s`
                   }}
-                ></div>
+                />
               ))}
             </div>
-          </div>
-        </div>
-      );
-    } else if (work.type === 'photo') {
-      // 写真のデフォルトサムネイル
-      return (
-        <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gradient-to-br from-[#f7c5c2]/30 to-white flex items-center justify-center relative">
-          <div className="absolute inset-0 flex items-center justify-center opacity-10">
-            <div className="w-32 h-32 border-4 border-[#f7c5c2]/30 rounded-full"></div>
-            <div className="w-24 h-24 border-4 border-[#f7c5c2]/40 rounded-full absolute"></div>
-            <div className="w-16 h-16 border-4 border-[#f7c5c2]/50 rounded-full absolute"></div>
-          </div>
-          <Camera className="h-16 w-16 text-[#5d7799]/40" />
+          )}
         </div>
       );
     }
     
-    // デフォルトのサムネイル
-    return (
-      <div className="w-full h-40 overflow-hidden rounded-t-[24px] bg-gray-100 flex items-center justify-center">
-        <Image className="h-16 w-16 text-gray-300" />
-      </div>
-    );
+    // タイプに応じたデフォルト表示
+    switch (workType) {
+      case 'drawing':
+        return (
+          <div className={`${thumbnailHeight} bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
+            <Palette className="h-16 w-16 text-indigo-300" />
+            {isHovered && (
+              <div className="absolute inset-0">
+                {[...Array(8)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
+                    style={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 2}s`,
+                      animationDuration: `${1 + Math.random() * 2}s`
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      case 'audio':
+        return (
+          <div className={`${thumbnailHeight} bg-gradient-to-br from-yellow-50 to-amber-100 flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
+            <Music className="h-16 w-16 text-amber-300" />
+            {isHovered && (
+              <div className="absolute inset-0">
+                {[...Array(8)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
+                    style={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 2}s`,
+                      animationDuration: `${1 + Math.random() * 2}s`
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      case 'photo':
+        return (
+          <div className={`${thumbnailHeight} bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
+            <Camera className="h-16 w-16 text-emerald-300" />
+            {isHovered && (
+              <div className="absolute inset-0">
+                {[...Array(8)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
+                    style={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 2}s`,
+                      animationDuration: `${1 + Math.random() * 2}s`
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      default:
+        return (
+          <div className={`${thumbnailHeight} bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
+            <Image className="h-16 w-16 text-gray-300" />
+            {isHovered && (
+              <div className="absolute inset-0">
+                {[...Array(8)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
+                    style={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 2}s`,
+                      animationDuration: `${1 + Math.random() * 2}s`
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+    }
   };
-
-  // 作品タイプに応じたラベルとカラーを取得
+  
+  // 作品タイプ情報を取得
   const getTypeInfo = () => {
-    switch (work.type) {
+    switch (workType) {
       case 'drawing':
         return {
           label: 'お絵かき',
-          color: 'bg-[#8ec5d6]'
+          icon: <Palette className="h-3.5 w-3.5" />,
+          color: 'bg-indigo-100 text-indigo-700'
         };
       case 'audio':
         return {
           label: '音声',
-          color: 'bg-[#f5f6bf]'
+          icon: <Music className="h-3.5 w-3.5" />,
+          color: 'bg-amber-100 text-amber-700'
         };
       case 'photo':
         return {
           label: '写真',
-          color: 'bg-[#f7c5c2]'
+          icon: <Camera className="h-3.5 w-3.5" />,
+          color: 'bg-emerald-100 text-emerald-700'
         };
       default:
         return {
           label: '作品',
-          color: 'bg-gray-500'
+          icon: <Image className="h-3.5 w-3.5" />,
+          color: 'bg-gray-100 text-gray-700'
         };
     }
   };
-
-  const { label, color } = getTypeInfo();
-
+  
+  // カードクリック時の処理
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (onView) {
+      onView();
+    }
+  };
+  
+  const typeInfo = getTypeInfo();
+  
   return (
-    <Link to={`/child/works/${work.id}`} className="block">
-      <div className="bg-white rounded-[24px] shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-[#5d7799]/10 relative">
+    <div 
+      className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1 cursor-pointer"
+      onClick={handleCardClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="relative">
         {renderThumbnail()}
         
         {/* タイプラベル */}
-        <div className={`absolute top-3 right-3 ${color} text-white text-xs px-2 py-1 rounded-full shadow-md`}>
-          {label}
-        </div>
-        
-        {/* お気に入りとフィードバックのアイコン */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-          {isFavorite && (
-            <div className="bg-yellow-100 p-2 rounded-full shadow-md">
-              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-            </div>
-          )}
-          
-          {hasFeedback && (
-            <div className="bg-indigo-100 p-2 rounded-full shadow-md group relative">
-              <MessageCircle className="h-4 w-4 text-indigo-500" />
-              {feedbackCount > 1 && (
-                <span className="absolute -top-1 -right-1 bg-indigo-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
-                  {feedbackCount}
-                </span>
-              )}
-              
-              {/* 保護者名のツールチップ */}
-              <div className="absolute left-full ml-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                {parentName ? `${parentName}さんからのフィードバック` : '保護者からのフィードバック'}
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <div className="p-4">
-          <h3 className="font-bold text-[#5d7799] text-lg mb-1 truncate">{work.title}</h3>
-          <p className="text-gray-500 text-sm">
-            {new Date(work.created_at).toLocaleDateString('ja-JP')}
-          </p>
+        <div className="absolute top-3 left-3">
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${typeInfo.color}`}>
+            {typeInfo.icon}
+            <span className="text-xs font-medium">{typeInfo.label}</span>
+          </div>
         </div>
       </div>
-    </Link>
+      
+      <div className="p-4">
+        <h3 className="font-bold text-gray-800 mb-1 line-clamp-1">
+          {work.title || 'タイトルなし'}
+        </h3>
+        <div className="text-sm text-gray-500 mb-2">
+          {formatDate(work.created_at)}
+        </div>
+        
+        {/* フィードバックとお気に入り */}
+        <div className="mt-2">
+          {hasFeedback ? (
+            <div className="text-sm">
+              <div className="flex items-center text-purple-600 mb-1">
+                <MessageCircle className="h-4 w-4 mr-1" />
+                <span className="font-medium">{parentName}からのコメント</span>
+              </div>
+              {feedbackContent && (
+                <p className="text-gray-600 text-xs line-clamp-2 bg-purple-50 p-2 rounded-md">
+                  {feedbackContent}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-400">コメントなし</div>
+          )}
+          
+          {isFavorite && (
+            <div className="flex items-center text-sm text-yellow-500 mt-1">
+              <Star className="h-4 w-4 mr-1 fill-current" />
+              <span>お気に入り</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 });
 
@@ -268,52 +353,52 @@ const FilterButton = memo(({
   activeFilter: WorkTypeFilter, 
   onClick: (type: WorkTypeFilter) => void 
 }) => {
-  const isActive = type === activeFilter;
-  
   const getFilterInfo = () => {
     switch (type) {
       case 'all':
         return {
           label: 'すべて',
-          icon: <Filter className="h-5 w-5" />
+          icon: <Filter className="h-4 w-4" />
         };
       case 'drawing':
         return {
           label: 'お絵かき',
-          icon: <Palette className="h-5 w-5" />
+          icon: <Palette className="h-4 w-4" />
         };
       case 'audio':
         return {
           label: '音声',
-          icon: <Music className="h-5 w-5" />
+          icon: <Music className="h-4 w-4" />
         };
       case 'photo':
         return {
           label: '写真',
-          icon: <Camera className="h-5 w-5" />
+          icon: <Camera className="h-4 w-4" />
         };
       default:
         return {
           label: 'すべて',
-          icon: <Filter className="h-5 w-5" />
+          icon: <Filter className="h-4 w-4" />
         };
     }
   };
-
-  const { label, icon } = getFilterInfo();
-
+  
+  const info = getFilterInfo();
+  
   return (
     <button
       onClick={() => onClick(type)}
       className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 ${
-        isActive 
+        activeFilter === type 
           ? 'bg-[#5d7799] text-white shadow-md' 
           : 'bg-white text-[#5d7799] hover:bg-[#5d7799]/10'
       }`}
     >
-      {icon}
-      <span className="font-medium">{label}</span>
-      {isActive && (
+      <div className={`${activeFilter === type ? 'text-white' : 'text-[#5d7799]'}`}>
+        {info.icon}
+      </div>
+      <span className="font-medium">{info.label}</span>
+      {activeFilter === type && type !== 'all' && (
         <X 
           className="h-4 w-4 ml-1 cursor-pointer" 
           onClick={(e) => {
@@ -328,7 +413,14 @@ const FilterButton = memo(({
 
 FilterButton.displayName = 'FilterButton';
 
-const WorksGrid = memo(({ works }: { works: Work[] }) => (
+// 作品グリッドコンポーネント
+const WorksGrid = memo(({ 
+  works, 
+  onView
+}: { 
+  works: Work[], 
+  onView?: (work: Work) => void
+}) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
     {works.map((work, index) => (
       <div 
@@ -336,7 +428,10 @@ const WorksGrid = memo(({ works }: { works: Work[] }) => (
         className="animate-fade-in" 
         style={{ animationDelay: `${index * 0.1}s` }}
       >
-        <WorkCard work={work} />
+        <WorkCard 
+          work={work} 
+          onView={onView ? () => onView(work) : undefined}
+        />
       </div>
     ))}
   </div>
@@ -344,39 +439,111 @@ const WorksGrid = memo(({ works }: { works: Work[] }) => (
 
 WorksGrid.displayName = 'WorksGrid';
 
-const Header = memo(({ 
+// ヘッダーコンポーネント
+const WorksHeader = memo(({ 
   activeFilter, 
-  setActiveFilter 
+  setActiveFilter,
+  worksCount
 }: { 
   activeFilter: WorkTypeFilter, 
-  setActiveFilter: (filter: WorkTypeFilter) => void 
-}) => (
-  <div>
-    <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] px-4 py-12 rounded-b-[40px] shadow-lg relative overflow-hidden">
-      <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-      <div className="relative z-10">
-        <h1 className="text-4xl font-bold text-white text-center drop-shadow-md mb-2">
-          わたしの作品
-        </h1>
-        <p className="text-white/90 text-center text-sm max-w-md mx-auto">
-          あなたの素敵な作品をここで見ることができます
-        </p>
+  setActiveFilter: (filter: WorkTypeFilter) => void,
+  worksCount?: number
+}) => {
+  // フィルター情報を取得する関数
+  const getFilterInfo = () => {
+    return [
+      {
+        type: 'all' as WorkTypeFilter,
+        label: 'すべて',
+        icon: <Filter className="h-4 w-4" />
+      },
+      {
+        type: 'drawing' as WorkTypeFilter,
+        label: 'お絵かき',
+        icon: <Palette className="h-4 w-4" />
+      },
+      {
+        type: 'audio' as WorkTypeFilter,
+        label: '音声',
+        icon: <Music className="h-4 w-4" />
+      },
+      {
+        type: 'photo' as WorkTypeFilter,
+        label: '写真',
+        icon: <Camera className="h-4 w-4" />
+      }
+    ];
+  };
+
+  return (
+    <div>
+      <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] px-4 py-12 rounded-b-[40px] shadow-lg relative overflow-hidden">
+        {/* キラキラエフェクト */}
+        <div className="absolute inset-0">
+          <div className="stars-container">
+            {[...Array(20)].map((_, i) => (
+              <div 
+                key={i} 
+                className="absolute w-1 h-1 bg-white rounded-full animate-twinkle"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  animationDuration: `${1 + Math.random() * 3}s`
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
+        <div className="relative z-10">
+          <h1 className="text-4xl font-bold text-white text-center drop-shadow-md mb-2">
+            わたしの作品
+          </h1>
+        </div>
+      </div>
+      
+      <div className="px-6 -mt-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-full shadow-lg p-2 flex flex-wrap items-center justify-center gap-3 max-w-2xl mx-auto">
+          {getFilterInfo().map(filter => (
+            <button
+              key={filter.type}
+              onClick={() => setActiveFilter(filter.type)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 ${
+                activeFilter === filter.type 
+                  ? 'bg-[#5d7799] text-white shadow-md' 
+                  : 'bg-white text-[#5d7799] hover:bg-[#5d7799]/10'
+              }`}
+            >
+              <div className={`${activeFilter === filter.type ? 'text-white' : 'text-[#5d7799]'}`}>
+                {filter.icon}
+              </div>
+              <span className="font-medium">{filter.label}</span>
+              {activeFilter === filter.type && filter.type !== 'all' && (
+                <X 
+                  className="h-4 w-4 ml-1 cursor-pointer" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveFilter('all');
+                  }} 
+                />
+              )}
+              {filter.type === 'all' && worksCount !== undefined && (
+                <span className="ml-1 px-1.5 py-0.5 bg-[#5d7799]/20 text-[#5d7799] rounded-full text-xs">
+                  {worksCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
-    
-    <div className="px-6 -mt-6">
-      <div className="bg-white/80 backdrop-blur-sm rounded-full shadow-lg p-2 flex flex-wrap items-center justify-center gap-3 max-w-2xl mx-auto">
-        <FilterButton type="all" activeFilter={activeFilter} onClick={setActiveFilter} />
-        <FilterButton type="drawing" activeFilter={activeFilter} onClick={setActiveFilter} />
-        <FilterButton type="audio" activeFilter={activeFilter} onClick={setActiveFilter} />
-        <FilterButton type="photo" activeFilter={activeFilter} onClick={setActiveFilter} />
-      </div>
-    </div>
-  </div>
-));
+  );
+});
 
-Header.displayName = 'Header';
+WorksHeader.displayName = 'WorksHeader';
 
+// メインコンポーネント
 const MyWorks = () => {
   const { works, loading, error, createWork, deleteWork } = useWorks(true);
   const [selectedType, setSelectedType] = useState<WorkTypeFilter>('all');
@@ -432,162 +599,108 @@ const MyWorks = () => {
     return filtered;
   }, [filteredWorks, selectedChildProfileId]);
 
-  // 作品の削除
-  const handleDelete = async (id: string) => {
-    if (window.confirm('本当にこの作品を削除しますか？')) {
-      await deleteWork(id);
-    }
-  };
-
   // 作品の詳細表示
   const handleViewWork = (work: Work) => {
     navigate(`/child/works/${work.id}`);
-  };
-
-  // 新しい作品の作成
-  const handleCreateWork = (type: 'drawing' | 'audio' | 'photo') => {
-    navigate(`/child/works/new?type=${type}`);
-  };
-
-  // フィルター情報を取得する関数
-  const getFilterInfo = () => {
-    return [
-      {
-        type: 'all' as WorkTypeFilter,
-        label: 'すべて',
-        icon: <Filter className="h-4 w-4" />
-      },
-      {
-        type: 'drawing' as WorkTypeFilter,
-        label: 'お絵かき',
-        icon: <Palette className="h-4 w-4" />
-      },
-      {
-        type: 'audio' as WorkTypeFilter,
-        label: '音声',
-        icon: <Music className="h-4 w-4" />
-      },
-      {
-        type: 'photo' as WorkTypeFilter,
-        label: '写真',
-        icon: <Camera className="h-4 w-4" />
-      }
-    ];
   };
 
   // 作品がない場合のメッセージ
   if (childFilteredWorks.length === 0 && !loading) {
     console.log('MyWorks - 表示する作品がありません - selectedChildProfileId:', selectedChildProfileId);
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <div className="mb-4">
-            <Image className="w-16 h-16 text-gray-400 mx-auto" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">作品がありません</h2>
-          <p className="text-gray-500 mb-6">新しい作品を作成してみましょう！</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <button
-              onClick={() => handleCreateWork('drawing')}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition-colors"
-            >
-              <Pencil className="w-4 h-4" />
-              お絵かき
-            </button>
-            <button
-              onClick={() => handleCreateWork('audio')}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-full hover:bg-amber-200 transition-colors"
-            >
-              <Mic className="w-4 h-4" />
-              ボイスメモ
-            </button>
-            <button
-              onClick={() => handleCreateWork('photo')}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full hover:bg-emerald-200 transition-colors"
-            >
-              <Camera className="w-4 h-4" />
-              写真
-            </button>
+      <BaseLayout hideHeader={true}>
+        <WorksHeader 
+          activeFilter={selectedType} 
+          setActiveFilter={setSelectedType}
+          worksCount={works.length}
+        />
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="bg-white rounded-[32px] shadow-md p-8 text-center my-12 relative overflow-hidden">
+            {/* キラキラエフェクト */}
+            <div className="absolute inset-0 pointer-events-none">
+              {[...Array(10)].map((_, i) => (
+                <div 
+                  key={i} 
+                  className="absolute w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-70"
+                  style={{
+                    top: `${Math.random() * 100}%`,
+                    left: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${2 + Math.random() * 3}s`
+                  }}
+                />
+              ))}
+            </div>
+            
+            <div className="mb-6 bg-[#f8fbfd] p-6 rounded-full inline-block relative">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-200 via-purple-200 to-indigo-200 opacity-30 animate-pulse"></div>
+              <Image className="w-20 h-20 text-[#8ec5d6] mx-auto relative z-10" />
+            </div>
+            <h2 className="text-2xl font-bold text-[#5d7799] mb-3">作品がありません</h2>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              新しい作品を作成して、あなたの才能を表現してみましょう！
+            </p>
+            
+            <CreateWorkButton />
           </div>
         </div>
-      </div>
+      </BaseLayout>
     );
   }
 
-  // 作品一覧の表示
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">作品一覧</h1>
-        
-        <div className="flex gap-2">
-          {getFilterInfo().map(filter => (
-            <button
-              key={filter.type}
-              onClick={() => setSelectedType(filter.type)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
-                selectedType === filter.type
-                  ? 'bg-indigo-100 text-indigo-700'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}
-            >
-              {filter.icon}
-              {filter.label}
-              {filter.type === 'all' && (
-                <span className="ml-1 px-1.5 py-0.5 bg-indigo-200 text-indigo-800 rounded-full text-xs">
-                  {works.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {childFilteredWorks.map(work => (
-              <WorkCard
-                key={work.id}
-                work={work}
-                onView={() => handleViewWork(work)}
-                onDelete={() => handleDelete(work.id)}
-              />
-            ))}
-          </div>
-
-          <div className="mt-8 flex justify-center">
-            <div className="fixed bottom-24 sm:static flex gap-3">
-              <button
-                onClick={() => handleCreateWork('drawing')}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors shadow-lg"
-              >
-                <Pencil className="w-4 h-4" />
-                お絵かき
-              </button>
-              <button
-                onClick={() => handleCreateWork('audio')}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-full hover:bg-amber-700 transition-colors shadow-lg"
-              >
-                <Mic className="w-4 h-4" />
-                ボイスメモ
-              </button>
-              <button
-                onClick={() => handleCreateWork('photo')}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-colors shadow-lg"
-              >
-                <Camera className="w-4 h-4" />
-                写真
-              </button>
+    <BaseLayout hideHeader={true}>
+      <WorksHeader 
+        activeFilter={selectedType} 
+        setActiveFilter={setSelectedType}
+        worksCount={works.length}
+      />
+      <div className="max-w-4xl mx-auto px-4">
+        {/* ローディング状態 */}
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              <div className="h-12 w-12 text-[#8ec5d6] animate-spin mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <p className="text-gray-600">読み込み中...</p>
             </div>
           </div>
-        </>
-      )}
-    </div>
+        ) : (
+          <>
+            {/* 作品一覧 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-8">
+              {childFilteredWorks.map((work, index) => (
+                <div 
+                  key={work.id} 
+                  className="animate-fade-in" 
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <WorkCard 
+                    work={work} 
+                    onView={() => handleViewWork(work)}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* カスタムアニメーションのためのスタイル */}
+      <style jsx>{`
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.2; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        .animate-twinkle {
+          animation: twinkle 2s infinite ease-in-out;
+        }
+      `}</style>
+    </BaseLayout>
   );
 };
 
