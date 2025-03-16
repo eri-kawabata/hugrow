@@ -4,7 +4,7 @@ import { Heart, Star, Frown, Smile, Meh, ThumbsUp, MessageCircle, Sparkles, Chev
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import type { SELQuest, SELResponse } from '../lib/types';
-import { GradientHeader } from './GradientHeader';
+import { GradientHeader } from '@/components/Common/GradientHeader';
 
 const emotions = [
   { 
