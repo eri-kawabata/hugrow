@@ -4,6 +4,7 @@ import { Heart, Star, Frown, Smile, Meh, ThumbsUp, MessageCircle, Sparkles, Chev
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import type { SELQuest, SELResponse } from '../lib/types';
+import { GradientHeader } from './GradientHeader';
 
 const emotions = [
   { 
@@ -349,10 +350,14 @@ export function SELQuest() {
   return (
     <BaseLayout hideHeader={true}>
       <div className="max-w-5xl mx-auto pb-28">
-        {/* ヘッダーセクション - 他のページと統一したデザイン */}
-        <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] px-6 py-6 rounded-b-[40px] shadow-md mb-6">
-          <h1 className="text-3xl font-bold text-white text-center drop-shadow-md">きもちクエスト</h1>
-        </div>
+        <GradientHeader 
+          title="きもちクエスト" 
+          gradientColors={{
+            from: '#8ec5d6',
+            via: '#f7c5c2',
+            to: '#f5f6bf'
+          }}
+        />
 
         <div className="px-6">
           <div className="space-y-8">

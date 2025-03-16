@@ -1,14 +1,19 @@
 import React from 'react';
 import { Palette, Camera, Mic } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { GradientHeader } from '@/components/Common/GradientHeader';
 
 export function WorkUpload() {
   return (
     <div className="max-w-5xl mx-auto pb-28">
-      {/* ヘッダーセクション - グラデーション背景を追加 */}
-      <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] -mx-4 px-4 py-10 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 rounded-b-[40px] shadow-lg mb-12">
-        <h1 className="text-4xl font-bold text-white text-center drop-shadow-md">どんな作品をつくる？</h1>
-      </div>
+      <GradientHeader 
+        title="どんな作品をつくる？" 
+        gradientColors={{
+          from: '#8ec5d6',
+          via: '#f7c5c2',
+          to: '#f5f6bf'
+        }}
+      />
       
       {/* Upload Type Selection */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto px-4">

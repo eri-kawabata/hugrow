@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { Learning } from '../components/Learning/Learning';
+import { Learning } from '@/components/Learning/Learning';
 import { ScienceLearning } from '../components/Learning/ScienceLearning';
 import { TechnologyLearning } from '../components/Learning/TechnologyLearning';
 import { EngineeringLearning } from '../components/Learning/EngineeringLearning';
@@ -9,7 +9,7 @@ import { MathLearning } from '../components/Learning/MathLearning';
 import { LessonDetail } from '../components/Learning/LessonDetail';
 import { LessonContent } from '../components/Learning/LessonContent';
 
-export const LearningRoutes: React.FC = () => {
+function LearningRoutes() {
   return (
     <Routes>
       <Route index element={<Learning />} />
@@ -22,4 +22,6 @@ export const LearningRoutes: React.FC = () => {
       <Route path="lesson/:lessonId/content" element={<LessonContent />} />
     </Routes>
   );
-}; 
+}
+
+export default LearningRoutes; 

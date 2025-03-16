@@ -106,6 +106,16 @@ export default {
             opacity: '1',
           },
         },
+        soundwave: {
+          '0%, 100%': {
+            transform: 'scaleY(0.3)',
+            opacity: 0.5
+          },
+          '50%': {
+            transform: 'scaleY(1)',
+            opacity: 1
+          }
+        },
       },
       animation: {
         ping: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite',
@@ -121,6 +131,7 @@ export default {
         'ping-slow': 'ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite',
         'spin-slow': 'spin 8s linear infinite',
         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        soundwave: 'soundwave 1.2s ease-in-out infinite',
       },
       animationDelay: {
         '0': '0ms',

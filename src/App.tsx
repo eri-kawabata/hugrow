@@ -21,7 +21,7 @@ const SignUp = lazy(() => import('./components/SignUp').then(module => ({ defaul
 const PasswordReset = lazy(() => import('./components/Auth/PasswordReset').then(module => ({ default: module.PasswordReset })));
 const UpdatePassword = lazy(() => import('./components/Auth/UpdatePassword').then(module => ({ default: module.UpdatePassword })));
 const Home = lazy(() => import('./components/Home').then(module => ({ default: module.Home })));
-const LearningRoutes = lazy(() => import('./routes/LearningRoutes').then(module => ({ default: module.LearningRoutes })));
+const LearningRoutes = lazy(() => import('./routes/LearningRoutes'));
 const ParentWorksRoutes = lazy(() => import('./routes/ParentWorksRoutes').then(module => ({ default: module.ParentWorksRoutes })));
 const ChildWorksRoutes = lazy(() => import('./routes/ChildWorksRoutes').then(module => ({ default: module.ChildWorksRoutes })));
 const ProfileRoutes = lazy(() => import('./routes/ProfileRoutes').then(module => ({ default: module.ProfileRoutes })));

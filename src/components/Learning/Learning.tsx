@@ -7,6 +7,7 @@ import {
   Palette, 
   Calculator 
 } from 'lucide-react';
+import { GradientHeader } from '@/components/Common/GradientHeader';
 
 type SubjectCardProps = {
   to: string;
@@ -88,10 +89,14 @@ export function Learning() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-28">
-      {/* ヘッダーセクション */}
-      <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] -mx-4 px-4 py-10 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 rounded-b-[40px] shadow-lg">
-        <h1 className="text-4xl font-bold text-white text-center drop-shadow-md">がくしゅう</h1>
-      </div>
+      <GradientHeader 
+        title="がくしゅう" 
+        gradientColors={{
+          from: '#8ec5d6',
+          via: '#f7c5c2',
+          to: '#f5f6bf'
+        }}
+      />
 
       <div className="px-6">
         <div className="space-y-8">

@@ -178,19 +178,36 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
         );
       case 'audio':
         return (
-          <div className={`${thumbnailHeight} bg-gradient-to-br from-yellow-50 to-amber-100 flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
-            <Music className="h-16 w-16 text-amber-300" />
+          <div className={`${thumbnailHeight} bg-gradient-to-br from-purple-50 via-pink-50 to-rose-100 flex flex-col items-center justify-center transition-all duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative overflow-hidden group`}>
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-50/80 via-pink-50/80 to-rose-100/80 backdrop-blur-sm"></div>
+            <div className="relative z-10 flex flex-col items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-pink-200 rounded-full blur-md animate-pulse-slow opacity-50"></div>
+                <Mic className="h-12 w-12 text-pink-500 relative z-10 transform transition-transform group-hover:scale-110 duration-300" />
+              </div>
+              <div className="flex space-x-1.5">
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 h-8 bg-gradient-to-t from-pink-400 to-rose-400 rounded-full animate-soundwave"
+                    style={{
+                      animationDelay: `${i * 0.15}s`
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
             {isHovered && (
               <div className="absolute inset-0">
-                {[...Array(8)].map((_, i) => (
+                {[...Array(15)].map((_, i) => (
                   <div 
                     key={i} 
-                    className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
+                    className="absolute w-1 h-1 bg-gradient-to-br from-pink-300 to-rose-300 rounded-full animate-twinkle"
                     style={{
                       top: `${Math.random() * 100}%`,
                       left: `${Math.random() * 100}%`,
                       animationDelay: `${Math.random() * 2}s`,
-                      animationDuration: `${1 + Math.random() * 2}s`
+                      animationDuration: `${1.5 + Math.random() * 2}s`
                     }}
                   />
                 ))}
@@ -257,8 +274,8 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       case 'audio':
         return {
           label: '音声',
-          icon: <Music className="h-3.5 w-3.5" />,
-          color: 'bg-amber-100 text-amber-700'
+          icon: <Mic className="h-3.5 w-3.5" />,
+          color: 'bg-pink-100 text-pink-700'
         };
       case 'photo':
         return {
@@ -286,7 +303,7 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
   
   return (
     <div 
-      className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1 cursor-pointer"
+      className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 cursor-pointer group"
       onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -295,44 +312,48 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
         {renderThumbnail()}
         
         {/* タイプラベル */}
-        <div className="absolute top-3 left-3">
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${typeInfo.color}`}>
+        <div className="absolute top-3 left-3 transform -rotate-2 transition-transform group-hover:rotate-0">
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${typeInfo.color} backdrop-blur-sm shadow-md`}>
             {typeInfo.icon}
-            <span className="text-xs font-medium">{typeInfo.label}</span>
+            <span className="text-xs font-bold">{typeInfo.label}</span>
           </div>
         </div>
       </div>
       
-      <div className="p-4">
-        <h3 className="font-bold text-gray-800 mb-1 line-clamp-1">
+      <div className="p-5">
+        <h3 className="font-bold text-gray-800 mb-2 line-clamp-1 group-hover:text-[#5d7799] transition-colors">
           {work.title || 'タイトルなし'}
         </h3>
-        <div className="text-sm text-gray-500 mb-2">
+        <div className="text-sm text-gray-500 mb-3 flex items-center gap-2">
+          <div className="w-1 h-1 rounded-full bg-gray-300"></div>
           {formatDate(work.created_at)}
         </div>
         
         {/* フィードバックとお気に入り */}
-        <div className="mt-2">
+        <div className="space-y-3">
           {hasFeedback ? (
             <div className="text-sm">
-              <div className="flex items-center text-purple-600 mb-1">
-                <MessageCircle className="h-4 w-4 mr-1" />
+              <div className="flex items-center text-purple-600 mb-2">
+                <MessageCircle className="h-4 w-4 mr-1.5" />
                 <span className="font-medium">{parentName}からのコメント</span>
               </div>
               {feedbackContent && (
-                <p className="text-gray-600 text-xs line-clamp-2 bg-purple-50 p-2 rounded-md">
+                <p className="text-gray-600 text-xs line-clamp-2 bg-purple-50/50 p-3 rounded-xl border border-purple-100">
                   {feedbackContent}
                 </p>
               )}
             </div>
           ) : (
-            <div className="text-sm text-gray-400">コメントなし</div>
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <MessageCircle className="h-4 w-4" />
+              <span>コメントなし</span>
+            </div>
           )}
           
           {isFavorite && (
-            <div className="flex items-center text-sm text-yellow-500 mt-1">
-              <Star className="h-4 w-4 mr-1 fill-current" />
-              <span>お気に入り</span>
+            <div className="flex items-center text-sm text-yellow-500 bg-yellow-50/50 px-3 py-2 rounded-xl border border-yellow-100">
+              <Star className="h-4 w-4 mr-1.5 fill-current" />
+              <span className="font-medium">お気に入りに登録済み</span>
             </div>
           )}
         </div>
@@ -476,52 +497,70 @@ const WorksHeader = memo(({
   };
 
   return (
-    <div>
-      <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] px-4 py-12 rounded-b-[40px] shadow-lg relative overflow-hidden">
+    <div className="max-w-5xl mx-auto">
+      <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] px-8 py-14 rounded-[32px] shadow-lg relative overflow-hidden mx-6 mb-16">
+        {/* 背景のパターン */}
+        <div className="absolute inset-0 opacity-10">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full bg-white"
+              style={{
+                width: `${Math.random() * 16 + 8}px`,
+                height: `${Math.random() * 16 + 8}px`,
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                opacity: Math.random() * 0.5 + 0.5,
+                transform: `scale(${Math.random() * 0.5 + 0.5})`
+              }}
+            />
+          ))}
+        </div>
+        
         {/* キラキラエフェクト */}
         <div className="absolute inset-0">
-          <div className="stars-container">
-            {[...Array(20)].map((_, i) => (
-              <div 
-                key={i} 
-                className="absolute w-1 h-1 bg-white rounded-full animate-twinkle"
-                style={{
-                  top: `${Math.random() * 100}%`,
-                  left: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 5}s`,
-                  animationDuration: `${1 + Math.random() * 3}s`
-                }}
-              />
-            ))}
-          </div>
+          {[...Array(25)].map((_, i) => (
+            <div 
+              key={i} 
+              className="absolute w-1 h-1 bg-white rounded-full animate-twinkle"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 4}s`,
+                animationDuration: `${1.5 + Math.random() * 2}s`
+              }}
+            />
+          ))}
         </div>
-        <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-        <div className="relative z-10">
-          <h1 className="text-4xl font-bold text-white text-center drop-shadow-md mb-2">
+        
+        <div className="absolute inset-0 bg-gradient-to-b from-white/0 to-white/20"></div>
+        
+        <div className="relative z-10 max-w-lg mx-auto">
+          <h1 className="text-4xl font-bold text-white text-center drop-shadow-lg animate-fade-in-up px-4">
             わたしの作品
           </h1>
         </div>
       </div>
       
-      <div className="px-6 -mt-6">
-        <div className="bg-white/80 backdrop-blur-sm rounded-full shadow-lg p-2 flex flex-wrap items-center justify-center gap-3 max-w-2xl mx-auto">
+      <div className="px-6 -mt-8 relative z-20">
+        <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-3 flex flex-wrap items-center justify-center gap-2.5 max-w-2xl mx-auto border border-white/50">
           {getFilterInfo().map(filter => (
             <button
               key={filter.type}
               onClick={() => setActiveFilter(filter.type)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
                 activeFilter === filter.type 
-                  ? 'bg-[#5d7799] text-white shadow-md' 
-                  : 'bg-white text-[#5d7799] hover:bg-[#5d7799]/10'
+                  ? 'bg-gradient-to-r from-[#8ec5d6] to-[#5d7799] text-white shadow-md transform scale-105' 
+                  : 'bg-white/80 text-[#5d7799] hover:bg-[#5d7799]/5 border border-[#5d7799]/10'
               }`}
             >
-              <div className={`${activeFilter === filter.type ? 'text-white' : 'text-[#5d7799]'}`}>
+              <div className={`${activeFilter === filter.type ? 'text-white' : 'text-[#5d7799]'} transition-colors`}>
                 {filter.icon}
               </div>
-              <span className="font-medium">{filter.label}</span>
+              <span className="font-medium text-sm">{filter.label}</span>
               {activeFilter === filter.type && filter.type !== 'all' && (
                 <X 
-                  className="h-4 w-4 ml-1 cursor-pointer" 
+                  className="h-3.5 w-3.5 ml-1 cursor-pointer hover:text-white/80 transition-colors" 
                   onClick={(e) => {
                     e.stopPropagation();
                     setActiveFilter('all');
@@ -529,7 +568,11 @@ const WorksHeader = memo(({
                 />
               )}
               {filter.type === 'all' && worksCount !== undefined && (
-                <span className="ml-1 px-1.5 py-0.5 bg-[#5d7799]/20 text-[#5d7799] rounded-full text-xs">
+                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                  activeFilter === filter.type 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-[#5d7799]/10 text-[#5d7799]'
+                }`}>
                   {worksCount}
                 </span>
               )}
@@ -704,6 +747,20 @@ const MyWorks = () => {
         }
         .animate-twinkle {
           animation: twinkle 2s infinite ease-in-out;
+        }
+        @keyframes soundwave {
+          0% {
+            transform: scaleY(0.5);
+          }
+          50% {
+            transform: scaleY(1);
+          }
+          100% {
+            transform: scaleY(0.5);
+          }
+        }
+        .animate-soundwave {
+          animation: soundwave 1s ease-in-out infinite;
         }
       `}</style>
     </BaseLayout>
