@@ -484,8 +484,8 @@ export default function ParentWorks() {
             .from('works')
             .select('id, type')
             .eq('profile_id', child.id);
-            
-          if (error) {
+        
+      if (error) {
             console.error(`${child.username}の作品統計取得エラー:`, error);
             continue;
           }
@@ -512,56 +512,56 @@ export default function ParentWorks() {
 
   // 選択した子供の作品を取得
   useEffect(() => {
-    const fetchWorks = async () => {
+  const fetchWorks = async () => {
       if (!selectedChildId) return;
-      
-      try {
-        setLoading(true);
+
+    try {
+      setLoading(true);
         setError(null);
 
         // 選択した子供の作品を取得
         const { data, error } = await supabase
-          .from('works')
-          .select('*')
+        .from('works')
+        .select('*')
           .eq('profile_id', selectedChildId)
-          .order('created_at', { ascending: false });
-
+        .order('created_at', { ascending: false });
+      
         if (error) throw error;
-        
-        // メディアタイプの正規化
+      
+      // メディアタイプの正規化
         const normalizedWorks = (data || []).map(work => {
-          // 元のメディアタイプを保存
-          const originalType = work.media_type;
-          let normalizedType = originalType;
-          
-          // 正規化ロジック
-          if (originalType === 'image') {
-            normalizedType = 'drawing';
-          } else if (originalType === 'video') {
-            normalizedType = 'photo';
-          }
-          
-          // typeフィールドがある場合はそれを優先
-          if (work.type) {
-            normalizedType = work.type;
-          }
-          
-          return {
-            ...work,
+        // 元のメディアタイプを保存
+        const originalType = work.media_type;
+        let normalizedType = originalType;
+        
+        // 正規化ロジック
+        if (originalType === 'image') {
+          normalizedType = 'drawing';
+        } else if (originalType === 'video') {
+          normalizedType = 'photo';
+        }
+        
+        // typeフィールドがある場合はそれを優先
+        if (work.type) {
+          normalizedType = work.type;
+        }
+        
+        return {
+          ...work,
             type: normalizedType,
             media_type: normalizedType
-          };
-        });
-        
+        };
+      });
+      
         setWorks(normalizedWorks);
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Unknown error'));
-      } finally {
-        setLoading(false);
-      }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchWorks();
+      fetchWorks();
   }, [selectedChildId]);
 
   // 作品をフィルタリング
@@ -582,33 +582,33 @@ export default function ParentWorks() {
     <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
       <h3 className="text-lg font-semibold text-[#5d7799] mb-4">お子様を選択</h3>
       <div className="flex flex-wrap gap-3">
-        {children.map(child => (
-          <button
-            key={child.id}
+                  {children.map(child => (
+                    <button
+                      key={child.id}
             onClick={() => setSelectedChildId(child.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
-              selectedChildId === child.id 
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                        selectedChildId === child.id 
                 ? 'bg-[#5d7799] text-white' 
                 : 'bg-gray-100 text-[#5d7799] hover:bg-gray-200'
-            }`}
-          >
-            {child.avatar_url ? (
-              <img 
-                src={child.avatar_url} 
-                alt={child.username} 
+                      }`}
+                    >
+                        {child.avatar_url ? (
+                          <img 
+                            src={child.avatar_url} 
+                            alt={child.username} 
                 className="w-6 h-6 rounded-full object-cover"
-              />
-            ) : (
+                          />
+                        ) : (
               <User className="w-5 h-5" />
             )}
             <span>{child.username}</span>
             {childrenStats[child.id] && (
               <span className="text-xs opacity-80">({childrenStats[child.id].total})</span>
             )}
-          </button>
-        ))}
-      </div>
-    </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
   );
 
   // 子供の作品統計コンポーネント
@@ -627,21 +627,21 @@ export default function ParentWorks() {
           <div className="bg-blue-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
             <div className="text-sm text-blue-700">合計</div>
-          </div>
+                </div>
           <div className="bg-purple-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-purple-600">{stats.drawing}</div>
             <div className="text-sm text-purple-700">お絵かき</div>
-          </div>
+                      </div>
           <div className="bg-green-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-green-600">{stats.photo}</div>
             <div className="text-sm text-green-700">写真</div>
-          </div>
+                          </div>
           <div className="bg-amber-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-amber-600">{stats.audio}</div>
             <div className="text-sm text-amber-700">音声</div>
-          </div>
-        </div>
-      </div>
+                        </div>
+                        </div>
+                          </div>
     );
   };
 
@@ -662,17 +662,17 @@ export default function ParentWorks() {
               />
               <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               {searchTerm && (
-                <button
+              <button
                   onClick={() => setSearchTerm('')}
                   className="absolute right-3 top-2.5"
                 >
                   <X className="h-5 w-5 text-gray-400" />
-                </button>
+              </button>
               )}
             </div>
             
             {/* フィルターボタン */}
-            <button
+                <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50"
             >
@@ -681,16 +681,16 @@ export default function ParentWorks() {
                 {filter === 'all' ? 'すべて' : 
                  filter === 'drawing' ? 'お絵かき' : 
                  filter === 'photo' ? '写真' : '音声'}
-              </span>
-            </button>
-          </div>
-        </div>
-        
+                    </span>
+                </button>
+              </div>
+                  </div>
+                  
         {/* フィルターメニュー */}
         {isFilterOpen && (
           <div className="bg-white rounded-xl shadow-md p-4 mb-6 flex gap-3">
             {['all', 'drawing', 'photo', 'audio'].map((type) => (
-              <button
+                        <button
                 key={type}
                 onClick={() => {
                   setFilter(type as WorkTypeFilter);
@@ -711,10 +711,10 @@ export default function ParentWorks() {
                    type === 'drawing' ? 'お絵かき' : 
                    type === 'photo' ? '写真' : '音声'}
                 </span>
-              </button>
-            ))}
-          </div>
-        )}
+                        </button>
+                      ))}
+                </div>
+              )}
         
         {/* 子供選択UI */}
         <ChildSelector />
@@ -731,19 +731,19 @@ export default function ParentWorks() {
           <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6">
             <p className="font-semibold">エラーが発生しました</p>
             <p className="text-sm">{error.message}</p>
-            <button
+                <button
               onClick={() => window.location.reload()}
               className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 rounded-full text-sm"
-            >
+                >
               再読み込み
-            </button>
-          </div>
+                </button>
+            </div>
         ) : filteredWorks.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-8 text-center">
             <div className="flex justify-center mb-4">
               <div className="bg-gray-100 p-4 rounded-full">
                 <ImageIcon className="h-10 w-10 text-gray-400" />
-              </div>
+          </div>
             </div>
             <h3 className="text-xl font-semibold text-gray-700 mb-2">
               {searchTerm ? '検索結果がありません' : '作品がありません'}
@@ -759,8 +759,8 @@ export default function ParentWorks() {
             {filteredWorks.map((work) => (
               <WorkCard key={work.id} work={work} />
             ))}
-          </div>
-        )}
+        </div>
+      )}
       </div>
     </div>
   );

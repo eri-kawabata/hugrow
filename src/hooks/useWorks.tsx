@@ -127,16 +127,22 @@ export function useWorks(prefetch = false) {
         // 子供モードでは選択された子供のプロファイルIDを使用
         if (profileIdToUse) {
           console.log('fetchWorks - 子供モード: 選択された子供の作品のみ表示 - profileId:', profileIdToUse);
+          // プロファイルIDによるフィルタリングを有効化
           query = query.eq('profile_id', profileIdToUse);
+          console.log('fetchWorks - プロファイルIDによるフィルタリングを有効化しました');
         } else {
           console.log('fetchWorks - 子供モード: 自分の作品のみ表示 - profileId:', profile.id);
+          // プロファイルIDによるフィルタリングを有効化
           query = query.eq('profile_id', profile.id);
+          console.log('fetchWorks - プロファイルIDによるフィルタリングを有効化しました');
         }
       } 
       // 親の場合は選択された子供の作品を表示
       else if (profile?.role === 'parent' && profileIdToUse) {
         console.log('fetchWorks - 親モード: 選択された子供の作品を表示 - profileId:', profileIdToUse);
+        // プロファイルIDによるフィルタリングを有効化
         query = query.eq('profile_id', profileIdToUse);
+        console.log('fetchWorks - プロファイルIDによるフィルタリングを有効化しました');
       }
       // プロファイルIDが指定されていない場合はユーザーIDでフィルタリング
       else if (user) {
@@ -144,24 +150,32 @@ export function useWorks(prefetch = false) {
         query = query.eq('user_id', user.id);
       }
 
+      console.log('fetchWorks - 実行するクエリ:', query);
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
+        console.error('fetchWorks - データ取得エラー:', error);
         throw error;
       }
 
+      console.log('fetchWorks - 取得した作品データ:', data);
       console.log('fetchWorks - 取得した作品数:', data?.length || 0);
       
       // 追加のフィルタリング - プロファイルIDが一致する作品のみを保持
       let filteredData = data || [];
+      
+      // プロファイルIDによるフィルタリングを有効化
       if (profileIdToUse) {
-        filteredData = filteredData.filter(work => work.profile_id === profileIdToUse);
-        console.log('fetchWorks - プロファイルIDでフィルタリング後の作品数:', filteredData.length);
-        
-        // フィルタリング後のデータが少ない場合は警告
-        if (filteredData.length < data?.length) {
-          console.warn(`fetchWorks - 警告: ${data?.length - filteredData.length}件の作品がフィルタリングされました`);
-          console.log('fetchWorks - フィルタリングされた作品:', data?.filter(work => work.profile_id !== profileIdToUse));
+        // データベースクエリですでにフィルタリングしているので、ここでの追加フィルタリングは不要
+        // ただし、念のため一致しない作品がないか確認
+        const nonMatchingWorks = filteredData.filter(work => work.profile_id !== profileIdToUse);
+        if (nonMatchingWorks.length > 0) {
+          console.warn(`fetchWorks - 警告: ${nonMatchingWorks.length}件の作品がプロファイルIDと一致しません`);
+          console.log('fetchWorks - 一致しない作品:', nonMatchingWorks);
+          
+          // 一致しない作品を除外
+          filteredData = filteredData.filter(work => work.profile_id === profileIdToUse);
+          console.log('fetchWorks - フィルタリング後の作品数:', filteredData.length);
         }
       }
       
@@ -193,44 +207,60 @@ export function useWorks(prefetch = false) {
       // プロファイルIDを決定
       let profileId = null;
       
+      // 選択中の子供プロファイルIDを取得（ローカルストレージから）
+      const selectedChildProfileId = localStorage.getItem('selectedChildProfileId');
+      
       // 子供の場合は自分のプロファイルID
       if (profile?.role === 'child') {
         profileId = profile.id;
+        console.log('createWork - 子供モード: 自分のプロファイルIDを使用:', profileId);
       } 
       // 親の場合は選択された子供のプロファイルID
       else if (profile?.role === 'parent') {
-        profileId = selectedChildProfileId;
+        if (selectedChildProfileId) {
+          profileId = selectedChildProfileId;
+          console.log('createWork - 親モード: ローカルストレージから選択された子供のプロファイルIDを使用:', profileId);
+        } else {
+          console.warn('createWork - 警告: 親モードで選択された子供のプロファイルIDがありません');
+        }
       }
 
       if (!profileId) {
-        throw new Error('プロファイルIDが取得できません');
+        throw new Error('プロファイルIDが取得できません。子供を選択してください。');
       }
 
       console.log('createWork - 使用するプロファイルID:', profileId);
+      console.log('createWork - 現在のユーザー:', user.id);
+
+      const workData = {
+        ...work,
+        user_id: user.id,
+        profile_id: profileId,
+        status: 'published',
+        visibility: 'private',
+        metadata: {}
+      };
+      
+      console.log('createWork - 保存するデータ:', workData);
 
       const { data, error } = await supabase
         .from('works')
-        .insert([
-          {
-            ...work,
-            user_id: user.id,
-            profile_id: profileId,
-            status: 'published',
-            visibility: 'private',
-            metadata: {}
-          }
-        ])
+        .insert([workData])
         .select()
         .single();
 
       if (error) {
+        console.error('createWork - エラー:', error);
+        console.error('createWork - エラーの詳細:', error.details, error.hint, error.code);
         throw error;
       }
 
+      console.log('createWork - 保存成功:', data);
       setWorks(prev => [data, ...prev]);
       setLoading(false);
       return data;
     } catch (error: any) {
+      console.error('createWork - 例外発生:', error);
       handleError(error);
       return null;
     }

@@ -137,10 +137,37 @@ export const CameraCapture = () => {
       
       console.log('【デバッグ】写真保存時のファイルパス:', filePath);
 
+      // ユーザーフォルダの存在確認と作成
+      try {
+        // フォルダの存在確認
+        const { data: folderData, error: folderError } = await supabase.storage
+          .from('works')
+          .list(effectiveUserId);
+          
+        // フォルダが存在しない場合は作成
+        if (folderError || !folderData || folderData.length === 0) {
+          console.log('ユーザーフォルダが存在しないため作成します');
+          // 空のダミーファイルをアップロードしてフォルダを作成
+          const dummyFile = new Blob([''], { type: 'text/plain' });
+          const dummyPath = `${effectiveUserId}/.folder`;
+          await supabase.storage.from('works').upload(dummyPath, dummyFile);
+        }
+      } catch (folderError) {
+        console.warn('フォルダ確認エラー:', folderError);
+        // エラーが発生しても続行（アップロード時に自動的にフォルダが作成される可能性がある）
+      }
+
       // 画像サイズの最適化
       const optimizedBlob = await new Promise<Blob>((resolve, reject) => {
         const img = new globalThis.Image();
+        
+        // タイムアウト設定
+        const timeout = setTimeout(() => {
+          reject(new Error('画像の読み込みがタイムアウトしました'));
+        }, 10000); // 10秒でタイムアウト
+        
         img.onload = () => {
+          clearTimeout(timeout);
           const canvas = document.createElement('canvas');
           const MAX_WIDTH = 1280;
           const MAX_HEIGHT = 720;
@@ -169,24 +196,24 @@ export const CameraCapture = () => {
           }
           ctx.drawImage(img, 0, 0, width, height);
 
+          // 品質を調整して最適化
           canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error('Failed to create blob from canvas'));
-          }, 'image/jpeg', 0.8);
+            if (blob) {
+              console.log(`最適化後の画像サイズ: ${(blob.size / 1024).toFixed(2)}KB`);
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to create blob from canvas'));
+            }
+          }, 'image/jpeg', 0.75); // 品質を0.8から0.75に下げて最適化
         };
-        img.onerror = () => reject(new Error('Failed to load image'));
+        
+        img.onerror = () => {
+          clearTimeout(timeout);
+          reject(new Error('Failed to load image'));
+        };
+        
         img.src = dataUrl;
       });
-
-      // アップロード前にストレージの状態確認
-      const { error: storageError } = await supabase.storage
-        .from('works')
-        .list(`${effectiveUserId}`);
-
-      if (storageError) {
-        console.error('Storage check error:', storageError);
-        throw new Error('ストレージの確認に失敗しました');
-      }
 
       // アップロード処理
       const { error: uploadError } = await supabase.storage
@@ -194,12 +221,20 @@ export const CameraCapture = () => {
         .upload(filePath, optimizedBlob, {
           cacheControl: '3600',
           contentType: 'image/jpeg',
-          upsert: false
+          upsert: true // falseからtrueに変更して上書きを許可
         });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        throw new Error('画像のアップロードに失敗しました');
+        
+        // エラーの種類に応じた処理
+        if (uploadError.message.includes('storage/object-not-found')) {
+          throw new Error('ストレージバケットが見つかりません。管理者に連絡してください。');
+        } else if (uploadError.message.includes('storage/unauthorized')) {
+          throw new Error('ストレージへのアクセス権限がありません。再ログインしてください。');
+        } else {
+          throw new Error('画像のアップロードに失敗しました: ' + uploadError.message);
+        }
       }
 
       // 公開URLの取得
@@ -214,38 +249,60 @@ export const CameraCapture = () => {
       // プロファイルIDを取得
       let profileId = null;
       
-      // 子供のプロファイルIDを取得
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', effectiveUserId)
-        .single();
-        
-      if (profileError) {
-        console.error('プロファイル取得エラー:', profileError);
-      } else if (profileData) {
-        profileId = profileData.id;
-        console.log('【デバッグ】取得したプロファイルID:', profileId);
+      // 選択中の子供プロファイルIDを取得（ローカルストレージから）
+      const selectedChildProfileId = localStorage.getItem('selectedChildProfileId');
+      
+      if (selectedChildProfileId) {
+        // ローカルストレージに選択中の子供プロファイルIDがある場合はそれを使用
+        profileId = selectedChildProfileId;
+        console.log('【デバッグ】ローカルストレージから取得したプロファイルID:', profileId);
+      } else {
+        // ローカルストレージにない場合はデータベースから取得
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', effectiveUserId)
+          .single();
+          
+        if (profileError) {
+          console.error('プロファイル取得エラー:', profileError);
+        } else if (profileData) {
+          profileId = profileData.id;
+          console.log('【デバッグ】データベースから取得したプロファイルID:', profileId);
+        }
+      }
+
+      if (!profileId) {
+        console.error('プロファイルIDが取得できませんでした');
+        throw new Error('プロファイルIDが取得できませんでした。再ログインしてください。');
       }
 
       // データベースに保存
-      const { error: dbError } = await supabase
+      console.log('データベース保存開始 - ユーザーID:', effectiveUserId, 'プロファイルID:', profileId);
+      const workData = {
+        title: title.trim(),
+        description: description.trim() || null,
+        content_url: publicUrl,
+        type: 'photo',
+        user_id: effectiveUserId,
+        profile_id: profileId, // プロファイルIDを設定
+        created_at: new Date().toISOString()
+      };
+      console.log('保存するデータ:', workData);
+      
+      const { data: insertedData, error: dbError } = await supabase
         .from('works')
-        .insert([{
-          title: title.trim(),
-          description: description.trim() || null,
-          content_url: publicUrl,
-          type: 'photo',
-          user_id: effectiveUserId,
-          profile_id: profileId, // プロファイルIDを設定
-          created_at: new Date().toISOString()
-        }]);
+        .insert([workData])
+        .select();
 
       if (dbError) {
         console.error('Database error:', dbError);
-        throw new Error('データベースの保存に失敗しました');
+        console.error('エラーの詳細:', dbError.details, dbError.hint, dbError.code);
+        console.error('保存しようとしたデータ:', workData);
+        throw new Error('データベースの保存に失敗しました: ' + dbError.message);
       }
 
+      console.log('データベース保存成功:', insertedData);
       toast.success('しゃしんをほぞんしたよ！', {
         icon: '✨',
         duration: 3000

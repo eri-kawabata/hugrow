@@ -200,24 +200,35 @@ export function AudioRecorder() {
 
       console.log('Public URL:', publicUrl);
       
-      // 子供のユーザーIDはすでに上で宣言されているので、ここでは再宣言しない
-      // const effectiveUserId = localStorage.getItem('selectedChildUserId') || user.id;
-
       // プロファイルIDを取得
       let profileId = null;
       
-      // 子供のプロファイルIDを取得
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', effectiveUserId)
-        .single();
-        
-      if (profileError) {
-        console.error('プロファイル取得エラー:', profileError);
-      } else if (profileData) {
-        profileId = profileData.id;
-        console.log('【デバッグ】取得したプロファイルID:', profileId);
+      // 選択中の子供プロファイルIDを取得（ローカルストレージから）
+      const selectedChildProfileId = localStorage.getItem('selectedChildProfileId');
+      
+      if (selectedChildProfileId) {
+        // ローカルストレージに選択中の子供プロファイルIDがある場合はそれを使用
+        profileId = selectedChildProfileId;
+        console.log('【デバッグ】ローカルストレージから取得したプロファイルID:', profileId);
+      } else {
+        // ローカルストレージにない場合はデータベースから取得
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', effectiveUserId)
+          .single();
+          
+        if (profileError) {
+          console.error('プロファイル取得エラー:', profileError);
+        } else if (profileData) {
+          profileId = profileData.id;
+          console.log('【デバッグ】データベースから取得したプロファイルID:', profileId);
+        }
+      }
+
+      if (!profileId) {
+        console.error('プロファイルIDが取得できませんでした');
+        throw new Error('プロファイルIDが取得できませんでした。再ログインしてください。');
       }
       
       // データベースに記録

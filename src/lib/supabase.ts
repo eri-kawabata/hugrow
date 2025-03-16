@@ -59,6 +59,41 @@ console.log('Supabaseクライアント初期化完了');
         console.error('バケット作成中にエラーが発生:', e);
       }
     }
+
+    // worksバケットが存在しない場合は作成を試みる
+    if (!buckets?.some(bucket => bucket.name === 'works')) {
+      console.log('worksバケットが見つからないため作成を試みます');
+      
+      try {
+        const { data, error: createError } = await supabase.storage.createBucket('works', {
+          public: true
+        });
+        
+        if (createError) {
+          console.error('worksバケットの作成に失敗:', createError);
+        } else {
+          console.log('worksバケットを作成しました:', data);
+          
+          // worksバケット用のRLSポリシーを設定
+          try {
+            // バケットが作成できたら、フォルダ作成を試みる（認証済みの場合）
+            const { data: authData } = await supabase.auth.getSession();
+            if (authData.session?.user?.id) {
+              const userId = authData.session.user.id;
+              // ユーザーフォルダを作成（空ファイルをアップロードして削除する方法で）
+              const dummyFile = new Blob([''], { type: 'text/plain' });
+              const dummyPath = `${userId}/.folder`;
+              await supabase.storage.from('works').upload(dummyPath, dummyFile);
+              console.log(`ユーザーフォルダを初期化: ${userId}`);
+            }
+          } catch (folderError) {
+            console.error('フォルダ初期化エラー:', folderError);
+          }
+        }
+      } catch (e) {
+        console.error('バケット作成中にエラーが発生:', e);
+      }
+    }
   } catch (e) {
     console.error('ストレージ初期化中にエラーが発生:', e);
   }

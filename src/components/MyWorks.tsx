@@ -592,9 +592,15 @@ const MyWorks = () => {
   const childFilteredWorks = useMemo(() => {
     if (!selectedChildProfileId) return filteredWorks;
     
+    // プロファイルIDによるフィルタリングを有効化
     const filtered = filteredWorks.filter(work => work.profile_id === selectedChildProfileId);
     console.log('MyWorks - 子供プロファイルIDでフィルタリング:', selectedChildProfileId);
     console.log('MyWorks - フィルタリング前の作品数:', filteredWorks.length, 'フィルタリング後の作品数:', filtered.length);
+    
+    // フィルタリングされた作品のプロファイルIDをログに出力（デバッグ用）
+    if (filtered.length > 0) {
+      console.log('MyWorks - フィルタリング後の作品のプロファイルID:', filtered.map(work => work.profile_id));
+    }
     
     return filtered;
   }, [filteredWorks, selectedChildProfileId]);
