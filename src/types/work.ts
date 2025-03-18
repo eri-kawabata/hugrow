@@ -8,6 +8,7 @@ export interface Work {
   type: 'drawing' | 'audio' | 'photo';
   thumbnail_url?: string;
   user_id: string;
+  profile_id: string;
   created_at: string;
   updated_at: string;
 } 

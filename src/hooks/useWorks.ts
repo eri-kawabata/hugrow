@@ -22,7 +22,7 @@ const getSafeMediaUrl = (url?: string): string | undefined => {
 
 export function useWorks() {
   const [works, setWorks] = useState<Work[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   // サムネイルURLを生成する関数
@@ -43,10 +43,16 @@ export function useWorks() {
     return undefined;
   };
 
-  const fetchWorks = useCallback(async (userId?: string) => {
+  const fetchWorks = useCallback(async (userId?: string, profileId?: string) => {
     try {
       setLoading(true);
       setError(null);
+
+      // プロファイルIDが指定されていない場合は空の配列を返す
+      if (!profileId) {
+        setWorks([]);
+        return;
+      }
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('認証が必要です');
@@ -64,6 +70,9 @@ export function useWorks() {
         // ユーザーIDが指定されていない場合は、現在のユーザーの作品のみを取得
         query = query.eq('user_id', user.id);
       }
+
+      // プロファイルIDでフィルタリング
+      query = query.eq('profile_id', profileId);
 
       const { data, error } = await query;
 
@@ -153,9 +162,5 @@ export function useWorks() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchWorks();
-  }, [fetchWorks]);
-
-  return { works, loading, error, fetchWorks, deleteWork };
+  return { works, setWorks, loading, error, fetchWorks, deleteWork };
 } 

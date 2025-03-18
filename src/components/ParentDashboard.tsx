@@ -361,68 +361,115 @@ export const ParentDashboard: React.FC = () => {
   }, [children]);
 
   // 統計データを取得する関数
-  const fetchStats = async (childId: string) => {
+  const fetchAllChildrenStats = async () => {
+    if (!children.length) return;
+    
+    const stats: {[key: string]: {totalWorks: number, totalEmotions: number, totalLearning: number}} = {};
+    
     try {
-      let worksCount = 0;
-      let emotionsCount = 0;
-      let learningCount = 0;
-
-      // 作品の総数を取得
-      try {
-        const { count, error } = await supabase
+      // 各子供のprofile_idを配列に格納
+      const profileIds = children.map(child => child.id);
+      
+      // 全ての子供のデータを一度に取得（IN句を使用）
+      const [worksResult, emotionsResult, learningResult] = await Promise.all([
+        supabase
           .from('works')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', childId);
-
-        if (error) {
-          handleSupabaseError(error, '作品統計の取得に失敗しました');
-        } else if (count !== null) {
-          worksCount = count;
-        }
-      } catch (worksError) {
-        console.error('作品統計の取得中にエラーが発生しました:', worksError);
-      }
-
-      // 感情記録の総数を取得
-      try {
-        const { count, error } = await supabase
+          .select('profile_id', { count: 'exact' })
+          .in('profile_id', profileIds),
+        supabase
           .from('sel_responses')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', childId);
-
-        if (error) {
-          handleSupabaseError(error, '感情記録統計の取得に失敗しました');
-        } else if (count !== null) {
-          emotionsCount = count;
-        }
-      } catch (emotionsError) {
-        console.error('感情記録統計の取得中にエラーが発生しました:', emotionsError);
-      }
-
-      // 学習活動の総数を取得
-      try {
-        const { count, error } = await supabase
+          .select('profile_id', { count: 'exact' })
+          .in('profile_id', profileIds),
+        supabase
           .from('learning_activities')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', childId);
-        
-        if (error) {
-          handleSupabaseError(error, '学習統計の取得に失敗しました');
-        } else if (count !== null) {
-          learningCount = count;
-        }
-      } catch (learningError) {
-        console.error('学習統計の取得中にエラーが発生しました:', learningError);
+          .select('profile_id', { count: 'exact' })
+          .in('profile_id', profileIds)
+      ]);
+
+      // 各子供の統計を初期化
+      children.forEach(child => {
+        stats[child.id] = {
+          totalWorks: 0,
+          totalEmotions: 0,
+          totalLearning: 0
+        };
+      });
+
+      // データの集計
+      if (worksResult.data) {
+        worksResult.data.forEach(work => {
+          if (work.profile_id && stats[work.profile_id]) {
+            stats[work.profile_id].totalWorks++;
+          }
+        });
       }
 
-      setStats({
-        totalWorks: worksCount,
-        totalEmotions: emotionsCount,
-        totalLearning: learningCount
-      });
+      if (emotionsResult.data) {
+        emotionsResult.data.forEach(emotion => {
+          if (emotion.profile_id && stats[emotion.profile_id]) {
+            stats[emotion.profile_id].totalEmotions++;
+          }
+        });
+      }
+
+      if (learningResult.data) {
+        learningResult.data.forEach(learning => {
+          if (learning.profile_id && stats[learning.profile_id]) {
+            stats[learning.profile_id].totalLearning++;
+          }
+        });
+      }
+
+      console.log('全ての子供の統計データ:', stats);
+      setChildrenStats(stats);
+
     } catch (error) {
       console.error('統計データの取得中にエラーが発生しました:', error);
-      // エラー時はデフォルト値を設定
+      toast.error('統計データの取得に失敗しました');
+      
+      // エラー時は全ての子供の統計を0に設定
+      children.forEach(child => {
+        stats[child.id] = {
+          totalWorks: 0,
+          totalEmotions: 0,
+          totalLearning: 0
+        };
+      });
+      setChildrenStats(stats);
+    }
+  };
+
+  const fetchStats = async (childId: string) => {
+    if (!childId) return;
+    
+    try {
+      const [worksResult, emotionsResult, learningResult] = await Promise.all([
+        supabase
+          .from('works')
+          .select('*', { count: 'exact' })
+          .eq('profile_id', childId),
+        supabase
+          .from('sel_responses')
+          .select('*', { count: 'exact' })
+          .eq('profile_id', childId),
+        supabase
+          .from('learning_activities')
+          .select('*', { count: 'exact' })
+          .eq('profile_id', childId)
+      ]);
+
+      const stats = {
+        totalWorks: worksResult.count || 0,
+        totalEmotions: emotionsResult.count || 0,
+        totalLearning: learningResult.count || 0
+      };
+
+      console.log('個別の統計データ:', stats);
+      setStats(stats);
+
+    } catch (error) {
+      console.error('統計の取得中にエラーが発生しました:', error);
+      toast.error('統計データの取得に失敗しました');
       setStats({
         totalWorks: 0,
         totalEmotions: 0,
@@ -444,7 +491,7 @@ export const ParentDashboard: React.FC = () => {
         const { data, error } = await supabase
           .from('works')
           .select('*')
-          .eq('user_id', childId)
+          .eq('profile_id', childId)
           .order('created_at', { ascending: false })
           .limit(5);
 
@@ -468,7 +515,7 @@ export const ParentDashboard: React.FC = () => {
             created_at,
             note
           `)
-          .eq('user_id', childId)
+          .eq('profile_id', childId)
           .order('created_at', { ascending: false })
           .limit(5);
 
@@ -487,7 +534,7 @@ export const ParentDashboard: React.FC = () => {
         const { data, error } = await supabase
           .from('learning_activities')
           .select('*')
-          .eq('user_id', childId)
+          .eq('profile_id', childId)
           .order('created_at', { ascending: false })
           .limit(5);
           
@@ -548,86 +595,6 @@ export const ParentDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // 全ての子供の統計データを取得する関数
-  const fetchAllChildrenStats = async () => {
-    if (!children.length) return;
-    
-    const stats: {[key: string]: {totalWorks: number, totalEmotions: number, totalLearning: number}} = {};
-    
-    for (const child of children) {
-      try {
-        let worksCount = 0;
-        let emotionsCount = 0;
-        let learningCount = 0;
-
-        // 作品の総数を取得
-        try {
-          const { count, error } = await supabase
-            .from('works')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', child.id);
-
-          if (error) {
-            handleSupabaseError(error, `${child.username}の作品統計の取得に失敗しました`);
-          } else if (count !== null) {
-            worksCount = count;
-          }
-        } catch (worksError) {
-          console.error(`${child.username}の作品統計の取得中にエラーが発生しました:`, worksError);
-        }
-
-        // 感情記録の総数を取得
-        try {
-          const { count, error } = await supabase
-            .from('sel_responses')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', child.id);
-
-          if (error) {
-            handleSupabaseError(error, `${child.username}の感情記録統計の取得に失敗しました`);
-          } else if (count !== null) {
-            emotionsCount = count;
-          }
-        } catch (emotionsError) {
-          console.error(`${child.username}の感情記録統計の取得中にエラーが発生しました:`, emotionsError);
-        }
-
-        // 学習活動の総数を取得
-        try {
-          const { count, error } = await supabase
-            .from('learning_activities')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', child.id);
-          
-          if (error) {
-            handleSupabaseError(error, `${child.username}の学習統計の取得に失敗しました`);
-          } else if (count !== null) {
-            learningCount = count;
-          }
-        } catch (learningError) {
-          console.error(`${child.username}の学習統計の取得中にエラーが発生しました:`, learningError);
-        }
-
-        stats[child.id] = {
-          totalWorks: worksCount,
-          totalEmotions: emotionsCount,
-          totalLearning: learningCount
-        };
-        
-      } catch (error) {
-        console.error(`${child.username}の統計データの取得中にエラーが発生しました:`, error);
-        stats[child.id] = {
-          totalWorks: 0,
-          totalEmotions: 0,
-          totalLearning: 0
-        };
-      }
-    }
-    
-    console.log('全ての子供の統計データ:', stats);
-    setChildrenStats(stats);
   };
 
   // 子供を切り替える関数

@@ -545,7 +545,7 @@ WorksHeader.displayName = 'WorksHeader';
 
 // メインコンポーネント
 const MyWorks = () => {
-  const { works, loading, error, createWork, deleteWork } = useWorks(true);
+  const { works, loading, error, fetchWorks, setWorks } = useWorks();
   const [selectedType, setSelectedType] = useState<WorkTypeFilter>('all');
   const [selectedChildProfileId, setSelectedChildProfileId] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -558,20 +558,26 @@ const MyWorks = () => {
       if (e.key === 'selectedChildProfileId' || e.key === 'selectedChildId') {
         const newProfileId = e.newValue || localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
         console.log('MyWorks - ローカルストレージから子供プロファイルID変更検知:', newProfileId);
-        setSelectedChildProfileId(newProfileId);
+        if (newProfileId) {
+          setSelectedChildProfileId(newProfileId);
+        }
       }
     };
 
     const handleChildChange = () => {
       const newProfileId = localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
       console.log('MyWorks - 子供変更イベント検知 - profileId:', newProfileId);
-      setSelectedChildProfileId(newProfileId);
+      if (newProfileId) {
+        setSelectedChildProfileId(newProfileId);
+      }
     };
 
     // 初期値を設定
     const initialProfileId = localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
     console.log('MyWorks - 初期値設定 - profileId:', initialProfileId);
-    setSelectedChildProfileId(initialProfileId);
+    if (initialProfileId) {
+      setSelectedChildProfileId(initialProfileId);
+    }
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('selectedChildChanged', handleChildChange);
@@ -581,6 +587,17 @@ const MyWorks = () => {
       window.removeEventListener('selectedChildChanged', handleChildChange);
     };
   }, []);
+
+  // プロファイルIDが変更されたら作品を再取得
+  useEffect(() => {
+    if (selectedChildProfileId) {
+      console.log('MyWorks - 作品を取得します - profileId:', selectedChildProfileId);
+      fetchWorks(undefined, selectedChildProfileId);
+    } else {
+      console.log('MyWorks - プロファイルIDが設定されていないため、作品を取得しません');
+      fetchWorks(undefined, undefined);  // プロファイルIDがない場合は空の配列を返すように修正
+    }
+  }, [selectedChildProfileId, fetchWorks]);
 
   // 作品を種類でフィルタリング
   const filteredWorks = useMemo(() => {
