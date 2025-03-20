@@ -36,7 +36,7 @@ export function useWorks() {
       // 画像の場合はURLを正規化して返す
       return getSafeMediaUrl(mediaUrl);
     } else if (work.type === 'audio') {
-      // 音声の場合はデフォルトのサムネイルを返す
+      // 音声の場合は音声用のデフォルトサムネイルを返す
       return undefined;
     }
     
@@ -102,12 +102,18 @@ export function useWorks() {
         // media_urlが相対パスの場合、完全なURLに変換
         mediaUrl = getSafeMediaUrl(mediaUrl);
         
+        // サムネイルURLの設定
+        let thumbnailUrl = mediaUrl;
+        if (normalizedType === 'audio') {
+          thumbnailUrl = undefined; // 音声の場合はデフォルト表示を使用
+        }
+        
         return {
           ...work,
           type: normalizedType,
           media_type: normalizedType,
           media_url: mediaUrl,
-          thumbnail_url: mediaUrl
+          thumbnail_url: thumbnailUrl
         };
       });
       

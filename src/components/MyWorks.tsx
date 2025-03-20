@@ -143,89 +143,58 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
   const renderThumbnail = () => {
     const thumbnailHeight = 'h-40';
     
-    // 画像URLがある場合
-    if (work.thumbnail_url) {
-      return (
-        <div className={`${thumbnailHeight} overflow-hidden bg-gray-100 relative`}>
-          <img 
-            src={work.thumbnail_url} 
-            alt={work.title || '作品'} 
-            className={`w-full h-full object-cover transition-transform duration-300 ${isHovered ? 'scale-110' : 'scale-100'}`}
-          />
-          {isHovered && (
-            <div className="absolute inset-0">
-              {[...Array(8)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
-                  style={{
-                    top: `${Math.random() * 100}%`,
-                    left: `${Math.random() * 100}%`,
-                    animationDelay: `${Math.random() * 2}s`,
-                    animationDuration: `${1 + Math.random() * 2}s`
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-    
     // タイプに応じたデフォルト表示
     switch (workType) {
-      case 'drawing':
-        return (
-          <div className={`${thumbnailHeight} bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
-            <Palette className="h-16 w-16 text-indigo-300" />
-            {isHovered && (
-              <div className="absolute inset-0">
-                {[...Array(8)].map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
-                    style={{
-                      top: `${Math.random() * 100}%`,
-                      left: `${Math.random() * 100}%`,
-                      animationDelay: `${Math.random() * 2}s`,
-                      animationDuration: `${1 + Math.random() * 2}s`
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
       case 'audio':
         return (
-          <div className={`${thumbnailHeight} bg-gradient-to-br from-purple-50 to-pink-100 flex flex-col items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative overflow-hidden`}>
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-50/80 to-pink-100/80 backdrop-blur-sm"></div>
-            <div className="relative z-10 flex flex-col items-center gap-3">
-              <Mic className="h-12 w-12 text-pink-400" />
-              <div className="flex space-x-2">
-                {[...Array(3)].map((_, i) => (
+          <div className={`${thumbnailHeight} bg-gradient-to-br from-purple-400/20 via-pink-300/20 to-indigo-300/20 flex flex-col items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative overflow-hidden rounded-t-2xl`}>
+            {/* 背景のグラデーションアニメーション */}
+            <div className="absolute inset-0">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-indigo-500/10 animate-gradient" />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/60 to-transparent" />
+            </div>
+
+            {/* 波形アニメーション */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex space-x-1.5 h-24 items-center">
+                {[...Array(8)].map((_, i) => (
                   <div
                     key={i}
-                    className="w-2 h-8 bg-pink-400 rounded-full animate-soundwave"
+                    className="w-1.5 bg-gradient-to-t from-purple-500 to-pink-400 rounded-full transform origin-bottom"
                     style={{
-                      animationDelay: `${i * 0.2}s`,
-                      transform: `scaleY(${Math.random() * 0.5 + 0.5})`
+                      height: `${Math.sin((i / 8) * Math.PI) * 100}%`,
+                      animation: `wave 1.5s ease-in-out infinite`,
+                      animationDelay: `${i * 0.1}s`,
+                      opacity: 0.7
                     }}
                   />
                 ))}
               </div>
             </div>
+
+            {/* オーバーレイとアイコン */}
+            <div className="relative z-10 flex flex-col items-center gap-3">
+              <div className="p-3 bg-white/30 rounded-full backdrop-blur-sm">
+                <Mic className="h-8 w-8 text-purple-600/90" />
+              </div>
+              <div className="text-sm font-medium text-purple-900/80 bg-white/50 px-3 py-1 rounded-full backdrop-blur-sm">
+                音声
+              </div>
+            </div>
+
+            {/* キラキラエフェクト */}
             {isHovered && (
               <div className="absolute inset-0">
                 {[...Array(12)].map((_, i) => (
                   <div 
                     key={i} 
-                    className="absolute w-1.5 h-1.5 bg-pink-300 rounded-full animate-twinkle"
+                    className="absolute w-1 h-1 bg-white rounded-full animate-twinkle"
                     style={{
                       top: `${Math.random() * 100}%`,
                       left: `${Math.random() * 100}%`,
                       animationDelay: `${Math.random() * 2}s`,
-                      animationDuration: `${1 + Math.random() * 2}s`
+                      animationDuration: `${1 + Math.random() * 2}s`,
+                      opacity: 0.8
                     }}
                   />
                 ))}
@@ -233,32 +202,59 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
             )}
           </div>
         );
+      
+      case 'drawing':
       case 'photo':
-        return (
-          <div className={`${thumbnailHeight} bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
-            <Camera className="h-16 w-16 text-emerald-300" />
-            {isHovered && (
-              <div className="absolute inset-0">
-                {[...Array(8)].map((_, i) => (
-                  <div 
-                    key={i} 
-                    className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
-                    style={{
-                      top: `${Math.random() * 100}%`,
-                      left: `${Math.random() * 100}%`,
-                      animationDelay: `${Math.random() * 2}s`,
-                      animationDuration: `${1 + Math.random() * 2}s`
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
       default:
+        // 画像URLがある場合はそれを表示
+        if (work.thumbnail_url) {
+          return (
+            <div className={`${thumbnailHeight} overflow-hidden bg-gray-100 relative`}>
+              <img 
+                src={work.thumbnail_url} 
+                alt={work.title || '作品'} 
+                className={`w-full h-full object-cover transition-transform duration-300 ${isHovered ? 'scale-110' : 'scale-100'}`}
+              />
+              {isHovered && (
+                <div className="absolute inset-0">
+                  {[...Array(8)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full animate-twinkle"
+                      style={{
+                        top: `${Math.random() * 100}%`,
+                        left: `${Math.random() * 100}%`,
+                        animationDelay: `${Math.random() * 2}s`,
+                        animationDuration: `${1 + Math.random() * 2}s`
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        }
+        
+        // デフォルトのアイコン表示
+        const defaultIcon = workType === 'drawing' ? (
+          <Palette className="h-16 w-16 text-indigo-300" />
+        ) : workType === 'photo' ? (
+          <Camera className="h-16 w-16 text-emerald-300" />
+        ) : (
+          <Image className="h-16 w-16 text-gray-300" />
+        );
+        
+        const defaultGradient = workType === 'drawing' ? (
+          'from-blue-50 to-indigo-100'
+        ) : workType === 'photo' ? (
+          'from-green-50 to-emerald-100'
+        ) : (
+          'from-gray-50 to-gray-200'
+        );
+        
         return (
-          <div className={`${thumbnailHeight} bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
-            <Image className="h-16 w-16 text-gray-300" />
+          <div className={`${thumbnailHeight} bg-gradient-to-br ${defaultGradient} flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-105' : 'scale-100'} relative`}>
+            {defaultIcon}
             {isHovered && (
               <div className="absolute inset-0">
                 {[...Array(8)].map((_, i) => (
@@ -847,27 +843,25 @@ const MyWorks = () => {
       </div>
 
       {/* カスタムアニメーションのためのスタイル */}
-      <style jsx>{`
+      <style>{`
+        @keyframes wave {
+          0% { transform: scaleY(0.3); }
+          50% { transform: scaleY(1); }
+          100% { transform: scaleY(0.3); }
+        }
         @keyframes twinkle {
-          0%, 100% { opacity: 0.2; transform: scale(0.8); }
+          0% { opacity: 0.2; transform: scale(0.8); }
           50% { opacity: 1; transform: scale(1.2); }
+          100% { opacity: 0.2; transform: scale(0.8); }
         }
-        .animate-twinkle {
-          animation: twinkle 2s infinite ease-in-out;
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
-        @keyframes soundwave {
-          0% {
-            transform: scaleY(0.5);
-          }
-          50% {
-            transform: scaleY(1);
-          }
-          100% {
-            transform: scaleY(0.5);
-          }
-        }
-        .animate-soundwave {
-          animation: soundwave 1s ease-in-out infinite;
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 8s ease infinite;
         }
       `}</style>
     </BaseLayout>
