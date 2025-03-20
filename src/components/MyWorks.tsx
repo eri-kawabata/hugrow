@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle, Award, Heart, Mic } from 'lucide-react';
+import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle, Award, Heart, Mic, Eye, Calendar } from 'lucide-react';
 import { useWorks } from '@/hooks/useWorks';
 import type { Work, Badge } from '@/types/work';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
@@ -115,9 +115,33 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
     loadFavoriteAndFeedbackStatus();
   }, [work.id, user]);
   
+  // お気に入り状態を読み込む
+  useEffect(() => {
+    const loadFavoriteStatus = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('work_id', work.id)
+          .single();
+          
+        if (!error && data) {
+          setIsFavorite(true);
+        }
+      } catch (error) {
+        console.error('お気に入り状態の読み込みに失敗しました:', error);
+      }
+    };
+    
+    loadFavoriteStatus();
+  }, [work.id, user]);
+  
   // サムネイル表示
   const renderThumbnail = () => {
-    const thumbnailHeight = 'h-48';
+    const thumbnailHeight = 'h-40';
     
     // 画像URLがある場合
     if (work.thumbnail_url) {
@@ -325,7 +349,10 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ 
+        scale: 1.02,
+        transition: { duration: 0.2 }
+      }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleCardClick}
@@ -335,18 +362,18 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       <div className="relative">
         {renderThumbnail()}
         
-        {/* フィードバックバッジ - より目立つように修正 */}
+        {/* フィードバックバッジ */}
         {hasFeedback && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-3 left-3 z-20"
+            className="absolute top-2 right-2 z-20"
           >
             <motion.div
               whileHover={{ scale: 1.1 }}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 border-2 border-white"
+              className="bg-gradient-to-r from-purple-500 to-blue-500 px-2 py-1 rounded-full shadow-lg flex items-center gap-1.5 border border-white/50"
             >
-              <MessageCircle className="h-4 w-4 text-white" />
+              <MessageCircle className="h-3.5 w-3.5 text-white" />
               <span className="text-xs font-medium text-white">メッセージ</span>
             </motion.div>
           </motion.div>
@@ -373,67 +400,92 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       </div>
       
       {/* コンテンツ部分 */}
-      <div className="p-4">
-        <div className="min-h-[4.5rem]">
+      <div className="p-3">
+        <div className="min-h-[3rem]">
           <motion.h2 
-            className="font-bold text-lg mb-2 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
+            className="font-bold text-base mb-1 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
           >
             {work.title || 'タイトルなし'}
           </motion.h2>
           
           {work.description && (
-            <p className="text-gray-600 text-sm line-clamp-2">{work.description}</p>
+            <p className="text-gray-600 text-xs line-clamp-1">{work.description}</p>
           )}
         </div>
         
-        {/* フィードバック表示を修正 */}
+        {/* フィードバック表示 */}
         {hasFeedback && feedbackContent && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300 border border-purple-100"
+            className="mt-2 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300"
           >
-            <div className="flex items-center gap-2 text-purple-600 text-sm mb-2">
-              <MessageCircle className="h-4 w-4" />
-              <span className="font-medium">
-                {feedbackUser?.username || feedbackUser?.display_name || 'えり'}さんからのメッセージ
-              </span>
+            <div className="px-3 py-2 border-b border-purple-100/50">
+              <div className="flex items-center gap-1.5">
+                <MessageCircle className="h-3.5 w-3.5 text-purple-500" />
+                <span className="text-xs font-medium text-purple-700">
+                  {feedbackUser?.username || feedbackUser?.display_name || 'えり'}さんから
+                </span>
+              </div>
             </div>
-            <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{feedbackContent}</p>
+            <div className="px-3 py-2">
+              <p className="text-xs text-gray-700 leading-relaxed line-clamp-2">{feedbackContent}</p>
+            </div>
           </motion.div>
         )}
         
         {/* フッター部分 */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-500">
+        <div className="mt-2 flex items-center justify-between">
+          <div className="text-xs text-gray-500 flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5" />
             {formatDate(work.created_at)}
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {work.rating && (
               <motion.div 
                 whileHover={{ scale: 1.1 }}
-                className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-full"
+                className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full"
               >
-                <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                <span className="text-sm font-medium text-yellow-700">{work.rating}</span>
+                <Star className="h-3.5 w-3.5 text-yellow-400 fill-current" />
+                <span className="text-xs font-medium text-yellow-700">{work.rating}</span>
               </motion.div>
             )}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleFavoriteClick}
-              className={`p-2 rounded-full transition-all duration-300 ${
+              className={`p-1.5 rounded-full transition-all duration-300 ${
                 isFavorite 
-                  ? 'text-red-500 bg-red-50 hover:bg-red-100' 
-                  : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                  ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' 
+                  : 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-50'
               }`}
             >
-              <Heart className={`h-5 w-5 transform transition-transform duration-300 ${isFavorite ? 'fill-current scale-110' : 'scale-100'}`} />
+              <Star className={`h-4 w-4 transform transition-transform duration-300 ${isFavorite ? 'fill-current scale-110' : 'scale-100'}`} />
             </motion.button>
           </div>
         </div>
       </div>
+
+      {/* キラキラエフェクト */}
+      {isHovered && (
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(8)].map((_, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.1, duration: 0.5 }}
+              className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full"
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                filter: 'blur(1px)'
+              }}
+            />
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 });
