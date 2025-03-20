@@ -1,56 +1,72 @@
 import React from 'react';
 import { BaseLearning } from './BaseLearning';
 import type { Lesson } from './BaseLearning';
+import { Monitor, Code, Globe, Cpu, Lightbulb } from 'lucide-react';
 
 export const technologyLessons: readonly Lesson[] = [
   {
     id: 'tech-1',
-    title: 'コンピュータの仕組み',
-    description: 'コンピュータの基本的な構造と動作原理を学びましょう',
+    title: 'パソコンとなかよし',
+    description: 'パソコンってどんなおともだち？いっしょにみてみよう！',
     difficulty: 1,
-    duration: 25,
+    duration: 15,
     points: 120,
+    icon: Monitor,
+    color: 'from-blue-400 to-purple-400'
   },
   {
     id: 'tech-2',
-    title: 'プログラミング入門',
-    description: '簡単なプログラムを作りながらプログラミングの基礎を学びましょう',
-    difficulty: 2,
-    duration: 30,
+    title: 'プログラミングであそぼう',
+    description: 'たのしいゲームをつくってみよう！',
+    difficulty: 1,
+    duration: 20,
     points: 150,
+    icon: Code,
+    color: 'from-green-400 to-blue-400'
   },
   {
     id: 'tech-3',
-    title: 'インターネットの世界',
-    description: 'インターネットの仕組みとWebの基礎知識を学びましょう',
+    title: 'インターネットのせかい',
+    description: 'インターネットでできることをたんけんしよう！',
     difficulty: 2,
-    duration: 35,
+    duration: 20,
     points: 180,
+    icon: Globe,
+    color: 'from-yellow-400 to-orange-400'
   },
   {
     id: 'tech-4',
-    title: 'デジタルものづくり',
-    description: 'デジタル技術を使ったものづくりの方法を学びましょう',
-    difficulty: 3,
-    duration: 40,
+    title: 'デジタルでものづくり',
+    description: 'パソコンでじぶんだけのおもちゃをつくろう！',
+    difficulty: 2,
+    duration: 25,
     points: 200,
+    icon: Lightbulb,
+    color: 'from-pink-400 to-red-400'
   },
   {
     id: 'tech-5',
-    title: 'AI入門',
-    description: '人工知能の基本的な概念と活用方法を学びましょう',
-    difficulty: 3,
-    duration: 45,
+    title: 'ロボットとあそぼう',
+    description: 'かしこいロボットとなかよくなろう！',
+    difficulty: 2,
+    duration: 25,
     points: 250,
+    icon: Cpu,
+    color: 'from-purple-400 to-indigo-400'
   },
 ] as const;
 
 export function TechnologyLearning() {
   return (
     <BaseLearning
-      title="技術"
-      description="テクノロジーの仕組みを理解し、未来を創造する力を身につけましょう"
+      title="テクノロジー"
+      description="パソコンやロボットとなかよくなって、たのしくまなぼう！"
       lessons={technologyLessons}
+      gradientColors={{
+        from: '#60a5fa',
+        via: '#818cf8',
+        to: '#6366f1'
+      }}
     />
   );
 } 

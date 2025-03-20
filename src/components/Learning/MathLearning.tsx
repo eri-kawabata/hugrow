@@ -1,56 +1,72 @@
 import React from 'react';
 import { BaseLearning } from './BaseLearning';
 import type { Lesson } from './BaseLearning';
+import { Hash, Square, Puzzle, BarChart, Brain } from 'lucide-react';
 
 export const mathLessons: readonly Lesson[] = [
   {
     id: 'math-1',
-    title: '数と計算の基礎',
-    description: '数の性質と基本的な計算方法を学びましょう',
+    title: 'かずあそび',
+    description: 'たのしくかぞえてあそぼう！',
     difficulty: 1,
-    duration: 20,
+    duration: 15,
     points: 100,
+    icon: Hash,
+    color: 'from-blue-400 to-indigo-400'
   },
   {
     id: 'math-2',
-    title: '図形の世界',
-    description: '平面図形と立体図形の性質を探求しましょう',
-    difficulty: 2,
-    duration: 30,
+    title: 'かたちあそび',
+    description: 'まるやさんかくをみつけよう！',
+    difficulty: 1,
+    duration: 20,
     points: 150,
+    icon: Square,
+    color: 'from-green-400 to-teal-400'
   },
   {
     id: 'math-3',
-    title: 'パターンと規則',
-    description: '数や図形のパターンを見つけて規則を理解しましょう',
+    title: 'ならべてあそぼう',
+    description: 'おもしろいならびかたをさがそう！',
     difficulty: 2,
-    duration: 35,
+    duration: 20,
     points: 180,
+    icon: Puzzle,
+    color: 'from-yellow-400 to-orange-400'
   },
   {
     id: 'math-4',
-    title: 'データの分析',
-    description: 'グラフや表を使ってデータを分析する方法を学びましょう',
-    difficulty: 3,
-    duration: 40,
+    title: 'グラフであそぼう',
+    description: 'えやグラフでたしかめよう！',
+    difficulty: 2,
+    duration: 20,
     points: 200,
+    icon: BarChart,
+    color: 'from-purple-400 to-pink-400'
   },
   {
     id: 'math-5',
-    title: '論理的思考',
-    description: '数学的な考え方で問題を解決する方法を学びましょう',
-    difficulty: 3,
-    duration: 45,
+    title: 'なぞときあそび',
+    description: 'たのしいなぞときにちょうせん！',
+    difficulty: 2,
+    duration: 20,
     points: 250,
+    icon: Brain,
+    color: 'from-red-400 to-rose-400'
   },
 ] as const;
 
 export function MathLearning() {
   return (
     <BaseLearning
-      title="数学"
-      description="論理的な思考力を養い、問題解決能力を高めましょう"
+      title="すうじ"
+      description="かずやかたちでたのしくあそぼう！"
       lessons={mathLessons}
+      gradientColors={{
+        from: '#3b82f6',
+        via: '#06b6d4',
+        to: '#0ea5e9'
+      }}
     />
   );
 } 

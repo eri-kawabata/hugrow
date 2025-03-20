@@ -1,56 +1,72 @@
 import React from 'react';
 import { BaseLearning } from './BaseLearning';
 import type { Lesson } from './BaseLearning';
+import { Wrench, Cpu, Zap, Building2, Leaf } from 'lucide-react';
 
 export const engineeringLessons: readonly Lesson[] = [
   {
     id: 'eng-1',
-    title: '身近な機械の仕組み',
-    description: '日常生活で使う機械の仕組みと原理を学びましょう',
+    title: 'おもちゃのひみつ',
+    description: 'すきなおもちゃのしくみをさがしてみよう！',
     difficulty: 1,
-    duration: 25,
+    duration: 15,
     points: 120,
+    icon: Wrench,
+    color: 'from-orange-400 to-red-400'
   },
   {
     id: 'eng-2',
-    title: 'ロボット入門',
-    description: 'ロボットの基本的な構造と制御方法を学びましょう',
-    difficulty: 2,
-    duration: 30,
+    title: 'ロボットをつくろう',
+    description: 'かんたんなロボットをつくってあそぼう！',
+    difficulty: 1,
+    duration: 20,
     points: 150,
+    icon: Cpu,
+    color: 'from-blue-400 to-indigo-400'
   },
   {
     id: 'eng-3',
-    title: '電気の力',
-    description: '電気の性質と活用方法について実験しながら学びましょう',
+    title: 'でんきのふしぎ',
+    description: 'ピカピカひかるでんきのまほうをためしてみよう！',
     difficulty: 2,
-    duration: 35,
+    duration: 20,
     points: 180,
+    icon: Zap,
+    color: 'from-yellow-400 to-amber-400'
   },
   {
     id: 'eng-4',
-    title: '構造と力学',
-    description: '物を支える構造と力の関係について学びましょう',
-    difficulty: 3,
-    duration: 40,
+    title: 'つみきのまほう',
+    description: 'たかいタワーをつくってみよう！',
+    difficulty: 2,
+    duration: 20,
     points: 200,
+    icon: Building2,
+    color: 'from-green-400 to-teal-400'
   },
   {
     id: 'eng-5',
-    title: 'エネルギーと環境',
-    description: 'さまざまなエネルギーと環境との関係を学びましょう',
-    difficulty: 3,
-    duration: 45,
+    title: 'エコなものづくり',
+    description: 'ちきゅうにやさしいものづくりをしよう！',
+    difficulty: 2,
+    duration: 25,
     points: 250,
+    icon: Leaf,
+    color: 'from-emerald-400 to-green-400'
   },
 ] as const;
 
 export function EngineeringLearning() {
   return (
     <BaseLearning
-      title="工学"
-      description="ものづくりの原理を理解し、創造力と問題解決能力を育みましょう"
+      title="ものづくり"
+      description="たのしくつくって、ふしぎをみつけよう！"
       lessons={engineeringLessons}
+      gradientColors={{
+        from: '#f97316',
+        via: '#84cc16',
+        to: '#22c55e'
+      }}
     />
   );
 } 

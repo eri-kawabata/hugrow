@@ -9,6 +9,8 @@ import { mathLessons } from './MathLearning';
 import { useLearningProgress } from '@/hooks/useLearningProgress';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { ErrorMessage } from '@/components/Common/ErrorMessage';
+import { GradientHeader } from '@/components/Common/GradientHeader';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const allLessons = [
@@ -22,33 +24,35 @@ const allLessons = [
 const BackButton = memo(({ onClick }: { onClick: () => void }) => (
   <button
     onClick={onClick}
-    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+    className="inline-flex items-center text-indigo-600 hover:text-indigo-800 text-lg"
   >
-    <ArrowLeft className="h-5 w-5" />
-    <span>戻る</span>
+    <ArrowLeft className="h-6 w-6 mr-2" />
+    <span>もどる</span>
   </button>
 ));
 
 BackButton.displayName = 'BackButton';
 
 const StartButton = memo(({ onClick, loading }: { onClick: () => void; loading: boolean }) => (
-  <button
+  <motion.button
     onClick={onClick}
     disabled={loading}
-    className="flex items-center justify-center gap-2 w-full bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    className="flex items-center justify-center gap-3 w-full bg-gradient-to-r from-green-400 to-blue-400 text-white py-6 px-8 rounded-2xl text-2xl font-bold hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
   >
     {loading ? (
       <>
-        <LoadingSpinner size="sm" color="white" fullHeight={false} />
-        <span>読み込み中...</span>
+        <LoadingSpinner size="lg" color="white" fullHeight={false} />
+        <span>よみこみちゅう...</span>
       </>
     ) : (
       <>
-        <Play className="h-5 w-5" />
-        <span>レッスンを始める</span>
+        <Play className="h-8 w-8" />
+        <span>はじめる！</span>
       </>
     )}
-  </button>
+  </motion.button>
 ));
 
 StartButton.displayName = 'StartButton';
@@ -72,11 +76,25 @@ export function LessonDetail() {
     try {
       setLoading(true);
       await startLesson();
-      toast.success('レッスンを開始しました！');
+      toast.success('レッスンをはじめるよ！', {
+        icon: '🎉',
+        style: {
+          fontSize: '1.2rem',
+          borderRadius: '1rem',
+          background: '#4ade80',
+          color: '#fff'
+        }
+      });
       navigate(`/child/learning/lesson/${lessonId}/content`);
     } catch (error) {
       console.error('Failed to start lesson:', error);
-      toast.error('レッスンの開始に失敗しました');
+      toast.error('うまくいかなかったよ...', {
+        icon: '😢',
+        style: {
+          fontSize: '1.2rem',
+          borderRadius: '1rem'
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -85,53 +103,87 @@ export function LessonDetail() {
   if (!lesson) {
     return (
       <ErrorMessage
-        title="レッスンが見つかりません"
-        message="指定されたレッスンは存在しません。"
+        title="みつからないよ..."
+        message="さがしているレッスンがないみたい。"
       />
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
       <BackButton onClick={handleBack} />
 
-      <div className="bg-white rounded-xl shadow-sm p-8">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{lesson.title}</h1>
-            <p className="mt-2 text-gray-600">{lesson.description}</p>
-          </div>
+      <GradientHeader 
+        title={lesson.title}
+        gradientColors={{
+          from: '#8ec5d6',
+          via: '#f7c5c2',
+          to: '#f5f6bf'
+        }}
+      />
 
-          <div className="flex flex-wrap gap-6">
-            <div className="flex items-center gap-2 text-gray-600">
-              <Star className="h-5 w-5" />
-              <span>難易度: {Array(lesson.difficulty).fill('★').join('')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <Clock className="h-5 w-5" />
-              <span>所要時間: 約{lesson.duration}分</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <Trophy className="h-5 w-5" />
-              <span>獲得ポイント: {lesson.points}pt</span>
-            </div>
-          </div>
+      <motion.div 
+        className="bg-white rounded-3xl shadow-lg p-8 space-y-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <p className="text-xl text-center text-gray-600">
+          {lesson.description}
+        </p>
 
-          {progress?.completed_at ? (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-green-800">
-                <Trophy className="h-5 w-5" />
-                <span>このレッスンは完了しています！</span>
-              </div>
-              <p className="mt-2 text-sm text-green-600">
-                完了日時: {new Date(progress.completed_at).toLocaleString('ja-JP')}
-              </p>
-            </div>
-          ) : (
-            <StartButton onClick={handleStart} loading={loading} />
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <motion.div 
+            className="bg-yellow-50 rounded-2xl p-6 flex flex-col items-center space-y-2"
+            whileHover={{ scale: 1.05 }}
+          >
+            <Star className="h-8 w-8 text-yellow-400" />
+            <span className="text-lg">
+              {'★'.repeat(lesson.difficulty)}
+              {'☆'.repeat(3 - lesson.difficulty)}
+            </span>
+          </motion.div>
+
+          <motion.div 
+            className="bg-blue-50 rounded-2xl p-6 flex flex-col items-center space-y-2"
+            whileHover={{ scale: 1.05 }}
+          >
+            <Clock className="h-8 w-8 text-blue-400" />
+            <span className="text-lg">{lesson.duration}ぷん</span>
+          </motion.div>
+
+          <motion.div 
+            className="bg-purple-50 rounded-2xl p-6 flex flex-col items-center space-y-2"
+            whileHover={{ scale: 1.05 }}
+          >
+            <Trophy className="h-8 w-8 text-purple-400" />
+            <span className="text-lg">{lesson.points}ポイント</span>
+          </motion.div>
         </div>
-      </div>
+
+        {progress?.completed_at ? (
+          <motion.div 
+            className="bg-green-50 border-2 border-green-200 rounded-2xl p-6"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="flex flex-col items-center gap-4">
+              <Trophy className="h-12 w-12 text-green-400" />
+              <div className="text-center">
+                <p className="text-xl font-bold text-green-800">
+                  クリアしたよ！おめでとう！
+                </p>
+                <p className="mt-2 text-green-600">
+                  {new Date(progress.completed_at).toLocaleDateString('ja-JP')}に クリアしました
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <StartButton onClick={handleStart} loading={loading} />
+        )}
+      </motion.div>
     </div>
   );
 } 

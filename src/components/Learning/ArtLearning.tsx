@@ -1,56 +1,72 @@
 import React from 'react';
 import { BaseLearning } from './BaseLearning';
 import type { Lesson } from './BaseLearning';
+import { Palette, Brush, Camera, Play, Heart } from 'lucide-react';
 
 export const artLessons: readonly Lesson[] = [
   {
     id: 'art-1',
-    title: '色彩の世界',
-    description: '色の性質と組み合わせについて学びましょう',
+    title: 'いろあそび',
+    description: 'きれいないろをまぜてあそぼう！',
     difficulty: 1,
-    duration: 20,
+    duration: 15,
     points: 100,
+    icon: Palette,
+    color: 'from-pink-400 to-purple-400'
   },
   {
     id: 'art-2',
-    title: 'デジタルアート',
-    description: 'デジタルツールを使って作品を作りましょう',
-    difficulty: 2,
-    duration: 30,
+    title: 'おえかきタイム',
+    description: 'タブレットでたのしくおえかき！',
+    difficulty: 1,
+    duration: 20,
     points: 150,
+    icon: Brush,
+    color: 'from-blue-400 to-cyan-400'
   },
   {
     id: 'art-3',
-    title: '写真の技法',
-    description: '写真撮影の基本と表現方法を学びましょう',
+    title: 'しゃしんであそぼう',
+    description: 'すてきなしゃしんをとってみよう！',
     difficulty: 2,
-    duration: 35,
+    duration: 20,
     points: 180,
+    icon: Camera,
+    color: 'from-yellow-400 to-orange-400'
   },
   {
     id: 'art-4',
-    title: 'アニメーション',
-    description: '動きのある作品の作り方を学びましょう',
-    difficulty: 3,
-    duration: 40,
+    title: 'うごくえをつくろう',
+    description: 'パラパラまんがをつくってみよう！',
+    difficulty: 2,
+    duration: 20,
     points: 200,
+    icon: Play,
+    color: 'from-green-400 to-emerald-400'
   },
   {
     id: 'art-5',
-    title: '芸術と感情',
-    description: '感情を芸術で表現する方法を探求しましょう',
-    difficulty: 3,
-    duration: 45,
+    title: 'きもちをえにかこう',
+    description: 'うれしいきもち、たのしいきもちをえにしよう！',
+    difficulty: 2,
+    duration: 20,
     points: 250,
+    icon: Heart,
+    color: 'from-red-400 to-pink-400'
   },
 ] as const;
 
 export function ArtLearning() {
   return (
     <BaseLearning
-      title="芸術"
-      description="創造性を解き放ち、自分らしい表現方法を見つけましょう"
+      title="おえかき"
+      description="えをかいて、たのしくそうぞうしよう！"
       lessons={artLessons}
+      gradientColors={{
+        from: '#ec4899',
+        via: '#8b5cf6',
+        to: '#6366f1'
+      }}
     />
   );
 } 
