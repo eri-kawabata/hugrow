@@ -85,22 +85,36 @@ export function Learning() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const subjects: SubjectProgress['subject'][] = ['science', 'technology', 'engineering', 'art', 'math'];
-      const progressPromises = subjects.map(async (subject) => {
-        const { data } = await supabase
-          .from('learning_progress')
-          .select('progress_data')
-          .eq('user_id', user.id)
-          .eq('lesson_id', `subject_${subject}`)
-          .single();
+      // データベースから全ての進捗データを取得
+      const { data: progressData, error } = await supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // 各科目のレッスン数を定義
+      const lessonCounts = {
+        science: 5,
+        technology: 5,
+        engineering: 5,
+        art: 5,
+        math: 5
+      };
+
+      // 各科目の進捗を計算
+      const results = Object.entries(lessonCounts).map(([subject, totalLessons]) => {
+        const subjectLessons = progressData?.filter(
+          progress => progress.lesson_id.startsWith(subject) && progress.completed
+        ) || [];
+        const progress = Math.round((subjectLessons.length / totalLessons) * 100);
 
         return {
-          subject,
-          progress: data?.progress_data?.current_section || 0
+          subject: subject as SubjectProgress['subject'],
+          progress
         };
       });
 
-      const results = await Promise.all(progressPromises);
       setProgresses(results);
     } catch (error) {
       console.error('進捗データの取得に失敗しました:', error);

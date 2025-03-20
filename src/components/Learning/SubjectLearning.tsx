@@ -12,6 +12,8 @@ type Lesson = {
   difficulty: 'easy' | 'medium' | 'hard';
   duration?: string;
   points?: number;
+  icon?: React.ReactNode;
+  color?: string;
 };
 
 type SubjectConfig = {
@@ -19,6 +21,11 @@ type SubjectConfig = {
     title: string;
     description: string;
     icon: React.ReactNode;
+    gradientColors?: {
+      from: string;
+      via: string;
+      to: string;
+    };
     lessons: Lesson[];
   };
   technology: {
@@ -134,7 +141,7 @@ export function SubjectLearning({ config }: { config: SubjectConfig }) {
 
         <GradientHeader 
           title={subjectConfig.title}
-          gradientColors={{
+          gradientColors={subjectConfig.gradientColors || {
             from: '#8ec5d6',
             via: '#f7c5c2',
             to: '#f5f6bf'
@@ -156,10 +163,17 @@ export function SubjectLearning({ config }: { config: SubjectConfig }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300"
+                className={`bg-gradient-to-br ${lesson.color || 'from-gray-50 to-gray-100'} rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300`}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold text-gray-900">{lesson.title}</h3>
+                  <div className="flex items-center gap-3">
+                    {lesson.icon && (
+                      <div className="p-2 bg-white rounded-lg shadow-sm">
+                        {lesson.icon}
+                      </div>
+                    )}
+                    <h3 className="text-xl font-bold text-gray-900">{lesson.title}</h3>
+                  </div>
                   <div className="flex items-center gap-2">
                     {lessonProgress?.completed && (
                       <Trophy className="h-5 w-5 text-yellow-500" />
@@ -187,7 +201,7 @@ export function SubjectLearning({ config }: { config: SubjectConfig }) {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-white/50 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${progressPercentage}%` }}
@@ -196,10 +210,10 @@ export function SubjectLearning({ config }: { config: SubjectConfig }) {
                     />
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">進捗: {progressPercentage}%</span>
+                    <span className="text-sm text-gray-600">進捗: {progressPercentage}%</span>
                     <button
                       onClick={() => updateProgress(lesson.id, Math.min(progressPercentage + 20, 100))}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+                      className="px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors duration-200 shadow-sm"
                     >
                       つづける
                     </button>

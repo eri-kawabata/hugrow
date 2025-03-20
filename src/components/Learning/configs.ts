@@ -1,51 +1,66 @@
-import { Microscope, Cpu, Wrench, Palette, Calculator } from 'lucide-react';
+import { Microscope, Cpu, Wrench, Palette, Calculator, Bird, Flower2, Cloud, Globe2, TestTube } from 'lucide-react';
 import type { SubjectConfig } from './SubjectLearning';
 
 export const subjectConfigs: SubjectConfig = {
   science: {
-    title: 'りか',
+    title: 'かがくのせかい',
     description: 'しぜんのふしぎをたんけんしよう！',
-    icon: <Microscope className="h-8 w-8 text-indigo-600" />,
+    icon: <TestTube className="h-6 w-6 text-blue-500" />,
+    gradientColors: {
+      from: '#22c55e',
+      via: '#3b82f6',
+      to: '#6366f1'
+    },
     lessons: [
       {
-        id: 'science_1',
-        title: 'どうぶつとおともだち',
-        description: 'かわいいどうぶつたちのせかいをのぞいてみよう',
+        id: 'science-1',
+        title: 'どうぶつとなかよし',
+        description: 'いろいろなどうぶつのせいかつをしらべてみよう',
         difficulty: 'easy',
-        duration: '10ぷん',
-        points: 100
+        duration: '15分',
+        points: 100,
+        icon: <Bird className="h-6 w-6" />,
+        color: 'from-orange-400 to-red-400'
       },
       {
-        id: 'science_2',
-        title: 'おはながすくすく',
-        description: 'たねをうえて、おはなをそだてよう',
+        id: 'science-2',
+        title: 'しょくぶつのひみつ',
+        description: 'たねからめがでて、おおきくそだつしょくぶつのふしぎ',
         difficulty: 'easy',
-        duration: '15ぷん',
-        points: 120
+        duration: '15分',
+        points: 100,
+        icon: <Flower2 className="h-6 w-6" />,
+        color: 'from-pink-400 to-rose-400'
       },
       {
-        id: 'science_3',
-        title: 'おてんきマスター',
-        description: 'あめやくもやにじのひみつをしろう',
+        id: 'science-3',
+        title: 'てんきのへんか',
+        description: 'あめやゆきのひみつをしらべよう',
         difficulty: 'medium',
-        duration: '15ぷん',
-        points: 150
+        duration: '20分',
+        points: 150,
+        icon: <Cloud className="h-6 w-6" />,
+        color: 'from-blue-400 to-cyan-400'
       },
       {
-        id: 'science_4',
-        title: 'うちゅうりょこう',
-        description: 'おつきさまやほしをみてみよう',
+        id: 'science-4',
+        title: 'ちきゅうのふしぎ',
+        description: 'わたしたちのちきゅうについてまなぼう',
         difficulty: 'medium',
-        duration: '10ぷん',
-        points: 180
+        duration: '20分',
+        points: 150,
+        icon: <Globe2 className="h-6 w-6" />,
+        color: 'from-indigo-400 to-purple-400'
       },
       {
-        id: 'science_5',
+        id: 'science-5',
         title: 'ふしぎなじっけん',
-        description: 'たのしいじっけんをしてみよう',
+        description: 'かんたんなじっけんでかがくのふしぎをたしかめよう',
         difficulty: 'hard',
-        duration: '20ぷん',
-        points: 200
+        duration: '25分',
+        points: 200,
+        icon: <TestTube className="h-6 w-6" />,
+        color: 'from-green-400 to-emerald-400'
       }
     ]
   },
