@@ -363,13 +363,13 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-2 right-2 z-20"
+            className="absolute top-3 right-3 z-20"
           >
             <motion.div
               whileHover={{ scale: 1.1 }}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 px-2 py-1 rounded-full shadow-lg flex items-center gap-1.5 border border-white/50"
+              className="bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 border border-white/50"
             >
-              <MessageCircle className="h-3.5 w-3.5 text-white" />
+              <MessageCircle className="h-4 w-4 text-white" />
               <span className="text-xs font-medium text-white">メッセージ</span>
             </motion.div>
           </motion.div>
@@ -396,16 +396,16 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       </div>
       
       {/* コンテンツ部分 */}
-      <div className="p-3">
-        <div className="min-h-[3rem]">
+      <div className="p-4">
+        <div className="min-h-[4.5rem]">
           <motion.h2 
-            className="font-bold text-base mb-1 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
+            className="font-bold text-lg mb-2 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
           >
             {work.title || 'タイトルなし'}
           </motion.h2>
           
           {work.description && (
-            <p className="text-gray-600 text-xs line-clamp-1">{work.description}</p>
+            <p className="text-gray-600 text-sm line-clamp-2">{work.description}</p>
           )}
         </div>
         
@@ -414,50 +414,50 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-2 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300"
+            className="mt-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300"
           >
-            <div className="px-3 py-2 border-b border-purple-100/50">
-              <div className="flex items-center gap-1.5">
-                <MessageCircle className="h-3.5 w-3.5 text-purple-500" />
-                <span className="text-xs font-medium text-purple-700">
+            <div className="px-4 py-3 border-b border-purple-100/50">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium text-purple-700">
                   {feedbackUser?.username || feedbackUser?.display_name || 'えり'}さんから
                 </span>
               </div>
             </div>
-            <div className="px-3 py-2">
-              <p className="text-xs text-gray-700 leading-relaxed line-clamp-2">{feedbackContent}</p>
+            <div className="px-4 py-3">
+              <p className="text-sm text-gray-700 leading-relaxed line-clamp-2">{feedbackContent}</p>
             </div>
           </motion.div>
         )}
         
         {/* フッター部分 */}
-        <div className="mt-2 flex items-center justify-between">
-          <div className="text-xs text-gray-500 flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5" />
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-500 flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
             {formatDate(work.created_at)}
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {work.rating && (
               <motion.div 
                 whileHover={{ scale: 1.1 }}
-                className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full"
+                className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-full"
               >
-                <Star className="h-3.5 w-3.5 text-yellow-400 fill-current" />
-                <span className="text-xs font-medium text-yellow-700">{work.rating}</span>
+                <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                <span className="text-sm font-medium text-yellow-700">{work.rating}</span>
               </motion.div>
             )}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={handleFavoriteClick}
-              className={`p-1.5 rounded-full transition-all duration-300 ${
+              className={`p-2 rounded-full transition-all duration-300 ${
                 isFavorite 
                   ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' 
                   : 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-50'
               }`}
             >
-              <Star className={`h-4 w-4 transform transition-transform duration-300 ${isFavorite ? 'fill-current scale-110' : 'scale-100'}`} />
+              <Star className={`h-5 w-5 transform transition-transform duration-300 ${isFavorite ? 'fill-current scale-110' : 'scale-100'}`} />
             </motion.button>
           </div>
         </div>
@@ -466,7 +466,7 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       {/* キラキラエフェクト */}
       {isHovered && (
         <div className="absolute inset-0 pointer-events-none">
-          {[...Array(8)].map((_, i) => (
+          {[...Array(12)].map((_, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, scale: 0 }}
