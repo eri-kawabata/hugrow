@@ -1,3 +1,4 @@
+import { Work } from '../types/database';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
@@ -5,23 +6,22 @@ import toast from 'react-hot-toast';
 import { useProfile } from './useProfile';
 import { useSupabaseClient } from './useSupabaseClient';
 
-export type Work = {
-  id: string;
-  user_id: string;
-  profile_id: string;
-  title: string;
-  type: 'drawing' | 'audio' | 'photo';
-  content_url: string;
-  created_at: string;
-  updated_at?: string;
-};
-
 type WorkError = {
   message: string;
   code?: string;
 };
 
-export function useWorks(prefetch = false) {
+type UseWorksReturn = {
+  works: Work[];
+  loading: boolean;
+  error: WorkError | null;
+  fetchWorks: (specificProfileId?: string) => Promise<void>;
+  createWork: (work: Omit<Work, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'profile_id'>) => Promise<Work | null>;
+  updateWork: (id: string, updates: Partial<Omit<Work, 'id' | 'user_id' | 'profile_id'>>) => Promise<Work | null>;
+  deleteWork: (id: string) => Promise<boolean>;
+};
+
+export function useWorks(prefetch = false): UseWorksReturn {
   const { user } = useAuth();
   const { profile } = useProfile();
   const supabase = useSupabaseClient();
@@ -188,7 +188,7 @@ export function useWorks(prefetch = false) {
 
   // 初回レンダリング時とプロファイルID変更時に作品を取得
   useEffect(() => {
-    if (prefetch && selectedChildProfileId) {
+    if (prefetch) {
       console.log('useWorks - 作品取得トリガー - selectedChildProfileId:', selectedChildProfileId);
       fetchWorks(selectedChildProfileId);
     }
@@ -266,9 +266,12 @@ export function useWorks(prefetch = false) {
     }
   };
 
-  const updateWork = async (id: string, updates: Partial<Omit<Work, 'id' | 'user_id' | 'profile_id'>>) => {
+  // 作品を更新
+  const updateWork = useCallback(async (id: string, updates: Partial<Omit<Work, 'id' | 'user_id' | 'profile_id'>>) => {
     try {
       setLoading(true);
+      console.log('updateWork - 更新開始:', { id, updates });
+      
       const { data, error } = await supabase
         .from('works')
         .update(updates)
@@ -276,20 +279,25 @@ export function useWorks(prefetch = false) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('updateWork - エラー:', error);
+        throw error;
+      }
 
+      console.log('updateWork - 更新成功:', data);
       setWorks(prev =>
         prev.map(work => (work.id === id ? { ...work, ...data } : work))
       );
       toast.success('作品を更新しました');
       return data;
     } catch (error) {
+      console.error('updateWork - 例外発生:', error);
       handleError(error);
       return null;
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
   const deleteWork = async (id: string) => {
     try {

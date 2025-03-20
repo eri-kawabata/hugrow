@@ -7,18 +7,9 @@ import { useFeedback } from '@/hooks/useFeedback';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { ErrorMessage } from '@/components/Common/ErrorMessage';
 import { FeedbackList } from '@/components/Feedback/FeedbackList';
+import { Work } from '@/types/database';
 import toast from 'react-hot-toast';
 import './ParentWorks.css'; // アニメーション用のCSSをインポート
-
-type Work = {
-  id: string;
-  user_id: string;
-  title: string;
-  type: 'drawing' | 'audio' | 'photo';
-  content_url: string;
-  created_at: string;
-  updated_at?: string;
-};
 
 const BackButton = memo(({ onClick }: { onClick: () => void }) => (
   <button

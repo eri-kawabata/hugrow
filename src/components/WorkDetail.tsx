@@ -1,23 +1,16 @@
 import React, { useState, useEffect, memo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Calendar, Award, Heart, Star, Download, Music, Bookmark } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Calendar, Award, Heart, Star, Download, Music, Bookmark, Edit2, Check, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useFeedback } from '@/hooks/useFeedback';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { ErrorMessage } from '@/components/Common/ErrorMessage';
 import { FeedbackList } from '@/components/Feedback/FeedbackList';
+import { useWorks } from '@/hooks/useWorks';
+import { Work } from '@/types/database';
 import toast from 'react-hot-toast';
-
-type Work = {
-  id: string;
-  user_id: string;
-  title: string;
-  type: 'drawing' | 'audio' | 'photo';
-  content_url: string;
-  created_at: string;
-  updated_at?: string;
-};
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BackButton = memo(({ onClick }: { onClick: () => void }) => (
   <button
@@ -31,8 +24,32 @@ const BackButton = memo(({ onClick }: { onClick: () => void }) => (
 
 BackButton.displayName = 'BackButton';
 
-const WorkContent = memo(({ work }: { work: Work }) => {
+const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: Partial<Work>) => void }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(work.title);
+  const [editDescription, setEditDescription] = useState(work.description || '');
   const [favorite, setFavorite] = useState(false);
+  
+  // 編集モードの保存
+  const handleSave = async () => {
+    if (editTitle.trim() === '') {
+      toast.error('タイトルを入力してください');
+      return;
+    }
+    
+    await onUpdate({
+      title: editTitle.trim(),
+      description: editDescription.trim() || null
+    });
+    setIsEditing(false);
+  };
+  
+  // 編集モードのキャンセル
+  const handleCancel = () => {
+    setEditTitle(work.title);
+    setEditDescription(work.description || '');
+    setIsEditing(false);
+  };
   
   // お気に入り状態を保存する関数
   const saveFavoriteStatus = useCallback(async (isFavorite: boolean) => {
@@ -173,13 +190,74 @@ const WorkContent = memo(({ work }: { work: Work }) => {
 
   return (
     <div className="space-y-8">
-      <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] p-6 rounded-[32px] shadow-lg relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#8ec5d6] via-[#f7c5c2] to-[#f5f6bf] p-8 rounded-[32px] shadow-lg relative overflow-hidden">
         <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
         <div className="relative z-10">
-          <h1 className="text-3xl font-bold text-white text-center drop-shadow-md mb-2">
-            {work.title}
-          </h1>
-          <div className="flex items-center justify-center gap-2 text-white/90">
+          {isEditing ? (
+            <div className="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-4 py-2 text-2xl font-bold bg-white/90 rounded-xl border-2 border-white/50 focus:outline-none focus:border-white"
+                  placeholder="タイトルを入力"
+                />
+              </div>
+              <div>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-4 py-2 text-base bg-white/90 rounded-xl border-2 border-white/50 focus:outline-none focus:border-white resize-none"
+                  placeholder="説明を入力（任意）"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={handleCancel}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/90 text-gray-700 rounded-xl hover:bg-white/100 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                  <span>キャンセル</span>
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#5d7799] text-white rounded-xl hover:bg-[#4c6380] transition-colors"
+                >
+                  <Check className="h-4 w-4" />
+                  <span>保存</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="group relative">
+              <motion.h1 
+                className="text-3xl font-bold text-white text-center drop-shadow-md mb-2"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {work.title}
+              </motion.h1>
+              {work.description && (
+                <motion.p 
+                  className="text-white/90 text-center mt-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  {work.description}
+                </motion.p>
+              )}
+              <button
+                onClick={() => setIsEditing(true)}
+                className="absolute -right-2 -top-2 p-2 bg-white/90 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-white"
+              >
+                <Edit2 className="h-4 w-4 text-[#5d7799]" />
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-center gap-2 text-white/90 mt-4">
             <Calendar className="h-4 w-4" />
             <p className="text-sm">
               {new Date(work.created_at).toLocaleDateString('ja-JP')}
@@ -192,7 +270,7 @@ const WorkContent = memo(({ work }: { work: Work }) => {
         {renderContent()}
         
         <div className="flex justify-between items-center mt-6">
-          <div>
+          <div className="flex items-center gap-3">
             <button 
               onClick={toggleFavorite}
               className={`p-3 rounded-full transition-all duration-300 ${
@@ -318,6 +396,7 @@ export function WorkDetail() {
   const [work, setWork] = useState<Work | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const { updateWork } = useWorks();
 
   const fetchWork = useCallback(async () => {
     if (!workId || !user) return;
@@ -372,6 +451,30 @@ export function WorkDetail() {
     fetchWork();
   }, [fetchWork]);
 
+  const handleUpdateWork = async (updates: Partial<Work>) => {
+    if (!work || !updateWork) {
+      console.error('作品の更新に必要な情報が不足しています');
+      toast.error('作品の更新に失敗しました');
+      return;
+    }
+    
+    try {
+      console.log('作品更新開始:', { workId: work.id, updates });
+      const updatedWork = await updateWork(work.id, updates);
+      
+      if (!updatedWork) {
+        throw new Error('作品の更新に失敗しました');
+      }
+      
+      console.log('作品更新成功:', updatedWork);
+      setWork(updatedWork);
+      toast.success('作品を更新しました');
+    } catch (err) {
+      console.error('作品の更新に失敗しました:', err);
+      toast.error('作品の更新に失敗しました');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fbfd]">
@@ -402,10 +505,10 @@ export function WorkDetail() {
         <div className="mb-6">
           <BackButton onClick={handleBack} />
         </div>
-        <WorkContent work={work} />
+        <WorkContent work={work} onUpdate={handleUpdateWork} />
         <FeedbackSection workId={work.id} />
         
-        <div className="h-20"></div> {/* 下部のスペース */}
+        <div className="h-20"></div>
       </div>
     </div>
   );

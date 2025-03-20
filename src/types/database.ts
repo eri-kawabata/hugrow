@@ -48,16 +48,17 @@ export type Profile = {
 export type Work = {
   id: string;
   user_id: string;
+  profile_id: string;
   title: string;
-  description: string | null;
-  content_url: string;
+  description?: string;
   type: 'drawing' | 'audio' | 'photo';
+  content_url: string;
+  thumbnail_url?: string;
   created_at: string;
-  updated_at: string | null;
-  thumbnail_url: string | null;
-  status: 'draft' | 'published' | 'archived';
+  updated_at?: string;
+  status: 'draft' | 'published';
   visibility: 'public' | 'private';
-  metadata: Record<string, any> | null;
+  metadata: Record<string, any>;
 };
 
 export type Lesson = {
