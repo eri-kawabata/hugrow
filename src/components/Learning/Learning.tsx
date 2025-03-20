@@ -1,13 +1,22 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Microscope, 
   Cpu, 
   Wrench, 
   Palette, 
-  Calculator 
+  Calculator,
+  Star,
+  Trophy
 } from 'lucide-react';
 import { GradientHeader } from '@/components/Common/GradientHeader';
+import { motion } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
+
+type SubjectProgress = {
+  subject: 'science' | 'technology' | 'engineering' | 'art' | 'math';
+  progress: number;
+};
 
 type SubjectCardProps = {
   to: string;
@@ -15,80 +24,169 @@ type SubjectCardProps = {
   title: string;
   description: string;
   type: 'science' | 'technology' | 'engineering' | 'art' | 'math';
+  progress?: number;
 };
 
-const SubjectCard = React.memo(({ to, icon, title, description }: SubjectCardProps) => (
-  <Link
-    to={to}
-    className="block bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-6 hover:scale-[1.02]"
+const SubjectCard = React.memo(({ to, icon, title, description, progress = 0 }: SubjectCardProps) => (
+  <motion.div
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.98 }}
+    transition={{ type: "spring", stiffness: 400, damping: 17 }}
   >
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="p-3 bg-indigo-50 rounded-lg">
-          {icon}
+    <Link
+      to={to}
+      className="block bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 relative overflow-hidden group"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="relative space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="p-4 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl transform group-hover:rotate-6 transition-transform duration-300">
+            {icon}
+          </div>
+          <div>
+            <h3 className="font-bold text-xl text-gray-900 group-hover:text-indigo-600 transition-colors duration-300">{title}</h3>
+            <p className="mt-1 text-sm text-gray-600">{description}</p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-semibold text-gray-900">{title}</h3>
-          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        <div className="mt-4">
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+            />
+          </div>
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-sm text-gray-500">進捗: {progress}%</span>
+            {progress === 100 && (
+              <Trophy className="h-5 w-5 text-yellow-500" />
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  </Link>
+    </Link>
+  </motion.div>
 ));
 
 SubjectCard.displayName = 'SubjectCard';
 
-// 科目一覧
-const subjects: SubjectCardProps[] = [
-  {
-    to: '/child/learning/science',
-    type: 'science',
-    icon: <Microscope className="h-6 w-6 text-indigo-600" />,
-    title: 'りか',
-    description: 'しぜんのふしぎをたんけんしよう',
-  },
-  {
-    to: '/child/learning/technology',
-    type: 'technology',
-    icon: <Cpu className="h-6 w-6 text-indigo-600" />,
-    title: 'ぎじゅつ',
-    description: 'コンピュータのしくみをまなぼう',
-  },
-  {
-    to: '/child/learning/engineering',
-    type: 'engineering',
-    icon: <Wrench className="h-6 w-6 text-indigo-600" />,
-    title: 'こうがく',
-    description: 'ものづくりのげんりをしろう',
-  },
-  {
-    to: '/child/learning/art',
-    type: 'art',
-    icon: <Palette className="h-6 w-6 text-indigo-600" />,
-    title: 'げいじゅつ',
-    description: 'そうぞうりょくをのばそう',
-  },
-  {
-    to: '/child/learning/math',
-    type: 'math',
-    icon: <Calculator className="h-6 w-6 text-indigo-600" />,
-    title: 'すうがく',
-    description: 'かずとけいさんをたのしもう',
-  },
-];
-
 // メインコンポーネント
 export function Learning() {
+  const [progresses, setProgresses] = useState<SubjectProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProgresses();
+  }, []);
+
+  const fetchProgresses = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const subjects: SubjectProgress['subject'][] = ['science', 'technology', 'engineering', 'art', 'math'];
+      const progressPromises = subjects.map(async (subject) => {
+        const { data } = await supabase
+          .from('learning_progress')
+          .select('progress_data')
+          .eq('user_id', user.id)
+          .eq('lesson_id', `subject_${subject}`)
+          .single();
+
+        return {
+          subject,
+          progress: data?.progress_data?.current_section || 0
+        };
+      });
+
+      const results = await Promise.all(progressPromises);
+      setProgresses(results);
+    } catch (error) {
+      console.error('進捗データの取得に失敗しました:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getProgress = (type: SubjectProgress['subject']) => {
+    const progress = progresses.find(p => p.subject === type);
+    return progress?.progress || 0;
+  };
+
+  const subjects: SubjectCardProps[] = [
+    {
+      to: '/child/learning/science',
+      type: 'science',
+      icon: <Microscope className="h-8 w-8 text-indigo-600" />,
+      title: 'りか',
+      description: 'しぜんのふしぎをたんけんしよう',
+      progress: getProgress('science'),
+    },
+    {
+      to: '/child/learning/technology',
+      type: 'technology',
+      icon: <Cpu className="h-8 w-8 text-indigo-600" />,
+      title: 'ぎじゅつ',
+      description: 'コンピュータのしくみをまなぼう',
+      progress: getProgress('technology'),
+    },
+    {
+      to: '/child/learning/engineering',
+      type: 'engineering',
+      icon: <Wrench className="h-8 w-8 text-indigo-600" />,
+      title: 'こうがく',
+      description: 'ものづくりのげんりをしろう',
+      progress: getProgress('engineering'),
+    },
+    {
+      to: '/child/learning/art',
+      type: 'art',
+      icon: <Palette className="h-8 w-8 text-indigo-600" />,
+      title: 'げいじゅつ',
+      description: 'そうぞうりょくをのばそう',
+      progress: getProgress('art'),
+    },
+    {
+      to: '/child/learning/math',
+      type: 'math',
+      icon: <Calculator className="h-8 w-8 text-indigo-600" />,
+      title: 'すうがく',
+      description: 'かずとけいさんをたのしもう',
+      progress: getProgress('math'),
+    },
+  ];
+
   const subjectCards = useMemo(() => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-      {subjects.map((subject) => (
-        <SubjectCard key={subject.to} {...subject} />
+    <motion.div 
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      {subjects.map((subject, index) => (
+        <motion.div
+          key={subject.to}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: index * 0.1 }}
+        >
+          <SubjectCard {...subject} />
+        </motion.div>
       ))}
-    </div>
-  ), []);
+    </motion.div>
+  ), [progresses]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-12 pb-28">
+    <div className="max-w-6xl mx-auto space-y-12 pb-28">
       <GradientHeader 
         title="がくしゅう" 
         gradientColors={{
@@ -100,9 +198,15 @@ export function Learning() {
 
       <div className="px-6">
         <div className="space-y-8">
-          <div>
-            <p className="text-lg text-gray-600 text-center">すきなかもくをえらんでがくしゅうをはじめよう！</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center"
+          >
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">すきなかもくをえらんでがくしゅうをはじめよう！</h2>
+            <p className="text-lg text-gray-600">がんばってがくしゅうすると、トロフィーがもらえるよ！</p>
+          </motion.div>
           {subjectCards}
         </div>
       </div>
