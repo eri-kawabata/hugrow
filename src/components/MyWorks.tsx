@@ -1,7 +1,8 @@
 import React, { memo, useCallback, useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle, Pencil, Mic } from 'lucide-react';
-import { useWorks, Work } from '@/hooks/useWorks';
+import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle, Award, Heart, Mic } from 'lucide-react';
+import { useWorks } from '@/hooks/useWorks';
+import type { Work, Badge } from '@/types/work';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { ErrorMessage } from '@/components/Common/ErrorMessage';
 import { EmptyState } from '@/components/Common/EmptyState';
@@ -51,9 +52,9 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
   const [isFavorite, setIsFavorite] = useState(false);
   const [hasFeedback, setHasFeedback] = useState(false);
   const [feedbackCount, setFeedbackCount] = useState(0);
-  const [parentName, setParentName] = useState<string>('');
   const [feedbackContent, setFeedbackContent] = useState<string>('');
   const [isHovered, setIsHovered] = useState(false);
+  const [feedbackUser, setFeedbackUser] = useState<{ username?: string; display_name?: string } | null>(null);
   
   // お気に入り状態とフィードバック状態を読み込む
   useEffect(() => {
@@ -61,56 +62,50 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       if (!user) return;
       
       try {
-        // お気に入り状態を確認 - favoritesテーブルが存在しない場合はエラーを無視
-        try {
-          const { data: favoriteData, error: favoriteError } = await supabase
-            .from('favorites')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('work_id', work.id);
-            
-          if (!favoriteError && favoriteData && favoriteData.length > 0) {
-            setIsFavorite(true);
-          }
-        } catch (favError) {
-          console.log('お気に入り情報の取得に失敗しました:', favError);
-          // エラーを無視して処理を続行
-        }
+        console.log('フィードバック情報を取得開始 - work.id:', work.id);
         
         // フィードバック数を確認
         const { data: feedbackData, error: feedbackError } = await supabase
           .from('work_feedback')
-          .select('id, user_id, content')
+          .select('id, user_id, feedback')
           .eq('work_id', work.id);
+          
+        console.log('フィードバックデータ:', feedbackData);
+        console.log('フィードバックエラー:', feedbackError);
           
         if (!feedbackError && feedbackData && feedbackData.length > 0) {
           setHasFeedback(true);
           setFeedbackCount(feedbackData.length);
           
           // 最新のフィードバックの内容を保存
-          if (feedbackData[0].content) {
-            setFeedbackContent(feedbackData[0].content);
+          if (feedbackData[0].feedback) {
+            setFeedbackContent(feedbackData[0].feedback);
+            console.log('フィードバック内容を設定:', feedbackData[0].feedback);
           }
           
           try {
             // 保護者のユーザーIDを取得
             const userId = feedbackData[0].user_id;
             
-            // プロフィール情報を取得 - single()を使わない
+            // プロフィール情報を取得
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
-              .select('display_name')
-              .eq('user_id', userId);
+              .select('username, display_name')
+              .eq('user_id', userId)
+              .single();
               
-            if (!profileError && profileData && profileData.length > 0 && profileData[0].display_name) {
-              setParentName(profileData[0].display_name);
-            } else {
-              setParentName('保護者');
+            console.log('プロフィールデータ:', profileData);
+            console.log('プロフィールエラー:', profileError);
+              
+            if (!profileError && profileData) {
+              setFeedbackUser(profileData);
+              console.log('フィードバックユーザー情報を設定:', profileData);
             }
           } catch (profileError) {
-            console.log('プロフィール情報の取得に失敗しました:', profileError);
-            setParentName('保護者');
+            console.error('プロフィール情報の取得に失敗しました:', profileError);
           }
+        } else {
+          console.log('フィードバックなし');
         }
       } catch (error) {
         console.error('作品情報の読み込みに失敗しました:', error);
@@ -300,60 +295,146 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
   
   const typeInfo = getTypeInfo();
   
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      if (isFavorite) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user?.id)
+          .eq('work_id', work.id);
+          
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert([{ user_id: user?.id, work_id: work.id }]);
+          
+        if (error) throw error;
+      }
+      
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error('お気に入り操作に失敗しました:', error);
+      toast.error('お気に入りの更新に失敗しました');
+    }
+  };
+  
   return (
-    <div 
-      className="bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1 cursor-pointer"
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.02 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
       onClick={handleCardClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="group bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer relative"
     >
+      {/* サムネイル部分 */}
       <div className="relative">
         {renderThumbnail()}
         
-        {/* タイプラベル */}
-        <div className="absolute top-3 left-3">
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${typeInfo.color}`}>
-            {typeInfo.icon}
-            <span className="text-xs font-medium">{typeInfo.label}</span>
+        {/* フィードバックバッジ - より目立つように修正 */}
+        {hasFeedback && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="absolute top-3 left-3 z-20"
+          >
+            <motion.div
+              whileHover={{ scale: 1.1 }}
+              className="bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 border-2 border-white"
+            >
+              <MessageCircle className="h-4 w-4 text-white" />
+              <span className="text-xs font-medium text-white">メッセージ</span>
+            </motion.div>
+          </motion.div>
+        )}
+        
+        {/* バッジ表示 */}
+        {work.badges && work.badges.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="absolute top-2 right-2 flex gap-1"
+          >
+            {work.badges.map((badge: Badge, index: number) => (
+              <motion.div
+                key={badge.id || index}
+                whileHover={{ scale: 1.2, rotate: 15 }}
+                className="bg-gradient-to-br from-yellow-400 to-yellow-500 p-1.5 rounded-full shadow-lg"
+              >
+                <Award className="h-4 w-4 text-white" />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </div>
+      
+      {/* コンテンツ部分 */}
+      <div className="p-4">
+        <div className="min-h-[4.5rem]">
+          <motion.h2 
+            className="font-bold text-lg mb-2 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
+          >
+            {work.title || 'タイトルなし'}
+          </motion.h2>
+          
+          {work.description && (
+            <p className="text-gray-600 text-sm line-clamp-2">{work.description}</p>
+          )}
+        </div>
+        
+        {/* フィードバック表示を修正 */}
+        {hasFeedback && feedbackContent && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300 border border-purple-100"
+          >
+            <div className="flex items-center gap-2 text-purple-600 text-sm mb-2">
+              <MessageCircle className="h-4 w-4" />
+              <span className="font-medium">
+                {feedbackUser?.username || feedbackUser?.display_name || 'えり'}さんからのメッセージ
+              </span>
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{feedbackContent}</p>
+          </motion.div>
+        )}
+        
+        {/* フッター部分 */}
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            {formatDate(work.created_at)}
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {work.rating && (
+              <motion.div 
+                whileHover={{ scale: 1.1 }}
+                className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-full"
+              >
+                <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                <span className="text-sm font-medium text-yellow-700">{work.rating}</span>
+              </motion.div>
+            )}
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleFavoriteClick}
+              className={`p-2 rounded-full transition-all duration-300 ${
+                isFavorite 
+                  ? 'text-red-500 bg-red-50 hover:bg-red-100' 
+                  : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+              }`}
+            >
+              <Heart className={`h-5 w-5 transform transition-transform duration-300 ${isFavorite ? 'fill-current scale-110' : 'scale-100'}`} />
+            </motion.button>
           </div>
         </div>
       </div>
-      
-      <div className="p-4">
-        <h3 className="font-bold text-gray-800 mb-1 line-clamp-1">
-          {work.title || 'タイトルなし'}
-        </h3>
-        <div className="text-sm text-gray-500 mb-2">
-          {formatDate(work.created_at)}
-        </div>
-        
-        {/* フィードバックとお気に入り */}
-        <div className="mt-2">
-          {hasFeedback ? (
-            <div className="text-sm">
-              <div className="flex items-center text-purple-600 mb-1">
-                <MessageCircle className="h-4 w-4 mr-1" />
-                <span className="font-medium">{parentName}からのコメント</span>
-              </div>
-              {feedbackContent && (
-                <p className="text-gray-600 text-xs line-clamp-2 bg-purple-50 p-2 rounded-md">
-                  {feedbackContent}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="text-sm text-gray-400">コメントなし</div>
-          )}
-          
-          {isFavorite && (
-            <div className="flex items-center text-sm text-yellow-500 mt-1">
-              <Star className="h-4 w-4 mr-1 fill-current" />
-              <span>お気に入り</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    </motion.div>
   );
 });
 

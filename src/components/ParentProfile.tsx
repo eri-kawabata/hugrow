@@ -242,32 +242,16 @@ export function ParentProfile() {
         return;
       }
 
-      // データベースのスキーマを確認
-      const { data: columns, error: columnsError } = await supabase
-        .from('profiles')
-        .select('*')
-        .limit(1);
-
-      if (columnsError) {
-        console.error('Failed to check database schema:', columnsError);
-        toast.error('データベーススキーマの確認に失敗しました');
-        setUpdating(false);
-        return;
-      }
-
-      // birthdateカラムが存在するか確認
-      const hasBirthdateColumn = columns && columns.length > 0 && 'birthdate' in columns[0];
-      const hasBirthdayColumn = columns && columns.length > 0 && 'birthday' in columns[0];
-
       const updateData: any = {
         username: profile.username,
+        display_name: profile.username,  // display_nameをusernameと同じ値に設定
         updated_at: new Date().toISOString(),
       };
 
-      // 適切なカラム名を使用
-      if (hasBirthdateColumn) {
+      // birthdateまたはbirthdayフィールドの更新
+      if ('birthdate' in profile) {
         updateData.birthdate = profile.birthdate;
-      } else if (hasBirthdayColumn) {
+      } else if ('birthday' in profile) {
         updateData.birthday = profile.birthdate;
       }
 
@@ -275,7 +259,7 @@ export function ParentProfile() {
         .from('profiles')
         .update(updateData)
         .eq('id', profile.id)
-        .eq('user_id', user.id); // ユーザーIDを指定して権限を確認
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('プロフィール更新エラー:', error);

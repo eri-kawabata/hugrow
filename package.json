@@ -17,7 +17,7 @@
     "chart.js": "^4.4.8",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
-    "framer-motion": "^12.4.7",
+    "framer-motion": "^12.5.0",
     "jotai": "^2.12.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",

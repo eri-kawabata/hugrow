@@ -11,4 +11,12 @@ export interface Work {
   profile_id: string;
   created_at: string;
   updated_at: string;
+  badges?: Badge[];
+  rating?: number;
+}
+
+export interface Badge {
+  id: string;
+  name: string;
+  icon?: string;
 } 

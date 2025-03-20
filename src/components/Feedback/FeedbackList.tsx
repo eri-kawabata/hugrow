@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { MessageCircle, User, Heart } from 'lucide-react';
 import type { Feedback } from '@/types/feedback';
+import { useAuth } from '@/hooks/useAuth';
 
 interface FeedbackListProps {
   feedbacks: Feedback[];
@@ -9,6 +10,9 @@ interface FeedbackListProps {
 }
 
 export const FeedbackList = memo(({ feedbacks, loading, onLike }: FeedbackListProps) => {
+  const { profile } = useAuth();
+  const parentName = profile?.username || profile?.display_name || 'えり';
+
   if (loading) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -26,7 +30,7 @@ export const FeedbackList = memo(({ feedbacks, loading, onLike }: FeedbackListPr
       <div className="p-8 text-center text-gray-500">
         <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
         <p className="text-lg font-medium">まだフィードバックはありません</p>
-        <p className="text-sm">保護者からのフィードバックがここに表示されます</p>
+        <p className="text-sm">{parentName}さんからのフィードバックがここに表示されます</p>
       </div>
     );
   }
