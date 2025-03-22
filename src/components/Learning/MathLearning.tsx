@@ -56,12 +56,12 @@ export function MathLearning() {
       {/* 背景の装飾要素 */}
       <div className="absolute inset-0 pointer-events-none">
         {/* 数学の光の輪 */}
-        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-emerald-400/50 via-teal-400/50 to-green-400/50 rounded-full blur-3xl animate-slow-spin"></div>
-        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-green-400/50 via-emerald-400/50 to-teal-400/50 rounded-full blur-3xl animate-slow-spin-reverse"></div>
+        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-emerald-500/40 via-green-400/40 to-teal-400/40 rounded-full blur-3xl animate-slow-spin"></div>
+        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-green-400/40 via-emerald-500/40 to-teal-500/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
         
         {/* 追加の光の輪 */}
-        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-teal-400/40 via-emerald-400/40 to-green-400/40 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-green-400/40 via-teal-400/40 to-emerald-400/40 rounded-full blur-3xl animate-float-reverse"></div>
+        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-emerald-400/30 via-green-500/30 to-teal-600/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-green-300/30 via-emerald-400/30 to-teal-500/30 rounded-full blur-3xl animate-float-reverse"></div>
 
         {/* 数式のパターン */}
         {[...Array(20)].map((_, i) => (
@@ -173,8 +173,8 @@ export function MathLearning() {
           title="すうがく"
           gradientColors={{
             from: '#10b981',
-            via: '#14b8a6',
-            to: '#34d399'
+            via: '#34d399',
+            to: '#6ee7b7'
           }}
         />
 

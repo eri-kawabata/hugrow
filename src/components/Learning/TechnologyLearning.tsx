@@ -56,12 +56,12 @@ export function TechnologyLearning() {
       {/* 背景の装飾要素 */}
       <div className="absolute inset-0 pointer-events-none">
         {/* デジタルの光の輪 */}
-        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-blue-400/50 via-indigo-400/50 to-purple-400/50 rounded-full blur-3xl animate-slow-spin"></div>
-        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-purple-400/50 via-blue-400/50 to-indigo-400/50 rounded-full blur-3xl animate-slow-spin-reverse"></div>
+        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-violet-500/40 via-purple-400/40 to-indigo-400/40 rounded-full blur-3xl animate-slow-spin"></div>
+        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-purple-400/40 via-violet-500/40 to-indigo-500/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
         
         {/* 追加の光の輪 */}
-        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-indigo-400/40 via-purple-400/40 to-blue-400/40 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-purple-400/40 via-indigo-400/40 to-blue-400/40 rounded-full blur-3xl animate-float-reverse"></div>
+        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-violet-400/30 via-purple-500/30 to-indigo-600/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-purple-300/30 via-violet-400/30 to-indigo-500/30 rounded-full blur-3xl animate-float-reverse"></div>
         
         {/* デジタル回路 - 増加 */}
         {[...Array(25)].map((_, i) => (
@@ -237,12 +237,12 @@ export function TechnologyLearning() {
 
       <div className="max-w-7xl mx-auto pb-28 relative">
       <GradientHeader
-          title="テクノロジー"
+          title="ぎじゅつ"
         gradientColors={{
-            from: '#60a5fa',
-            via: '#818cf8',
-            to: '#a78bfa'
-          }}
+          from: '#8b5cf6',
+          via: '#a78bfa',
+          to: '#c4b5fd'
+        }}
         />
 
         <div className="px-8 py-12">

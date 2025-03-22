@@ -56,12 +56,12 @@ export function ScienceLearning() {
       {/* 背景の装飾要素 */}
       <div className="absolute inset-0 pointer-events-none">
         {/* サイエンスの光の輪 */}
-        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-green-400/50 via-blue-400/50 to-indigo-400/50 rounded-full blur-3xl animate-slow-spin"></div>
-        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-emerald-400/50 via-sky-400/50 to-green-400/50 rounded-full blur-3xl animate-slow-spin-reverse"></div>
+        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-blue-500/40 via-sky-400/40 to-blue-300/40 rounded-full blur-3xl animate-slow-spin"></div>
+        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-sky-400/40 via-blue-500/40 to-indigo-400/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
         
         {/* 追加の光の輪 */}
-        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-sky-400/40 via-emerald-400/40 to-blue-400/40 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-blue-400/40 via-green-400/40 to-emerald-400/40 rounded-full blur-3xl animate-float-reverse"></div>
+        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-blue-400/30 via-sky-500/30 to-blue-600/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-sky-300/30 via-blue-400/30 to-indigo-500/30 rounded-full blur-3xl animate-float-reverse"></div>
 
         {/* 分子構造 */}
         {[...Array(15)].map((_, i) => (
@@ -258,9 +258,9 @@ export function ScienceLearning() {
       <GradientHeader
         title="りか"
         gradientColors={{
-          from: '#4ade80',
+          from: '#3b82f6',
           via: '#60a5fa',
-          to: '#818cf8'
+          to: '#93c5fd'
         }}
       />
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Microscope, 
@@ -23,7 +23,7 @@ type SubjectProgress = {
 type SubjectCardProps = {
   to: string;
   type: 'science' | 'technology' | 'engineering' | 'art' | 'math';
-  icon: React.ReactNode;
+  icon: ReactElement;
   title: string;
   description: string;
   progress: number;
@@ -84,7 +84,7 @@ function SubjectCard({ to, type, icon, title, description, progress, gradientCol
               >
                 {/* アイコン背景の光るエフェクト */}
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 group-hover:translate-x-full duration-1000 ease-in-out" />
-                {React.cloneElement(icon as React.ReactElement, {
+                {React.cloneElement(icon as ReactElement, {
                   className: `h-12 w-12 ${getIconColor(type)} drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]`
                 })}
               </motion.div>
@@ -310,63 +310,148 @@ export function Learning() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 relative overflow-hidden">
       {/* 背景の装飾要素 */}
       <div className="absolute inset-0 pointer-events-none">
-        {/* 虹色の光の輪 */}
-        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-pink-300/40 via-blue-300/40 to-green-300/40 rounded-full blur-3xl animate-slow-spin"></div>
-        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-purple-300/40 via-yellow-300/40 to-blue-300/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
+        {/* STEAM要素を表現する光の輪 */}
+        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-pink-400/40 via-blue-400/40 to-emerald-400/40 rounded-full blur-3xl animate-slow-spin"></div>
+        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-orange-400/40 via-indigo-400/40 to-green-400/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
         
         {/* 追加の光の輪 */}
-        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-orange-300/30 via-red-300/30 to-yellow-300/30 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-indigo-300/30 via-purple-300/30 to-pink-300/30 rounded-full blur-3xl animate-float-reverse"></div>
-        
-        {/* 浮かぶ泡 */}
-        {[...Array(15)].map((_, i) => (
+        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-blue-400/30 via-purple-400/30 to-pink-400/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-emerald-400/30 via-orange-400/30 to-indigo-400/30 rounded-full blur-3xl animate-float-reverse"></div>
+
+        {/* アート要素 - 筆のストローク */}
+        {[...Array(10)].map((_, i) => (
           <motion.div
-            key={i}
-            className="absolute rounded-full bg-gradient-to-br from-white/50 to-white/10"
+            key={`stroke-${i}`}
+            className="absolute"
             style={{
-              width: `${Math.random() * 60 + 20}px`,
-              height: `${Math.random() * 60 + 20}px`,
+              width: `${Math.random() * 200 + 100}px`,
+              height: `${Math.random() * 3 + 1}px`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              backdropFilter: 'blur(4px)',
+              background: `${['#ec4899', '#f43f5e', '#e879f9'][Math.floor(Math.random() * 3)]}40`,
+              borderRadius: '999px',
+              transformOrigin: 'left',
+              transform: `rotate(${Math.random() * 360}deg)`,
             }}
             animate={{
-              y: [0, -40, 0],
-              x: [0, Math.random() * 30 - 15, 0],
-              scale: [1, 1.2, 1],
-              rotate: [0, 360, 0],
+              opacity: [0.2, 0.4, 0.2],
+              scale: [1, 1.1, 1],
             }}
             transition={{
-              duration: Math.random() * 8 + 5,
+              duration: Math.random() * 4 + 3,
               repeat: Infinity,
               ease: "easeInOut",
             }}
           />
         ))}
 
-        {/* キラキラ */}
-        {[...Array(25)].map((_, i) => (
+        {/* 技術要素 - デジタル回路 */}
+        {[...Array(15)].map((_, i) => (
           <motion.div
-            key={`sparkle-${i}`}
-            className="absolute bg-gradient-to-r from-white via-yellow-200 to-white rounded-full"
+            key={`circuit-${i}`}
+            className="absolute"
             style={{
-              width: `${Math.random() * 4 + 2}px`,
-              height: `${Math.random() * 4 + 2}px`,
+              width: `${Math.random() * 100 + 50}px`,
+              height: '2px',
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              filter: 'blur(0.5px)',
+              background: `${['#6366f1', '#4f46e5', '#4338ca'][Math.floor(Math.random() * 3)]}40`,
+              transformOrigin: 'left',
+              transform: `rotate(${Math.floor(Math.random() * 4) * 90}deg)`,
             }}
             animate={{
-              opacity: [0, 1, 0],
-              scale: [0, 2, 0],
-              rotate: [0, 180, 360],
+              opacity: [0.2, 0.4, 0.2],
+              boxShadow: ['0 0 5px #6366f1', '0 0 10px #4f46e5', '0 0 5px #4338ca'],
             }}
             transition={{
               duration: Math.random() * 3 + 2,
               repeat: Infinity,
-              delay: Math.random() * 3,
+              ease: "linear",
             }}
           />
+        ))}
+
+        {/* 工学要素 - 歯車のような形 */}
+        {[...Array(8)].map((_, i) => (
+          <motion.div
+            key={`gear-${i}`}
+            className="absolute"
+            style={{
+              width: `${Math.random() * 40 + 20}px`,
+              height: `${Math.random() * 40 + 20}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              border: `2px solid ${['#f97316', '#fb923c', '#fdba74'][Math.floor(Math.random() * 3)]}40`,
+              borderRadius: '50%',
+              background: 'transparent',
+            }}
+            animate={{
+              rotate: [0, 360],
+              scale: [1, 1.1, 1],
+              opacity: [0.2, 0.4, 0.2],
+            }}
+            transition={{
+              duration: Math.random() * 10 + 10,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+          >
+            <div className="absolute inset-0 border-2 border-orange-400/30 rounded-full transform rotate-45"></div>
+          </motion.div>
+        ))}
+
+        {/* 科学要素 - 分子構造のような形 */}
+        {[...Array(10)].map((_, i) => (
+          <motion.div
+            key={`molecule-${i}`}
+            className="absolute"
+            style={{
+              width: `${Math.random() * 30 + 15}px`,
+              height: `${Math.random() * 30 + 15}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              background: `${['#3b82f6', '#2563eb', '#1d4ed8'][Math.floor(Math.random() * 3)]}30`,
+              borderRadius: '50%',
+            }}
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.2, 0.4, 0.2],
+            }}
+            transition={{
+              duration: Math.random() * 4 + 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <motion.div
+              className="absolute w-20 h-0.5 bg-blue-400/20 origin-left"
+              style={{ transform: `rotate(${Math.random() * 360}deg)` }}
+            />
+          </motion.div>
+        ))}
+
+        {/* 数学要素 - 数式や記号 */}
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={`math-${i}`}
+            className="absolute text-xl font-bold"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              color: `${['#10b981', '#059669', '#047857'][Math.floor(Math.random() * 3)]}40`,
+            }}
+            animate={{
+              y: [0, -20],
+              opacity: [0.2, 0.4, 0.2],
+            }}
+            transition={{
+              duration: Math.random() * 3 + 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            {['+', '-', '×', '÷', '=', 'π', '∑', '∫'][Math.floor(Math.random() * 8)]}
+          </motion.div>
         ))}
       </div>
 
@@ -374,9 +459,9 @@ export function Learning() {
       <GradientHeader 
         title="がくしゅう" 
         gradientColors={{
-          from: '#8ec5d6',
-          via: '#f7c5c2',
-          to: '#f5f6bf'
+          from: '#60a5fa',
+          via: '#ec4899',
+          to: '#a855f7'
         }}
       />
 
@@ -429,7 +514,7 @@ export function Learning() {
                           }}
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 group-hover:translate-x-full transition-all duration-1000"></div>
-                          {React.cloneElement(subject.icon, {
+                          {React.cloneElement(subject.icon as ReactElement, {
                             className: `h-16 w-16 transform transition-transform group-hover:scale-110 duration-300`,
                             style: { color: subject.gradientColors.from }
                           })}
@@ -473,7 +558,8 @@ export function Learning() {
         </div>
       </div>
 
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes slow-spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -509,7 +595,8 @@ export function Learning() {
         .animate-float-reverse {
           animation: float-reverse 18s ease-in-out infinite;
         }
-      `}</style>
+        `
+      }} />
     </div>
   );
 } 
