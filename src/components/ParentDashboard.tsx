@@ -27,6 +27,19 @@ type ChildProfile = {
   age?: number | null;
 };
 
+// 学習進捗の型定義を追加
+type LearningProgress = {
+  lesson_id: string;
+  completed: boolean;
+  score: number;
+  completed_at: string;
+  status: string;
+  progress_data: {
+    total_points: number;
+    level: number;
+  };
+};
+
 // 最適化のためのサブコンポーネント
 const StatCard = React.memo(({ 
   icon, 
@@ -196,6 +209,13 @@ export const ParentDashboard: React.FC = () => {
     emotionalUnderstanding: 0,
     learningProgress: 0,
     creativity: 0
+  });
+  const [learningStats, setLearningStats] = useState({
+    totalPoints: 0,
+    level: 1,
+    completedLessons: 0,
+    totalLessons: 25, // 5科目 × 5レッスン
+    averageScore: 0
   });
 
   useEffect(() => {
@@ -440,10 +460,9 @@ export const ParentDashboard: React.FC = () => {
   };
 
   const fetchStats = async (childId: string) => {
-    if (!childId) return;
-    
     try {
-      const [worksResult, emotionsResult, learningResult] = await Promise.all([
+      // 既存の統計取得処理
+      const [worksCount, emotionsCount] = await Promise.all([
         supabase
           .from('works')
           .select('*', { count: 'exact' })
@@ -451,149 +470,94 @@ export const ParentDashboard: React.FC = () => {
         supabase
           .from('sel_responses')
           .select('*', { count: 'exact' })
-          .eq('profile_id', childId),
-        supabase
-          .from('learning_activities')
-          .select('*', { count: 'exact' })
           .eq('profile_id', childId)
       ]);
 
-      const stats = {
-        totalWorks: worksResult.count || 0,
-        totalEmotions: emotionsResult.count || 0,
-        totalLearning: learningResult.count || 0
-      };
+      // 学習統計を取得
+      await fetchLearningStats(childId);
 
-      console.log('個別の統計データ:', stats);
-      setStats(stats);
-
+      setStats(prev => ({
+        ...prev,
+        totalWorks: worksCount.count || 0,
+        totalEmotions: emotionsCount.count || 0
+      }));
     } catch (error) {
-      console.error('統計の取得中にエラーが発生しました:', error);
-      toast.error('統計データの取得に失敗しました');
-      setStats({
-        totalWorks: 0,
-        totalEmotions: 0,
-        totalLearning: 0
-      });
+      handleSupabaseError(error, '統計情報の取得に失敗しました');
+    }
+  };
+
+  // 学習統計を取得する関数
+  const fetchLearningStats = async (childId: string) => {
+    try {
+      const { data: progressData, error } = await supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('user_id', childId)
+        .eq('status', 'completed');
+
+      if (error) throw error;
+
+      if (progressData) {
+        console.log('取得した学習データ:', progressData); // デバッグ用ログ
+        const totalPoints = progressData.reduce((sum, item) => sum + (Number(item.score) || 0), 0);
+        const level = Math.floor(totalPoints / 1000) + 1;
+        const completedLessons = progressData.length;
+        const averageScore = completedLessons > 0 
+          ? Math.round(totalPoints / completedLessons) 
+          : 0;
+
+        setLearningStats({
+          totalPoints,
+          level,
+          completedLessons,
+          totalLessons: 25,
+          averageScore
+        });
+
+        // 全体の統計情報も更新
+        setStats(prev => ({
+          ...prev,
+          totalLearning: completedLessons
+        }));
+      }
+    } catch (error) {
+      handleSupabaseError(error, '学習データの取得に失敗しました');
     }
   };
 
   // 最近の活動データを取得する関数
   const fetchRecentActivities = async (childId: string) => {
-    if (!supabase) return;
-
     try {
-      setLoading(true);
-      
-      // 作品データの取得
-      let worksData: any[] = [];
-      try {
-        const { data, error } = await supabase
-          .from('works')
-          .select('*')
-          .eq('profile_id', childId)
-          .order('created_at', { ascending: false })
-          .limit(5);
+      // 学習活動を取得
+      const { data: learningData, error: learningError } = await supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('user_id', childId)
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .limit(5);
 
-        if (error) {
-          handleSupabaseError(error, '作品データの取得に失敗しました');
-        } else if (data) {
-          worksData = data;
-        }
-      } catch (worksError) {
-        console.error('作品データの取得中にエラーが発生しました:', worksError);
-      }
+      if (learningError) throw learningError;
 
-      // 感情記録データの取得
-      let emotionData: any[] = [];
-      try {
-        const { data, error } = await supabase
-          .from('sel_responses')
-          .select(`
-            id,
-            emotion,
-            created_at,
-            note
-          `)
-          .eq('profile_id', childId)
-          .order('created_at', { ascending: false })
-          .limit(5);
+      console.log('取得した最近の学習活動:', learningData); // デバッグ用ログ
 
-        if (error) {
-          handleSupabaseError(error, '感情記録データの取得に失敗しました');
-        } else if (data) {
-          emotionData = data;
-        }
-      } catch (emotionError) {
-        console.error('感情記録データの取得中にエラーが発生しました:', emotionError);
-      }
+      // 学習活動をActivityItem形式に変換
+      const learningActivities: ActivityItem[] = (learningData || []).map(item => ({
+        id: item.id,
+        type: '学習',
+        subject: item.lesson_id.split('-')[0], // 'science-1' -> 'science'
+        date: new Date(item.completed_at).toLocaleDateString('ja-JP'),
+        created_at: item.completed_at
+      }));
 
-      // 学習活動データの取得
-      let learningData: any[] = [];
-      try {
-        const { data, error } = await supabase
-          .from('learning_activities')
-          .select('*')
-          .eq('profile_id', childId)
-          .order('created_at', { ascending: false })
-          .limit(5);
-          
-        if (error) {
-          handleSupabaseError(error, '学習データの取得に失敗しました');
-        } else if (data) {
-          learningData = data;
-        }
-      } catch (learningError) {
-        console.error('学習データの取得中にエラーが発生しました:', learningError);
-      }
+      // 既存のアクティビティと結合してソート
+      const allActivities = [...learningActivities, ...recentActivities]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10);
 
-      // すべてのデータを結合して日付順にソート
-      const allActivities: ActivityItem[] = [
-        // 作品データを活動リストに変換
-        ...(worksData || []).map(work => ({
-          id: work.id,
-          type: '作品' as const,
-          title: work.title || '無題',
-          date: formatDate(work.created_at),
-          created_at: work.created_at
-        })),
-        
-        // 感情記録データを活動リストに変換
-        ...(emotionData || []).map(emotion => ({
-          id: emotion.id,
-          type: '感情記録' as const,
-          emotion: emotion.emotion,
-          title: emotion.note || undefined,
-          date: formatDate(emotion.created_at),
-          created_at: emotion.created_at
-        })),
-        
-        // 学習データを活動リストに変換
-        ...(learningData || []).map(learning => ({
-          id: learning.id,
-          type: '学習' as const,
-          subject: learning.subject || '学習',
-          title: learning.title || undefined,
-          date: formatDate(learning.created_at),
-          created_at: learning.created_at
-        }))
-      ];
-
-      // 日付の新しい順にソート
-      allActivities.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      // 最大10件に制限
-      const recentActivities = allActivities.slice(0, 10);
-      setRecentActivities(recentActivities);
-      
+      setRecentActivities(allActivities);
     } catch (error) {
-      console.error('最近の活動データの取得中にエラーが発生しました:', error);
-      // エラー時は空の配列を設定
-      setRecentActivities([]);
-    } finally {
-      setLoading(false);
+      handleSupabaseError(error, '最近の活動の取得に失敗しました');
     }
   };
 
@@ -683,6 +647,37 @@ export const ParentDashboard: React.FC = () => {
       creativity: creativityScore
     });
   };
+
+  // 学習の進捗状況を表示するコンポーネント
+  const LearningProgressSection = () => (
+    <div className="bg-white rounded-xl p-6 shadow-sm">
+      <h3 className="text-lg font-bold text-gray-900 mb-4">学習の進捗</h3>
+      <div className="space-y-4">
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-600">完了レッスン</span>
+            <span className="text-sm font-medium">{learningStats.completedLessons} / {learningStats.totalLessons}</span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full">
+            <div 
+              className="h-full bg-blue-500 rounded-full"
+              style={{ width: `${(learningStats.completedLessons / learningStats.totalLessons) * 100}%` }}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-blue-50 rounded-lg p-3">
+            <p className="text-sm text-blue-700">レベル</p>
+            <p className="text-xl font-bold text-blue-900">{learningStats.level}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3">
+            <p className="text-sm text-green-700">総ポイント</p>
+            <p className="text-xl font-bold text-green-900">{learningStats.totalPoints}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-20">
@@ -1013,6 +1008,11 @@ export const ParentDashboard: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* 学習進捗セクションを追加 */}
+      <div className="mt-8">
+        <LearningProgressSection />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 左側のメインコンテンツエリア */}

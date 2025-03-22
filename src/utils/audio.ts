@@ -18,17 +18,40 @@ export const playSound = async (type: AudioType) => {
     // ユーザーの操作なしには音声を再生できない場合があるため、
     // ユーザーインタラクションがあった後に初期化する
     if (!audioCache[type]) {
-      audioCache[type] = new Audio(audioFiles[type]);
+      const audio = new Audio();
+      audio.preload = 'auto';
+      
+      // 音声ファイルの存在確認
+      const response = await fetch(audioFiles[type]);
+      if (!response.ok) {
+        throw new Error(`音声ファイル ${audioFiles[type]} が見つかりません`);
+      }
+      
+      audio.src = audioFiles[type];
+      audioCache[type] = audio;
+      
+      // 音声ファイルの読み込みを待機
+      await new Promise((resolve, reject) => {
+        audio.addEventListener('canplaythrough', resolve);
+        audio.addEventListener('error', reject);
+        audio.load();
+      });
     }
 
     const audio = audioCache[type];
     if (audio) {
       // 再生中の場合は最初から再生し直す
       audio.currentTime = 0;
-      await audio.play();
+      try {
+        await audio.play();
+      } catch (playError) {
+        console.warn('音声の再生に失敗しました:', playError);
+        // 再生に失敗した場合は、キャッシュをクリアして再試行
+        audioCache[type] = undefined;
+      }
     }
   } catch (error) {
-    console.error('音声の再生に失敗しました:', error);
+    console.warn('音声の初期化に失敗しました:', error);
   }
 };
 
@@ -42,11 +65,35 @@ export const setVolume = (volume: number) => {
 };
 
 // 音声を事前にロードする関数
-export const preloadAudio = () => {
-  Object.entries(audioFiles).forEach(([type, path]) => {
-    const audio = new Audio(path);
-    audioCache[type as AudioType] = audio;
-    // プリロードを開始
-    audio.load();
-  });
+export const preloadAudio = async () => {
+  try {
+    await Promise.all(
+      Object.entries(audioFiles).map(async ([type, path]) => {
+        try {
+          const audio = new Audio();
+          audio.preload = 'auto';
+          
+          // 音声ファイルの存在確認
+          const response = await fetch(path);
+          if (!response.ok) {
+            throw new Error(`音声ファイル ${path} が見つかりません`);
+          }
+          
+          audio.src = path;
+          audioCache[type as AudioType] = audio;
+          
+          // 音声ファイルの読み込みを待機
+          await new Promise((resolve, reject) => {
+            audio.addEventListener('canplaythrough', resolve);
+            audio.addEventListener('error', reject);
+            audio.load();
+          });
+        } catch (error) {
+          console.warn(`音声ファイル ${path} の初期化に失敗しました:`, error);
+        }
+      })
+    );
+  } catch (error) {
+    console.warn('音声ファイルのプリロードに失敗しました:', error);
+  }
 }; 
