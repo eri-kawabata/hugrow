@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle, Award, Heart, Mic, Eye, Calendar } from 'lucide-react';
+import { Image, Music, Camera, Plus, Filter, X, Palette, Star, MessageCircle, Award, Calendar, Mic } from 'lucide-react';
 import { useWorks } from '@/hooks/useWorks';
 import type { Work, Badge } from '@/types/work';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
@@ -9,7 +9,6 @@ import { EmptyState } from '@/components/Common/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
-import { FaPlus, FaTrash, FaEye, FaStar, FaMagic, FaSparkles } from 'react-icons/fa';
 import { formatDate } from '../utils/formatDate';
 import { useConfirm } from '../hooks/useConfirm';
 import toast from 'react-hot-toast';
@@ -352,113 +351,120 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleCardClick}
-      className="group bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer relative"
+      className="group relative"
     >
-      {/* サムネイル部分 */}
-      <div className="relative">
-        {renderThumbnail()}
-        
-        {/* フィードバックバッジ */}
-        {hasFeedback && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-3 right-3 z-20"
-          >
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 border border-white/50"
-            >
-              <MessageCircle className="h-4 w-4 text-white" />
-              <span className="text-xs font-medium text-white">メッセージ</span>
-            </motion.div>
-          </motion.div>
-        )}
-        
-        {/* バッジ表示 */}
-        {work.badges && work.badges.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="absolute top-2 right-2 flex gap-1"
-          >
-            {work.badges.map((badge: Badge, index: number) => (
+      {/* グラデーションの背景 */}
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#60a5fa] via-[#e879f9] to-[#fcd34d] rounded-[28px] opacity-30 group-hover:opacity-50 blur transition duration-500"></div>
+      <div className="relative block bg-gradient-to-br from-white to-white/20 rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-[#8ec5d6]">
+        <div className="absolute inset-0 bg-white/90 transition-opacity group-hover:opacity-95"></div>
+        <div className="relative p-6">
+          {/* サムネイル部分 */}
+          <div className="relative">
+            {renderThumbnail()}
+            
+            {/* フィードバックバッジ */}
+            {hasFeedback && (
               <motion.div
-                key={badge.id || index}
-                whileHover={{ scale: 1.2, rotate: 15 }}
-                className="bg-gradient-to-br from-yellow-400 to-yellow-500 p-1.5 rounded-full shadow-lg"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute top-3 right-3 z-20"
               >
-                <Award className="h-4 w-4 text-white" />
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </div>
-      
-      {/* コンテンツ部分 */}
-      <div className="p-4">
-        <div className="min-h-[4.5rem]">
-          <motion.h2 
-            className="font-bold text-lg mb-2 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
-          >
-            {work.title || 'タイトルなし'}
-          </motion.h2>
-          
-          {work.description && (
-            <p className="text-gray-600 text-sm line-clamp-2">{work.description}</p>
-          )}
-        </div>
-        
-        {/* フィードバック表示 */}
-        {hasFeedback && feedbackContent && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300"
-          >
-            <div className="px-4 py-3 border-b border-purple-100/50">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="h-4 w-4 text-purple-500" />
-                <span className="text-sm font-medium text-purple-700">
-                  {feedbackUser?.username || feedbackUser?.display_name || 'えり'}さんから
-                </span>
-              </div>
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-sm text-gray-700 leading-relaxed line-clamp-2">{feedbackContent}</p>
-            </div>
-          </motion.div>
-        )}
-        
-        {/* フッター部分 */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-500 flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            {formatDate(work.created_at)}
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {work.rating && (
-              <motion.div 
-                whileHover={{ scale: 1.1 }}
-                className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-full"
-              >
-                <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                <span className="text-sm font-medium text-yellow-700">{work.rating}</span>
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  className="bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 border border-white/50"
+                >
+                  <MessageCircle className="h-4 w-4 text-white" />
+                  <span className="text-xs font-medium text-white">メッセージ</span>
+                </motion.div>
               </motion.div>
             )}
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleFavoriteClick}
-              className={`p-2 rounded-full transition-all duration-300 ${
-                isFavorite 
-                  ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' 
-                  : 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-50'
-              }`}
-            >
-              <Star className={`h-5 w-5 transform transition-transform duration-300 ${isFavorite ? 'fill-current scale-110' : 'scale-100'}`} />
-            </motion.button>
+            
+            {/* バッジ表示 */}
+            {work.badges && work.badges.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute top-2 right-2 flex gap-1"
+              >
+                {work.badges.map((badge: Badge, index: number) => (
+                  <motion.div
+                    key={badge.id || index}
+                    whileHover={{ scale: 1.2, rotate: 15 }}
+                    className="bg-gradient-to-br from-yellow-400 to-yellow-500 p-1.5 rounded-full shadow-lg"
+                  >
+                    <Award className="h-4 w-4 text-white" />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </div>
+          
+          {/* コンテンツ部分 */}
+          <div className="p-4">
+            <div className="min-h-[4.5rem]">
+              <motion.h2 
+                className="font-bold text-lg mb-2 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
+              >
+                {work.title || 'タイトルなし'}
+              </motion.h2>
+              
+              {work.description && (
+                <p className="text-gray-600 text-sm line-clamp-2">{work.description}</p>
+              )}
+            </div>
+            
+            {/* フィードバック表示 */}
+            {hasFeedback && feedbackContent && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300"
+              >
+                <div className="px-4 py-3 border-b border-purple-100/50">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm font-medium text-purple-700">
+                      {feedbackUser?.username || feedbackUser?.display_name || 'えり'}さんから
+                    </span>
+                  </div>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-sm text-gray-700 leading-relaxed line-clamp-2">{feedbackContent}</p>
+                </div>
+              </motion.div>
+            )}
+            
+            {/* フッター部分 */}
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-500 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                {formatDate(work.created_at)}
+              </div>
+              
+              <div className="flex items-center gap-3">
+                {work.rating && (
+                  <motion.div 
+                    whileHover={{ scale: 1.1 }}
+                    className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-full"
+                  >
+                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
+                    <span className="text-sm font-medium text-yellow-700">{work.rating}</span>
+                  </motion.div>
+                )}
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleFavoriteClick}
+                  className={`p-2 rounded-full transition-all duration-300 ${
+                    isFavorite 
+                      ? 'text-yellow-500 bg-yellow-50 hover:bg-yellow-100' 
+                      : 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-50'
+                  }`}
+                >
+                  <Star className={`h-5 w-5 transform transition-transform duration-300 ${isFavorite ? 'fill-current scale-110' : 'scale-100'}`} />
+                </motion.button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

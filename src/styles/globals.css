@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes magic-glow {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg);
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes particle-1 {
+  0%, 100% {
+    transform: translateX(-100%) scale(1);
+  }
+  50% {
+    transform: translateX(100%) scale(1.2);
+  }
+}
+
+@keyframes particle-2 {
+  0%, 100% {
+    transform: translateX(-100%) scale(1.2);
+  }
+  50% {
+    transform: translateX(100%) scale(1);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-magic-glow {
+  animation: magic-glow 3s ease-in-out infinite;
+}
+
+.animate-particle-1 {
+  animation: particle-1 3s ease-in-out infinite;
+}
+
+.animate-particle-2 {
+  animation: particle-2 3s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.hover-rotate {
+  transition: transform 0.3s ease-in-out;
+}
+
+.hover-rotate:hover {
+  transform: rotateY(10deg) scale(1.05);
+} 
