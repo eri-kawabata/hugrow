@@ -237,7 +237,7 @@ export function TechnologyLearning() {
 
       <div className="max-w-7xl mx-auto pb-28 relative">
       <GradientHeader
-          title="ぎじゅつ"
+        title="ぎじゅつ"
         gradientColors={{
           from: '#8b5cf6',
           via: '#a78bfa',

@@ -1,13 +1,13 @@
 import React, { useEffect, useState, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Microscope, 
-  Cpu, 
   Wrench, 
   Palette, 
   Calculator,
   Star,
-  Sparkles
+  Sparkles,
+  Atom,
+  Cpu
 } from 'lucide-react';
 import { GradientHeader } from '@/components/Common/GradientHeader';
 import { motion } from 'framer-motion';
@@ -234,66 +234,66 @@ export function Learning() {
     {
       to: '/child/learning/science',
       type: 'science',
-      icon: <Microscope className="h-12 w-12" />,
+      icon: <Atom className="w-6 h-6" />,
       title: 'りか',
-      description: 'しぜんのふしぎをたんけんしよう',
+      description: 'しぜんのふしぎをまなぼう',
       progress: getProgress('science'),
       gradientColors: {
-        from: '#4ade80',
+        from: '#3b82f6',
         via: '#60a5fa',
-        to: '#818cf8'
+        to: '#93c5fd'
       }
     },
     {
       to: '/child/learning/technology',
       type: 'technology',
-      icon: <Cpu className="h-12 w-12" />,
+      icon: <Cpu className="w-6 h-6" />,
       title: 'ぎじゅつ',
-      description: 'コンピュータのしくみをまなぼう',
+      description: 'コンピュータのしくみをしろう',
       progress: getProgress('technology'),
       gradientColors: {
-        from: '#60a5fa',
-        via: '#818cf8',
-        to: '#a78bfa'
+        from: '#8b5cf6',
+        via: '#a78bfa',
+        to: '#c4b5fd'
       }
     },
     {
       to: '/child/learning/engineering',
       type: 'engineering',
-      icon: <Wrench className="h-12 w-12" />,
+      icon: <Wrench className="w-6 h-6" />,
       title: 'こうがく',
-      description: 'ものづくりのげんりをしろう',
+      description: 'ものづくりのせかいをたのしもう',
       progress: getProgress('engineering'),
       gradientColors: {
         from: '#f97316',
-        via: '#fbbf24',
-        to: '#facc15'
+        via: '#fb923c',
+        to: '#fdba74'
       }
     },
     {
       to: '/child/learning/art',
       type: 'art',
-      icon: <Palette className="h-12 w-12" />,
-      title: 'げいじゅつ',
-      description: 'そうぞうりょくをのばそう',
+      icon: <Palette className="w-6 h-6" />,
+      title: 'びじゅつ',
+      description: 'そうぞうりょくをはっきしよう',
       progress: getProgress('art'),
       gradientColors: {
         from: '#ec4899',
-        via: '#f43f5e',
-        to: '#e879f9'
+        via: '#f472b6',
+        to: '#f9a8d4'
       }
     },
     {
       to: '/child/learning/math',
       type: 'math',
-      icon: <Calculator className="h-12 w-12" />,
+      icon: <Calculator className="w-6 h-6" />,
       title: 'すうがく',
-      description: 'かずとけいさんをたのしもう',
+      description: 'かずとかたちでかんがえよう',
       progress: getProgress('math'),
       gradientColors: {
         from: '#10b981',
-        via: '#14b8a6',
-        to: '#34d399'
+        via: '#34d399',
+        to: '#6ee7b7'
       }
     },
   ];
@@ -455,7 +455,7 @@ export function Learning() {
         ))}
       </div>
 
-      <div className="max-w-7xl mx-auto pb-28 relative">
+      <div className="max-w-7xl mx-auto pb-20 relative">
       <GradientHeader 
         title="がくしゅう" 
         gradientColors={{
@@ -465,8 +465,8 @@ export function Learning() {
         }}
       />
 
-        <div className="px-8 py-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 max-w-6xl mx-auto">
+        <div className="px-6 py-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {subjects.map((subject, index) => (
           <motion.div
                 key={subject.to}
@@ -500,7 +500,7 @@ export function Learning() {
                     }}
                   >
                     <div className="absolute inset-0 bg-white/90 transition-opacity group-hover:opacity-95"></div>
-                    <div className="relative p-8">
+                    <div className="relative p-3">
                       <div className="flex flex-col items-center text-center">
                         <motion.div
                           whileHover={{ 
@@ -508,14 +508,14 @@ export function Learning() {
                             rotate: [0, -5, 5, 0],
                             transition: { duration: 0.3 }
                           }}
-                          className="p-6 rounded-2xl mb-6 relative overflow-hidden group-hover:shadow-lg transition-all duration-300"
+                          className="p-2.5 rounded-lg mb-2 relative overflow-hidden group-hover:shadow-lg transition-all duration-300"
                           style={{
                             background: `linear-gradient(135deg, ${subject.gradientColors.from}10, ${subject.gradientColors.to}10)`
                           }}
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 group-hover:translate-x-full transition-all duration-1000"></div>
                           {React.cloneElement(subject.icon as ReactElement, {
-                            className: `h-16 w-16 transform transition-transform group-hover:scale-110 duration-300`,
+                            className: `h-8 w-8 transform transition-transform group-hover:scale-110 duration-300`,
                             style: { color: subject.gradientColors.from }
                           })}
                         </motion.div>
@@ -524,18 +524,18 @@ export function Learning() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.2 }}
                         >
-                          <h3 className="text-2xl font-bold mb-3"
+                          <h3 className="text-base font-bold mb-1"
                             style={{
                               background: `linear-gradient(to right, ${subject.gradientColors.from}, ${subject.gradientColors.to})`,
                               WebkitBackgroundClip: 'text',
                               WebkitTextFillColor: 'transparent'
                             }}
                           >{subject.title}</h3>
-                          <p className="text-gray-600 text-lg">{subject.description}</p>
+                          <p className="text-gray-600 text-xs">{subject.description}</p>
                         </motion.div>
                         {/* 進捗バー */}
-                        <div className="w-full mt-6">
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-full mt-3">
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${subject.progress}%` }}
@@ -546,7 +546,7 @@ export function Learning() {
                               }}
                             />
                           </div>
-                          <p className="text-sm text-gray-500 mt-2">進捗: {subject.progress}%</p>
+                          <p className="text-xs text-gray-500 mt-1.5">進捗: {subject.progress}%</p>
                         </div>
                       </div>
                     </div>
