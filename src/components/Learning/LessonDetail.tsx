@@ -1,11 +1,7 @@
 import React, { useState, useCallback, memo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Star, Clock, Trophy, Play } from 'lucide-react';
-import { scienceLessons } from './ScienceLearning';
-import { technologyLessons } from './TechnologyLearning';
-import { engineeringLessons } from './EngineeringLearning';
-import { artLessons } from './ArtLearning';
-import { mathLessons } from './MathLearning';
+import { scienceLessons, technologyLessons, engineeringLessons, artLessons, mathLessons } from '@/data/lessons';
 import { useLearningProgress } from '@/hooks/useLearningProgress';
 import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { ErrorMessage } from '@/components/Common/ErrorMessage';

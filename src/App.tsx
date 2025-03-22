@@ -14,6 +14,39 @@ import { LoadingSpinner } from '@/components/Common/LoadingSpinner';
 import { SupabaseTest } from './components/SupabaseTest';
 import { ConfirmDialog } from './components/Common/ConfirmDialog';
 import { useConfirm } from './hooks/useConfirm';
+import { ErrorMessage } from './components/Common/ErrorMessage';
+
+// エラーバウンダリーコンポーネント
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <ErrorMessage
+          title="エラーが発生しました"
+          message="ページの読み込みに失敗しました。"
+          onRetry={() => {
+            this.setState({ hasError: false });
+            window.location.reload();
+          }}
+        />
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // 遅延ロードするコンポーネント
 const Auth = lazy(() => import('./components/Auth').then(module => ({ default: module.Auth })));
@@ -21,7 +54,7 @@ const SignUp = lazy(() => import('./components/SignUp').then(module => ({ defaul
 const PasswordReset = lazy(() => import('./components/Auth/PasswordReset').then(module => ({ default: module.PasswordReset })));
 const UpdatePassword = lazy(() => import('./components/Auth/UpdatePassword').then(module => ({ default: module.UpdatePassword })));
 const Home = lazy(() => import('./components/Home').then(module => ({ default: module.Home })));
-const LearningRoutes = lazy(() => import('./routes/LearningRoutes'));
+const LearningRoutes = lazy(() => import('./routes/LearningRoutes').then(module => ({ default: module.default })));
 const ParentWorksRoutes = lazy(() => import('./routes/ParentWorksRoutes').then(module => ({ default: module.ParentWorksRoutes })));
 const ChildWorksRoutes = lazy(() => import('./routes/ChildWorksRoutes').then(module => ({ default: module.ChildWorksRoutes })));
 const ProfileRoutes = lazy(() => import('./routes/ProfileRoutes').then(module => ({ default: module.ProfileRoutes })));
@@ -30,7 +63,7 @@ const ParentLayout = lazy(() => import('./components/layouts/ParentLayout').then
 const ChildLayout = lazy(() => import('./components/layouts/ChildLayout').then(module => ({ default: module.ChildLayout })));
 const ParentDashboard = lazy(() => import('./components/ParentDashboard').then(module => ({ default: module.ParentDashboard })));
 const SELQuest = lazy(() => import('./components/SELQuest').then(module => ({ default: module.SELQuest })));
-const ChildSelectionScreen = lazy(() => import('./components/ChildSelectionScreen').then(module => ({ default: module.ChildSelectionScreen })));
+const ChildSelectionScreen = lazy(() => import('./components/ChildSelectionScreen').then(module => ({ default: module.default })));
 
 // グローバルな確認ダイアログのコンテキスト
 export const ConfirmContext = React.createContext<ReturnType<typeof useConfirm> | null>(null);
@@ -39,9 +72,11 @@ export const ConfirmContext = React.createContext<ReturnType<typeof useConfirm> 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route element={
-      <SupabaseAuthProvider>
-        <AuthProvider />
-      </SupabaseAuthProvider>
+      <ErrorBoundary>
+        <SupabaseAuthProvider>
+          <AuthProvider />
+        </SupabaseAuthProvider>
+      </ErrorBoundary>
     }>
       {/* 認証ルート */}
       <Route path="/auth">
@@ -97,9 +132,11 @@ export default function App() {
   return (
     <>
       <ConfirmContext.Provider value={confirmDialog}>
-        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><LoadingSpinner size="lg" message="読み込み中..." /></div>}>
-          <RouterProvider router={router} />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><LoadingSpinner size="lg" message="読み込み中..." /></div>}>
+            <RouterProvider router={router} />
+          </Suspense>
+        </ErrorBoundary>
         <Toaster position="top-center" />
         <ConfirmDialog 
           isOpen={confirmDialog.isOpen}

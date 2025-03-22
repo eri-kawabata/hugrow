@@ -29,38 +29,54 @@ type SubjectCardProps = {
 
 const SubjectCard = React.memo(({ to, icon, title, description, progress = 0 }: SubjectCardProps) => (
   <motion.div
-    whileHover={{ scale: 1.03 }}
+    whileHover={{ 
+      scale: 1.05,
+      rotateY: 5,
+      boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+    }}
     whileTap={{ scale: 0.98 }}
     transition={{ type: "spring", stiffness: 400, damping: 17 }}
   >
     <Link
       to={to}
-      className="block bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 relative overflow-hidden group"
+      className="block bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 relative overflow-hidden group"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-purple-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="relative space-y-4">
         <div className="flex items-center gap-4">
-          <div className="p-4 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl transform group-hover:rotate-6 transition-transform duration-300">
+          <motion.div 
+            className="p-4 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 rounded-xl"
+            whileHover={{ rotate: 12 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
             {icon}
-          </div>
+          </motion.div>
           <div>
             <h3 className="font-bold text-xl text-gray-900 group-hover:text-indigo-600 transition-colors duration-300">{title}</h3>
             <p className="mt-1 text-sm text-gray-600">{description}</p>
           </div>
         </div>
         <div className="mt-4">
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 1, ease: "easeOut" }}
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
-            />
+              className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 relative"
+            >
+              <div className="absolute inset-0 bg-white opacity-25 animate-pulse"></div>
+            </motion.div>
           </div>
           <div className="flex justify-between items-center mt-2">
-            <span className="text-sm text-gray-500">進捗: {progress}%</span>
+            <span className="text-sm font-medium text-gray-600">進捗: {progress}%</span>
             {progress === 100 && (
-              <Trophy className="h-5 w-5 text-yellow-500" />
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 10 }}
+              >
+                <Trophy className="h-6 w-6 text-yellow-500 drop-shadow-lg" />
+              </motion.div>
             )}
           </div>
         </div>
@@ -211,15 +227,27 @@ export function Learning() {
       />
 
       <div className="px-6">
-        <div className="space-y-8">
+        <div className="space-y-12">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center"
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="text-center space-y-4"
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">すきなかもくをえらんでがくしゅうをはじめよう！</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
+                すきなかもくをえらんでがくしゅうをはじめよう！
+              </span>
+            </h2>
             <p className="text-lg text-gray-600">がんばってがくしゅうすると、トロフィーがもらえるよ！</p>
+            <motion.div 
+              className="flex justify-center"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.5, type: "spring" }}
+            >
+              <Star className="h-8 w-8 text-yellow-400 animate-pulse" />
+            </motion.div>
           </motion.div>
           {subjectCards}
         </div>

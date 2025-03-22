@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../lib/types';
 
-export function ChildSelectionScreen() {
+function ChildSelectionScreen() {
   const [children, setChildren] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -429,4 +429,6 @@ export function ChildSelectionScreen() {
       </div>
     </div>
   );
-} 
+}
+
+export default ChildSelectionScreen; 

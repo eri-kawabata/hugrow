@@ -15,10 +15,14 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   server: {
-    port: 5173,
-    strictPort: false, // ポートが使用中の場合は別のポートを試行
+    port: 3000,
+    host: true,
+    strictPort: true,
     watch: {
       usePolling: true,
+    },
+    hmr: {
+      overlay: true,
     },
   },
   build: {

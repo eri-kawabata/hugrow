@@ -1,72 +1,135 @@
 import React from 'react';
-import { BaseLearning } from './BaseLearning';
-import type { Lesson } from './BaseLearning';
-import { Monitor, Code, Globe, Cpu, Lightbulb } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { GradientHeader } from '@/components/Common/GradientHeader';
+import { Cpu, Code, Monitor, Shield, Smartphone, ChevronRight } from 'lucide-react';
 
-export const technologyLessons: readonly Lesson[] = [
-  {
-    id: 'tech-1',
-    title: 'パソコンとなかよし',
-    description: 'パソコンってどんなおともだち？いっしょにみてみよう！',
-    difficulty: 1,
-    duration: 15,
-    points: 120,
-    icon: Monitor,
-    color: 'from-blue-400 to-purple-400'
-  },
-  {
-    id: 'tech-2',
-    title: 'プログラミングであそぼう',
-    description: 'たのしいゲームをつくってみよう！',
-    difficulty: 1,
-    duration: 20,
-    points: 150,
-    icon: Code,
-    color: 'from-green-400 to-blue-400'
-  },
-  {
-    id: 'tech-3',
-    title: 'インターネットのせかい',
-    description: 'インターネットでできることをたんけんしよう！',
-    difficulty: 2,
-    duration: 20,
-    points: 180,
-    icon: Globe,
-    color: 'from-yellow-400 to-orange-400'
-  },
-  {
-    id: 'tech-4',
-    title: 'デジタルでものづくり',
-    description: 'パソコンでじぶんだけのおもちゃをつくろう！',
-    difficulty: 2,
-    duration: 25,
-    points: 200,
-    icon: Lightbulb,
-    color: 'from-pink-400 to-red-400'
-  },
-  {
-    id: 'tech-5',
-    title: 'ロボットとあそぼう',
-    description: 'かしこいロボットとなかよくなろう！',
-    difficulty: 2,
-    duration: 25,
-    points: 250,
-    icon: Cpu,
-    color: 'from-purple-400 to-indigo-400'
-  },
-] as const;
+type LessonCardProps = {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  isCompleted: boolean;
+  onClick: () => void;
+};
+
+const LessonCard: React.FC<LessonCardProps> = ({ icon, title, description, isCompleted, onClick }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    className={`
+      bg-white rounded-xl p-6 shadow-lg cursor-pointer
+      ${isCompleted ? 'border-2 border-purple-400' : 'border border-gray-100'}
+    `}
+    onClick={onClick}
+  >
+    <div className="flex items-start space-x-4">
+      <div className="flex-shrink-0">
+        <motion.div
+          className={`
+            p-3 rounded-lg
+            ${isCompleted ? 'bg-purple-100' : 'bg-indigo-100'}
+          `}
+          whileHover={{ rotate: 5 }}
+        >
+          {icon}
+        </motion.div>
+      </div>
+      <div className="flex-grow">
+        <h3 className="text-lg font-bold text-gray-900 mb-1">{title}</h3>
+        <p className="text-sm text-gray-600">{description}</p>
+      </div>
+      <div className="flex-shrink-0">
+        <ChevronRight className={`w-5 h-5 ${isCompleted ? 'text-purple-500' : 'text-gray-400'}`} />
+      </div>
+    </div>
+  </motion.div>
+);
 
 export function TechnologyLearning() {
+  const lessons = [
+    {
+      icon: <Monitor className="w-6 h-6 text-indigo-600" />,
+      title: "コンピュータのしくみ",
+      description: "コンピュータがどうやってうごいているのかをしろう",
+      isCompleted: false,
+    },
+    {
+      icon: <Code className="w-6 h-6 text-purple-600" />,
+      title: "プログラミングのきほん",
+      description: "かんたんなプログラムをつくってみよう",
+      isCompleted: false,
+    },
+    {
+      icon: <Shield className="w-6 h-6 text-blue-600" />,
+      title: "あんぜんなインターネット",
+      description: "インターネットをあんぜんにつかうほうほう",
+      isCompleted: false,
+    },
+    {
+      icon: <Smartphone className="w-6 h-6 text-violet-600" />,
+      title: "スマートデバイス",
+      description: "スマートフォンやタブレットのひみつをしろう",
+      isCompleted: false,
+    },
+  ];
+
   return (
-    <BaseLearning
-      title="テクノロジー"
-      description="パソコンやロボットとなかよくなって、たのしくまなぼう！"
-      lessons={technologyLessons}
-      gradientColors={{
-        from: '#60a5fa',
-        via: '#818cf8',
-        to: '#6366f1'
-      }}
-    />
+    <div className="max-w-4xl mx-auto pb-28">
+      <GradientHeader
+        title="ぎじゅつ"
+        gradientColors={{
+          from: '#818cf8',
+          via: '#c084fc',
+          to: '#e879f9'
+        }}
+      />
+
+      <div className="px-6 mt-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+              テクノロジーのせかいへようこそ！
+            </span>
+          </h2>
+          <p className="text-gray-600">
+            コンピュータやインターネットのしくみをたのしくまなぼう
+          </p>
+        </motion.div>
+
+        <div className="grid gap-6">
+          {lessons.map((lesson, index) => (
+            <motion.div
+              key={lesson.title}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              <LessonCard
+                {...lesson}
+                onClick={() => {
+                  // TODO: レッスンページへの遷移処理
+                  console.log(`Navigating to lesson: ${lesson.title}`);
+                }}
+              />
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          className="mt-12 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+        >
+          <div className="inline-flex items-center justify-center p-4 bg-indigo-50 rounded-full">
+            <Cpu className="w-8 h-8 text-indigo-600 animate-pulse" />
+          </div>
+        </motion.div>
+      </div>
+    </div>
   );
 } 

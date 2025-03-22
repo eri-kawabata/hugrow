@@ -1,72 +1,135 @@
 import React from 'react';
-import { BaseLearning } from './BaseLearning';
-import type { Lesson } from './BaseLearning';
-import { Bird, Flower2, Cloud, Globe2, TestTube } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { GradientHeader } from '@/components/Common/GradientHeader';
+import { Microscope, Leaf, Atom, Droplets, Thermometer, ChevronRight } from 'lucide-react';
 
-export const scienceLessons: readonly Lesson[] = [
-  {
-    id: 'science-1',
-    title: 'どうぶつとなかよし',
-    description: 'かわいいどうぶつたちのくらしをのぞいてみよう！',
-    difficulty: 1,
-    duration: 20,
-    points: 100,
-    icon: Bird,
-    color: 'from-orange-400 to-red-400'
-  },
-  {
-    id: 'science-2',
-    title: 'おはながすくすく',
-    description: 'たねをうえて、おはながさくまでをみてみよう！',
-    difficulty: 1,
-    duration: 25,
-    points: 120,
-    icon: Flower2,
-    color: 'from-pink-400 to-rose-400'
-  },
-  {
-    id: 'science-3',
-    title: 'おてんきマジック',
-    description: 'あめやゆきがふるひみつをたんけんしよう！',
-    difficulty: 2,
-    duration: 30,
-    points: 150,
-    icon: Cloud,
-    color: 'from-blue-400 to-cyan-400'
-  },
-  {
-    id: 'science-4',
-    title: 'ちきゅうとうちゅう',
-    description: 'おおきなちきゅうとキラキラほしをみてみよう！',
-    difficulty: 2,
-    duration: 35,
-    points: 180,
-    icon: Globe2,
-    color: 'from-indigo-400 to-purple-400'
-  },
-  {
-    id: 'science-5',
-    title: 'ふしぎなじっけん',
-    description: 'かんたんなじっけんでかがくのふしぎをたしかめよう',
-    difficulty: 'hard',
-    duration: '25分',
-    points: 200,
-    icon: TestTube,
-    color: 'from-green-400 to-emerald-400'
-  },
-] as const;
+type LessonCardProps = {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  isCompleted: boolean;
+  onClick: () => void;
+};
+
+const LessonCard: React.FC<LessonCardProps> = ({ icon, title, description, isCompleted, onClick }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    className={`
+      bg-white rounded-xl p-6 shadow-lg cursor-pointer
+      ${isCompleted ? 'border-2 border-green-400' : 'border border-gray-100'}
+    `}
+    onClick={onClick}
+  >
+    <div className="flex items-start space-x-4">
+      <div className="flex-shrink-0">
+        <motion.div
+          className={`
+            p-3 rounded-lg
+            ${isCompleted ? 'bg-green-100' : 'bg-blue-100'}
+          `}
+          whileHover={{ rotate: 5 }}
+        >
+          {icon}
+        </motion.div>
+      </div>
+      <div className="flex-grow">
+        <h3 className="text-lg font-bold text-gray-900 mb-1">{title}</h3>
+        <p className="text-sm text-gray-600">{description}</p>
+      </div>
+      <div className="flex-shrink-0">
+        <ChevronRight className={`w-5 h-5 ${isCompleted ? 'text-green-500' : 'text-gray-400'}`} />
+      </div>
+    </div>
+  </motion.div>
+);
 
 export function ScienceLearning() {
+  const lessons = [
+    {
+      icon: <Leaf className="w-6 h-6 text-green-600" />,
+      title: "しょくぶつのせいちょう",
+      description: "たねからめがでて、おおきくそだっていくようすをかんさつしよう",
+      isCompleted: false,
+    },
+    {
+      icon: <Droplets className="w-6 h-6 text-blue-600" />,
+      title: "みずのふしぎ",
+      description: "みずのせいしつをじっけんでたしかめよう",
+      isCompleted: false,
+    },
+    {
+      icon: <Atom className="w-6 h-6 text-indigo-600" />,
+      title: "ぶつりのせかい",
+      description: "じしゃくやでんきのふしぎをしらべよう",
+      isCompleted: false,
+    },
+    {
+      icon: <Thermometer className="w-6 h-6 text-green-600" />,
+      title: "おんどとエネルギー",
+      description: "あたたかさのひみつをさぐってみよう",
+      isCompleted: false,
+    },
+  ];
+
   return (
-    <BaseLearning
-      title="りかのせかい"
-      description="わくわくたのしい！ふしぎいっぱい！"
-      lessons={scienceLessons}
-      gradientColors={{
-        from: '#22c55e',
-        via: '#3b82f6',
-        to: '#6366f1'
-      }}
-    />
+    <div className="max-w-4xl mx-auto pb-28">
+      <GradientHeader
+        title="りか"
+        gradientColors={{
+          from: '#4ade80',
+          via: '#60a5fa',
+          to: '#818cf8'
+        }}
+      />
+
+      <div className="px-6 mt-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-green-600 to-blue-600">
+              しぜんのふしぎをたんけんしよう！
+            </span>
+          </h2>
+          <p className="text-gray-600">
+            かんさつやじっけんをとおして、しぜんのふしぎをみつけていこう
+          </p>
+        </motion.div>
+
+        <div className="grid gap-6">
+          {lessons.map((lesson, index) => (
+            <motion.div
+              key={lesson.title}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              <LessonCard
+                {...lesson}
+                onClick={() => {
+                  // TODO: レッスンページへの遷移処理
+                  console.log(`Navigating to lesson: ${lesson.title}`);
+                }}
+              />
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div
+          className="mt-12 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+        >
+          <div className="inline-flex items-center justify-center p-4 bg-blue-50 rounded-full">
+            <Microscope className="w-8 h-8 text-blue-600 animate-pulse" />
+          </div>
+        </motion.div>
+      </div>
+    </div>
   );
 }
