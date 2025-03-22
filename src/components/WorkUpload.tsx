@@ -45,8 +45,93 @@ export function WorkUpload() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-      <div className="max-w-6xl mx-auto pb-28">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 relative overflow-hidden">
+      {/* 背景の装飾要素 */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* 虹色の光の輪 */}
+        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-pink-300/40 via-blue-300/40 to-green-300/40 rounded-full blur-3xl animate-slow-spin"></div>
+        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-purple-300/40 via-yellow-300/40 to-blue-300/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
+        
+        {/* 追加の光の輪 */}
+        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-orange-300/30 via-red-300/30 to-yellow-300/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-indigo-300/30 via-purple-300/30 to-pink-300/30 rounded-full blur-3xl animate-float-reverse"></div>
+        
+        {/* 浮かぶ泡 */}
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full bg-gradient-to-br from-white/50 to-white/10"
+            style={{
+              width: `${Math.random() * 80 + 40}px`,
+              height: `${Math.random() * 80 + 40}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              backdropFilter: 'blur(4px)',
+            }}
+            animate={{
+              y: [0, -40, 0],
+              x: [0, Math.random() * 30 - 15, 0],
+              scale: [1, 1.2, 1],
+              rotate: [0, 360, 0],
+            }}
+            transition={{
+              duration: Math.random() * 8 + 5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+
+        {/* キラキラ */}
+        {[...Array(25)].map((_, i) => (
+          <motion.div
+            key={`sparkle-${i}`}
+            className="absolute bg-gradient-to-r from-white via-yellow-200 to-white rounded-full"
+            style={{
+              width: `${Math.random() * 4 + 2}px`,
+              height: `${Math.random() * 4 + 2}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              filter: 'blur(0.5px)',
+            }}
+            animate={{
+              opacity: [0, 1, 0],
+              scale: [0, 2, 0],
+              rotate: [0, 180, 360],
+            }}
+            transition={{
+              duration: Math.random() * 3 + 2,
+              repeat: Infinity,
+              delay: Math.random() * 3,
+            }}
+          />
+        ))}
+
+        {/* 流れ星 */}
+        {[...Array(3)].map((_, i) => (
+          <motion.div
+            key={`shooting-star-${i}`}
+            className="absolute h-0.5 bg-gradient-to-r from-transparent via-white to-transparent"
+            style={{
+              width: `${Math.random() * 150 + 100}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              transform: `rotate(${Math.random() * 180}deg)`,
+            }}
+            animate={{
+              x: ['-200%', '300%'],
+              opacity: [0, 1, 0],
+            }}
+            transition={{
+              duration: Math.random() * 3 + 2,
+              repeat: Infinity,
+              delay: Math.random() * 15,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="max-w-7xl mx-auto pb-28 relative">
         <GradientHeader 
           title="どんなさくひんを つくる？" 
           gradientColors={{
@@ -56,8 +141,8 @@ export function WorkUpload() {
           }}
         />
         
-        <div className="px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="px-8 py-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 max-w-6xl mx-auto">
             {createTypes.map((type, index) => (
               <motion.div
                 key={type.to}
@@ -130,6 +215,49 @@ export function WorkUpload() {
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes slow-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes slow-spin-reverse {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(-20px, -20px); }
+        }
+        
+        @keyframes float-reverse {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(20px, -20px); }
+        }
+        
+        .animate-slow-spin {
+          animation: slow-spin 20s linear infinite;
+        }
+        
+        .animate-slow-spin-reverse {
+          animation: slow-spin-reverse 25s linear infinite;
+        }
+        
+        .animate-float {
+          animation: float 15s ease-in-out infinite;
+        }
+        
+        .animate-float-reverse {
+          animation: float-reverse 18s ease-in-out infinite;
+        }
+        
+        @keyframes twinkle {
+          0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
+          50% { opacity: 1; transform: scale(1) rotate(180deg); }
+        }
+      `}</style>
     </div>
   );
 }
