@@ -27,41 +27,18 @@ type SubjectCardProps = {
   title: string;
   description: string;
   progress: number;
+  gradientColors: {
+    from: string;
+    via: string;
+    to: string;
+  };
 };
 
-function SubjectCard({ to, type, icon, title, description, progress }: SubjectCardProps) {
-  const gradientColors = {
-    science: {
-      from: '#60a5fa',
-      via: '#818cf8',
-      to: '#a78bfa'
-    },
-    technology: {
-      from: '#c084fc',
-      via: '#e879f9',
-      to: '#f472b6'
-    },
-    engineering: {
-      from: '#fb923c',
-      via: '#fbbf24',
-      to: '#facc15'
-    },
-    art: {
-      from: '#fb7185',
-      via: '#f472b6',
-      to: '#e879f9'
-    },
-    math: {
-      from: '#34d399',
-      via: '#2dd4bf',
-      to: '#22d3ee'
-    }
-  };
-
+function SubjectCard({ to, type, icon, title, description, progress, gradientColors }: SubjectCardProps) {
   return (
     <Link to={to}>
-      <motion.div
-        whileHover={{ 
+  <motion.div
+    whileHover={{ 
           scale: 1.03,
           y: -5,
           rotateY: 5
@@ -69,14 +46,14 @@ function SubjectCard({ to, type, icon, title, description, progress }: SubjectCa
         className="relative will-change-transform perspective-1000"
       >
         <GlowCard
-          gradientColors={gradientColors[type as keyof typeof gradientColors]}
+          gradientColors={gradientColors}
           className="h-full bg-white/90 backdrop-blur-sm border-2 border-white/70 shadow-[0_0_15px_rgba(255,255,255,0.5)] rounded-2xl overflow-hidden"
         >
           {/* 魔法の光エフェクト */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent animate-magic-glow" />
           
           {/* キラキラエフェクト */}
-          <motion.div
+          <motion.div 
             className="absolute -top-2 -right-2 text-yellow-300 pointer-events-none z-10"
             animate={{
               scale: [1, 1.3, 1],
@@ -127,13 +104,13 @@ function SubjectCard({ to, type, icon, title, description, progress }: SubjectCa
                   <span className={`text-base font-black tracking-tight ${getTextColor(type)} drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]`}>
                     {progress}%
                   </span>
-                </div>
-              </div>
+          </div>
+        </div>
               <div className="relative h-5 w-full rounded-full bg-white/50 overflow-hidden shadow-inner backdrop-blur-sm border border-white/50">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 1, ease: "easeOut" }}
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
                   className={`absolute h-full ${getProgressColor(type)} will-change-transform`}
                 >
                   {/* 光の粒子エフェクト */}
@@ -141,8 +118,8 @@ function SubjectCard({ to, type, icon, title, description, progress }: SubjectCa
                     <div className="absolute inset-0 animate-particle-1 opacity-90 bg-white/40 rounded-full w-12 h-full will-change-transform" />
                     <div className="absolute inset-0 animate-particle-2 opacity-90 bg-white/40 rounded-full w-8 h-full will-change-transform" />
                   </div>
-                </motion.div>
-              </div>
+            </motion.div>
+          </div>
             </div>
           </div>
         </GlowCard>
@@ -213,7 +190,6 @@ export function Learning() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // データベースから全ての進捗データを取得
       const { data: progressData, error } = await supabase
         .from('learning_progress')
         .select('*')
@@ -221,7 +197,6 @@ export function Learning() {
 
       if (error) throw error;
 
-      // 各科目のレッスン数を定義
       const lessonCounts = {
         science: 5,
         technology: 5,
@@ -230,7 +205,6 @@ export function Learning() {
         math: 5
       };
 
-      // 各科目の進捗を計算
       const results = Object.entries(lessonCounts).map(([subject, totalLessons]) => {
         const subjectLessons = progressData?.filter(
           progress => progress.lesson_id.startsWith(subject) && progress.completed
@@ -260,42 +234,67 @@ export function Learning() {
     {
       to: '/child/learning/science',
       type: 'science',
-      icon: <Microscope className="h-8 w-8 text-indigo-600" />,
+      icon: <Microscope className="h-12 w-12" />,
       title: 'りか',
       description: 'しぜんのふしぎをたんけんしよう',
       progress: getProgress('science'),
+      gradientColors: {
+        from: '#4ade80',
+        via: '#60a5fa',
+        to: '#818cf8'
+      }
     },
     {
       to: '/child/learning/technology',
       type: 'technology',
-      icon: <Cpu className="h-8 w-8 text-indigo-600" />,
+      icon: <Cpu className="h-12 w-12" />,
       title: 'ぎじゅつ',
       description: 'コンピュータのしくみをまなぼう',
       progress: getProgress('technology'),
+      gradientColors: {
+        from: '#60a5fa',
+        via: '#818cf8',
+        to: '#a78bfa'
+      }
     },
     {
       to: '/child/learning/engineering',
       type: 'engineering',
-      icon: <Wrench className="h-8 w-8 text-indigo-600" />,
+      icon: <Wrench className="h-12 w-12" />,
       title: 'こうがく',
       description: 'ものづくりのげんりをしろう',
       progress: getProgress('engineering'),
+      gradientColors: {
+        from: '#f97316',
+        via: '#fbbf24',
+        to: '#facc15'
+      }
     },
     {
       to: '/child/learning/art',
       type: 'art',
-      icon: <Palette className="h-8 w-8 text-indigo-600" />,
+      icon: <Palette className="h-12 w-12" />,
       title: 'げいじゅつ',
       description: 'そうぞうりょくをのばそう',
       progress: getProgress('art'),
+      gradientColors: {
+        from: '#ec4899',
+        via: '#f43f5e',
+        to: '#e879f9'
+      }
     },
     {
       to: '/child/learning/math',
       type: 'math',
-      icon: <Calculator className="h-8 w-8 text-indigo-600" />,
+      icon: <Calculator className="h-12 w-12" />,
       title: 'すうがく',
       description: 'かずとけいさんをたのしもう',
       progress: getProgress('math'),
+      gradientColors: {
+        from: '#10b981',
+        via: '#14b8a6',
+        to: '#34d399'
+      }
     },
   ];
 
@@ -308,84 +307,209 @@ export function Learning() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-      <div className="max-w-6xl mx-auto space-y-12 pb-28">
-        <GradientHeader 
-          title="がくしゅう" 
-          gradientColors={{
-            from: '#8ec5d6',
-            via: '#f7c5c2',
-            to: '#f5f6bf'
-          }}
-        />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 relative overflow-hidden">
+      {/* 背景の装飾要素 */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* 虹色の光の輪 */}
+        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-pink-300/40 via-blue-300/40 to-green-300/40 rounded-full blur-3xl animate-slow-spin"></div>
+        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-purple-300/40 via-yellow-300/40 to-blue-300/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
+        
+        {/* 追加の光の輪 */}
+        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-orange-300/30 via-red-300/30 to-yellow-300/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-indigo-300/30 via-purple-300/30 to-pink-300/30 rounded-full blur-3xl animate-float-reverse"></div>
+        
+        {/* 浮かぶ泡 */}
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full bg-gradient-to-br from-white/50 to-white/10"
+            style={{
+              width: `${Math.random() * 60 + 20}px`,
+              height: `${Math.random() * 60 + 20}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              backdropFilter: 'blur(4px)',
+            }}
+            animate={{
+              y: [0, -40, 0],
+              x: [0, Math.random() * 30 - 15, 0],
+              scale: [1, 1.2, 1],
+              rotate: [0, 360, 0],
+            }}
+            transition={{
+              duration: Math.random() * 8 + 5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
 
-        <div className="px-6">
-          <div className="space-y-12">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
-              className="text-center space-y-6"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
+        {/* キラキラ */}
+        {[...Array(25)].map((_, i) => (
+          <motion.div
+            key={`sparkle-${i}`}
+            className="absolute bg-gradient-to-r from-white via-yellow-200 to-white rounded-full"
+            style={{
+              width: `${Math.random() * 4 + 2}px`,
+              height: `${Math.random() * 4 + 2}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              filter: 'blur(0.5px)',
+            }}
+            animate={{
+              opacity: [0, 1, 0],
+              scale: [0, 2, 0],
+              rotate: [0, 180, 360],
+            }}
+            transition={{
+              duration: Math.random() * 3 + 2,
+              repeat: Infinity,
+              delay: Math.random() * 3,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="max-w-7xl mx-auto pb-28 relative">
+      <GradientHeader 
+        title="がくしゅう" 
+        gradientColors={{
+          from: '#8ec5d6',
+          via: '#f7c5c2',
+          to: '#f5f6bf'
+        }}
+      />
+
+        <div className="px-8 py-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 max-w-6xl mx-auto">
+            {subjects.map((subject, index) => (
+          <motion.div
+                key={subject.to}
+                initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
                 transition={{ 
+                  duration: 0.5,
+                  delay: index * 0.1,
                   type: "spring",
                   stiffness: 260,
-                  damping: 20 
+                  damping: 20
                 }}
-                className="inline-block relative"
               >
-                <h2 className="text-3xl md:text-4xl font-black tracking-tight relative">
-                  <span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 [-webkit-text-stroke:0.5px_rgba(99,102,241,0.1)] [text-shadow:2px_2px_2px_rgba(99,102,241,0.1)]">
-                    すきなかもくをえらんでがくしゅうをはじめよう！
-                  </span>
-                  <motion.div
-                    className="absolute -top-6 -right-6 text-yellow-400 z-20"
-                    animate={{
-                      scale: [1, 1.2, 1],
-                      rotate: [0, 10, -10, 0]
+                <Link
+                  to={subject.to}
+                  className="relative group block"
+                >
+                  <div className="absolute -inset-0.5 bg-gradient-to-r rounded-[28px] opacity-30 group-hover:opacity-50 blur transition duration-500"
+                    style={{
+                      backgroundImage: `linear-gradient(to right, ${subject.gradientColors.from}, ${subject.gradientColors.via}, ${subject.gradientColors.to})`
                     }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatType: "reverse"
+                  ></div>
+                  <motion.div
+                    whileHover={{ 
+                      scale: 1.02,
+                      transition: { duration: 0.2 }
+                    }}
+                    className="relative block bg-gradient-to-br from-white to-white/20 rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2"
+                    style={{
+                      borderColor: subject.gradientColors.from
                     }}
                   >
-                    <Star className="w-8 h-8 drop-shadow-lg" />
-                  </motion.div>
-                </h2>
-              </motion.div>
-              <p className="text-lg font-medium text-gray-700">がんばってがくしゅうすると、トロフィーがもらえるよ！</p>
-            </motion.div>
-
+                    <div className="absolute inset-0 bg-white/90 transition-opacity group-hover:opacity-95"></div>
+                    <div className="relative p-8">
+                      <div className="flex flex-col items-center text-center">
+                        <motion.div
+                          whileHover={{ 
+                            scale: 1.1,
+                            rotate: [0, -5, 5, 0],
+                            transition: { duration: 0.3 }
+                          }}
+                          className="p-6 rounded-2xl mb-6 relative overflow-hidden group-hover:shadow-lg transition-all duration-300"
+                          style={{
+                            background: `linear-gradient(135deg, ${subject.gradientColors.from}10, ${subject.gradientColors.to}10)`
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 group-hover:translate-x-full transition-all duration-1000"></div>
+                          {React.cloneElement(subject.icon, {
+                            className: `h-16 w-16 transform transition-transform group-hover:scale-110 duration-300`,
+                            style: { color: subject.gradientColors.from }
+                          })}
+                        </motion.div>
             <motion.div 
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              {subjects.map((subject, index) => (
-                <motion.div
-                  key={subject.to}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ 
-                    duration: 0.5,
-                    delay: index * 0.1,
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 20
-                  }}
-                >
-                  <SubjectCard {...subject} />
-                </motion.div>
-              ))}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2 }}
+                        >
+                          <h3 className="text-2xl font-bold mb-3"
+                            style={{
+                              background: `linear-gradient(to right, ${subject.gradientColors.from}, ${subject.gradientColors.to})`,
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent'
+                            }}
+                          >{subject.title}</h3>
+                          <p className="text-gray-600 text-lg">{subject.description}</p>
+                        </motion.div>
+                        {/* 進捗バー */}
+                        <div className="w-full mt-6">
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${subject.progress}%` }}
+                              transition={{ duration: 1, ease: "easeOut" }}
+                              className="h-full rounded-full"
+                              style={{
+                                background: `linear-gradient(to right, ${subject.gradientColors.from}, ${subject.gradientColors.to})`
+                              }}
+                            />
+                          </div>
+                          <p className="text-sm text-gray-500 mt-2">進捗: {subject.progress}%</p>
+                        </div>
+                      </div>
+                    </div>
             </motion.div>
+                </Link>
+          </motion.div>
+            ))}
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes slow-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes slow-spin-reverse {
+          from { transform: rotate(360deg); }
+          to { transform: rotate(0deg); }
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(-20px, -20px); }
+        }
+        
+        @keyframes float-reverse {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(20px, -20px); }
+        }
+        
+        .animate-slow-spin {
+          animation: slow-spin 20s linear infinite;
+        }
+        
+        .animate-slow-spin-reverse {
+          animation: slow-spin-reverse 25s linear infinite;
+        }
+        
+        .animate-float {
+          animation: float 15s ease-in-out infinite;
+        }
+        
+        .animate-float-reverse {
+          animation: float-reverse 18s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 } 
