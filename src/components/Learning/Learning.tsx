@@ -455,7 +455,7 @@ export function Learning() {
         ))}
       </div>
 
-      <div className="max-w-7xl mx-auto pb-20 relative">
+      <div className="max-w-7xl mx-auto pb-12 relative">
       <GradientHeader 
         title="がくしゅう" 
         gradientColors={{
