@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Minimize2, Maximize2, Mic, MicOff, Volume2, VolumeX, Settings } from 'lucide-react';
+import { X, Minimize2, Maximize2, Mic, MicOff, Volume2, VolumeX, Settings, Minus } from 'lucide-react';
 import { useAiDoctor } from '../../contexts/AiDoctorContext';
 import AiDoctorCustomizeModal from './AiDoctorCustomizeModal';
 import { generateAIResponse } from '../../lib/gemini';
@@ -20,9 +20,12 @@ const AiDoctor: React.FC = () => {
   const { settings, updateSettings } = useAiDoctor();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+  const [position, setPosition] = useState(() => {
+    const saved = localStorage.getItem('aiDoctorPosition');
+    return saved ? JSON.parse(saved) : { x: 20, y: 20 };
+  });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -33,6 +36,58 @@ const AiDoctor: React.FC = () => {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [lastClickTime, setLastClickTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // メッセージを永続化
+  useEffect(() => {
+    const savedMessages = localStorage.getItem('aiDoctorMessages');
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    }
+  }, []);
+
+  // メッセージを保存
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('aiDoctorMessages', JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  // スクロール処理
+  useEffect(() => {
+    if (messagesEndRef.current && isOpen) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isOpen]);
+
+  // ドラッグ処理
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        const newX = e.clientX - dragStart.x;
+        const newY = e.clientY - dragStart.y;
+        setPosition({ x: newX, y: newY });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart]);
+
+  // 位置を保存
+  useEffect(() => {
+    localStorage.setItem('aiDoctorPosition', JSON.stringify(position));
+  }, [position]);
 
   // 音声認識の設定
   useEffect(() => {
@@ -64,10 +119,10 @@ const AiDoctor: React.FC = () => {
     }
   }, []);
 
-  // メッセージの自動スクロール
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // フリガナを除去する関数
+  const removeRuby = (text: string): string => {
+    return text.replace(/[（(].+?[)）]/g, '');
+  };
 
   // 音声認識の開始/停止
   const toggleListening = () => {
@@ -90,7 +145,8 @@ const AiDoctor: React.FC = () => {
     } else if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (!lastMessage.isUser) {
-        utteranceRef.current.text = lastMessage.text;
+        // フリガナを除去してから読み上げ
+        utteranceRef.current.text = removeRuby(lastMessage.text);
         window.speechSynthesis.speak(utteranceRef.current);
       }
     }
@@ -159,50 +215,13 @@ const AiDoctor: React.FC = () => {
     });
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
-
-    // 画面の端に制限
-    const maxX = window.innerWidth - 100;
-    const maxY = window.innerHeight - 100;
-    
-    setPosition({
-      x: Math.max(0, Math.min(newX, maxX)),
-      y: Math.max(0, Math.min(newY, maxY))
-    });
+  const handleClose = () => {
+    setIsOpen(false);
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleMinimize = () => {
+    setIsMinimized(true);
   };
-
-  // グローバルなマウスイベントの設定
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove as any);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove as any);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragStart]);
-
-  // 位置の保存
-  useEffect(() => {
-    const savedPosition = localStorage.getItem('aiDoctorPosition');
-    if (savedPosition) {
-      setPosition(JSON.parse(savedPosition));
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('aiDoctorPosition', JSON.stringify(position));
-  }, [position]);
 
   return (
     <div
@@ -219,99 +238,136 @@ const AiDoctor: React.FC = () => {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="bg-white rounded-lg shadow-lg p-4 mb-4 w-80"
+            className="bg-white rounded-lg shadow-lg p-4 mb-4 w-[32rem]"
             onMouseDown={handleMouseDown}
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-gray-800">{settings.name}</h3>
-              <div className="flex gap-2">
+              <h2 className="text-lg font-semibold">AIはかせ</h2>
+              <div className="flex space-x-2">
                 <button
                   onClick={() => setIsCustomizeModalOpen(true)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
-                  title="カスタマイズ"
+                  className="text-gray-500 hover:text-gray-700"
                 >
                   <Settings className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={toggleSpeaking}
-                  className={`p-1 rounded-full ${
-                    isSpeaking ? 'text-blue-500' : 'text-gray-400'
-                  }`}
-                  title={isSpeaking ? '音声をオフにする' : '音声をオンにする'}
+                  onClick={handleMinimize}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  {isSpeaking ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  <Minus className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setIsMinimized(true)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
-                >
-                  <Minimize2 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 hover:bg-gray-100 rounded-full"
+                  onClick={handleClose}
+                  className="text-gray-500 hover:text-gray-700"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
-            <div className="h-96 flex flex-col">
-              <div className="flex-1 overflow-y-auto mb-4">
-                {messages.map((message, index) => (
+
+            <div className="h-80 overflow-y-auto mb-4 px-2">
+              {messages.map((msg, index) => (
+                <div
+                  key={index}
+                  className={`mb-3 ${
+                    msg.isUser ? 'text-right' : 'text-left'
+                  }`}
+                >
                   <div
-                    key={index}
-                    className={`mb-2 ${
-                      message.isUser ? 'text-right' : 'text-left'
+                    className={`inline-block p-3 rounded-lg max-w-[80%] ${
+                      msg.isUser
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-800'
                     }`}
                   >
-                    <div
-                      className={`inline-block p-2 rounded-lg ${
-                        message.isUser
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-200 text-black'
-                      }`}
-                    >
-                      {message.text}
-                    </div>
+                    {msg.text}
                   </div>
-                ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 rounded-lg p-3 text-gray-800">
-                      考え中...
-                    </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="text-left mb-3">
+                  <div className="inline-block p-3 rounded-lg bg-gray-100 text-gray-800">
+                    考え中...
                   </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-              <div className="flex gap-2">
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="flex items-center space-x-3 px-2">
+              <button
+                onClick={toggleListening}
+                className={`p-3 rounded-xl ${
+                  isListening ? 'bg-red-500' : 'bg-blue-500'
+                } text-white transition-all duration-200 shadow-lg hover:scale-110 transform hover:rotate-3`}
+                title={isListening ? '音声入力を停止' : '音声入力を開始'}
+              >
+                <div className="bg-white rounded-full p-3">
+                  {isListening ? 
+                    <MicOff className="h-8 w-8 text-red-500" /> : 
+                    <Mic className="h-8 w-8 text-blue-500" />
+                  }
+                </div>
+              </button>
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="ここにメッセージをかいてね！"
+                className="flex-1 p-3 border-2 border-blue-200 rounded-xl text-base shadow-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                disabled={isListening}
+              />
+              {messages.length > 0 && !messages[messages.length - 1].isUser && (
                 <button
-                  onClick={toggleListening}
-                  className={`p-2 rounded-lg ${
-                    isListening ? 'bg-red-500' : 'bg-blue-500'
-                  } text-white`}
-                  title={isListening ? '音声入力を停止' : '音声入力を開始'}
+                  onClick={() => {
+                    if (!isSpeaking) {
+                      const lastMessage = messages[messages.length - 1];
+                      if (!lastMessage.isUser) {
+                        if (utteranceRef.current) {
+                          utteranceRef.current.text = removeRuby(lastMessage.text);
+                          window.speechSynthesis.speak(utteranceRef.current);
+                          setIsSpeaking(true);
+                          utteranceRef.current.onend = () => {
+                            setIsSpeaking(false);
+                          };
+                        }
+                      }
+                    } else {
+                      window.speechSynthesis.cancel();
+                      setIsSpeaking(false);
+                    }
+                  }}
+                  className={`p-3 rounded-xl ${
+                    isSpeaking ? 'bg-gray-500' : 'bg-green-500'
+                  } text-white transition-all duration-200 shadow-lg hover:scale-110 transform hover:-rotate-3`}
+                  title={isSpeaking ? '読み上げを停止' : '回答を読み上げる'}
                 >
-                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  <div className="bg-white rounded-full p-3">
+                    {isSpeaking ? (
+                      <VolumeX className="h-8 w-8 text-gray-500" />
+                    ) : (
+                      <Volume2 className="h-8 w-8 text-green-500" />
+                    )}
+                  </div>
                 </button>
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1 border rounded-lg px-3 py-2"
-                  placeholder="質問を入力してね！"
-                  disabled={isLoading}
-                />
-                <button
-                  onClick={handleSendMessage}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: settings.themeColor }}
-                  disabled={!inputMessage.trim() || isLoading}
-                >
-                  送信
-                </button>
-              </div>
+              )}
+              <button
+                onClick={handleSendMessage}
+                className="p-3 rounded-xl bg-blue-500 text-white transition-all duration-200 shadow-lg hover:scale-110 transform hover:rotate-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:rotate-0"
+                disabled={!inputMessage.trim() || isLoading}
+                title="メッセージを送信"
+              >
+                <div className="bg-white rounded-full p-3">
+                  <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </div>
+              </button>
             </div>
           </motion.div>
         )}
