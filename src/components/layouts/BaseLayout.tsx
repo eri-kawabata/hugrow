@@ -4,9 +4,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
+import AiDoctor from '../Common/AiDoctor';
+import { AiDoctorProvider } from '../../contexts/AiDoctorContext';
 
 type BaseLayoutProps = {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   hideHeader?: boolean;
 };
 
@@ -297,18 +299,22 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({ children, hideHeader }) 
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-[#f8fbfd]">
-      {!hideHeader && (
-        <Header 
-          username={profile?.username} 
-          onModeChange={handleModeChange} 
-          onLogout={handleLogout} 
-        />
-      )}
-
-      <main className="flex-1">
-        {children}
-      </main>
+    <div className="min-h-screen bg-gray-50">
+      <div className="flex flex-col min-h-screen">
+        {!hideHeader && (
+          <Header 
+            username={profile?.username} 
+            onModeChange={handleModeChange} 
+            onLogout={handleLogout} 
+          />
+        )}
+        <main className="flex-1">
+          {children}
+        </main>
+        <AiDoctorProvider>
+          <AiDoctor />
+        </AiDoctorProvider>
+      </div>
     </div>
   );
 }; 
