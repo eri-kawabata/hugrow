@@ -37,89 +37,62 @@ type SubjectCardProps = {
 function SubjectCard({ to, type, icon, title, description, progress, gradientColors }: SubjectCardProps) {
   return (
     <Link to={to}>
-  <motion.div
-    whileHover={{ 
-          scale: 1.03,
-          y: -5,
-          rotateY: 5
-        }}
-        className="relative will-change-transform perspective-1000"
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        className="relative block"
       >
         <GlowCard
           gradientColors={gradientColors}
-          className="h-full bg-white/90 backdrop-blur-sm border-2 border-white/70 shadow-[0_0_15px_rgba(255,255,255,0.5)] rounded-2xl overflow-hidden"
+          className="relative block p-6 bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
         >
-          {/* 魔法の光エフェクト */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent animate-magic-glow" />
-          
-          {/* キラキラエフェクト */}
-          <motion.div 
-            className="absolute -top-2 -right-2 text-yellow-300 pointer-events-none z-10"
-            animate={{
-              scale: [1, 1.3, 1],
-              rotate: [0, 15, -15, 0]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              repeatType: "reverse"
-            }}
-          >
-            <Sparkles className="w-7 h-7 drop-shadow-[0_0_10px_rgba(253,224,71,0.7)]" />
-          </motion.div>
-
-          <div className="p-6 relative z-10">
-            <div className="flex items-start gap-5">
-              <motion.div 
-                className={`p-4 rounded-2xl ${getBackgroundColor(type)} shadow-lg will-change-transform relative group overflow-hidden`}
+          <div className="relative">
+            <div className="flex flex-col items-center text-center">
+              <motion.div
                 whileHover={{ 
                   scale: 1.1,
-                  rotate: [0, -5, 5, 0]
+                  rotate: [0, -5, 5, 0],
+                  transition: { duration: 0.3 }
                 }}
-                transition={{ 
-                  type: "spring",
-                  stiffness: 400,
-                  damping: 17
+                className="p-4 rounded-xl mb-4"
+                style={{
+                  background: `linear-gradient(135deg, ${gradientColors.from}10, ${gradientColors.to}10)`
                 }}
               >
-                {/* アイコン背景の光るエフェクト */}
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 group-hover:translate-x-full duration-1000 ease-in-out" />
-                {React.cloneElement(icon as ReactElement, {
-                  className: `h-12 w-12 ${getIconColor(type)} drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]`
+                {React.cloneElement(icon, {
+                  className: `h-12 w-12 transform transition-transform duration-300`,
+                  style: { color: gradientColors.from }
                 })}
               </motion.div>
-              <div className="flex-1 min-w-0">
-                <h3 className={`text-2xl font-black tracking-tight ${getTextColor(type)} mb-2 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]`}>
-                  {title}
-                </h3>
-                <p className="text-gray-700 text-sm font-medium leading-relaxed">{description}</p>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <h3 className="text-xl font-bold mb-2"
+                  style={{
+                    background: `linear-gradient(to right, ${gradientColors.from}, ${gradientColors.to})`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                >{title}</h3>
+                <p className="text-gray-600 text-base">{description}</p>
+              </motion.div>
             </div>
 
             {/* 進捗バー */}
-            <div className="mt-6">
-              <div className="flex items-center justify-end mb-2">
-                <div className="flex items-center gap-2">
-                  <Star className={`w-5 h-5 ${getIconColor(type)} drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]`} />
-                  <span className={`text-base font-black tracking-tight ${getTextColor(type)} drop-shadow-[0_0_5px_rgba(255,255,255,0.3)]`}>
-                    {progress}%
-                  </span>
-          </div>
-        </div>
-              <div className="relative h-5 w-full rounded-full bg-white/50 overflow-hidden shadow-inner backdrop-blur-sm border border-white/50">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 1, ease: "easeOut" }}
-                  className={`absolute h-full ${getProgressColor(type)} will-change-transform`}
-                >
-                  {/* 光の粒子エフェクト */}
-                  <div className="absolute inset-0 overflow-hidden">
-                    <div className="absolute inset-0 animate-particle-1 opacity-90 bg-white/40 rounded-full w-12 h-full will-change-transform" />
-                    <div className="absolute inset-0 animate-particle-2 opacity-90 bg-white/40 rounded-full w-8 h-full will-change-transform" />
-                  </div>
-            </motion.div>
-          </div>
+            <div className="w-full mt-3">
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="h-full rounded-full"
+                  style={{
+                    background: `linear-gradient(to right, ${gradientColors.from}, ${gradientColors.to})`
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">進捗: {progress}%</p>
             </div>
           </div>
         </GlowCard>

@@ -170,32 +170,16 @@ export function MathLearning() {
 
       <div className="max-w-7xl mx-auto pb-28 relative">
       <GradientHeader
-        title="すうがく"
+        title="さんすう"
         gradientColors={{
-          from: '#10b981',
-            via: '#34d399',
-            to: '#6ee7b7'
+          from: '#22c55e',
+          via: '#4ade80',
+          to: '#86efac'
         }}
       />
 
         <div className="px-8 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
-        >
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600">
-                すうがくのせかいをたのしもう！
-            </span>
-          </h2>
-            <p className="text-lg text-gray-600">
-              かずとかたちでかんがえるちからをつけよう
-          </p>
-        </motion.div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto px-4">
           {lessons.map((lesson, index) => (
             <motion.div
               key={lesson.title}
@@ -204,7 +188,7 @@ export function MathLearning() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
                 <div className="relative group block">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r rounded-[28px] opacity-30 group-hover:opacity-50 blur transition duration-500"
+                  <div className="absolute -inset-0.5 bg-gradient-to-r rounded-[20px] opacity-30 group-hover:opacity-50 blur transition duration-500"
                     style={{
                       backgroundImage: `linear-gradient(to right, ${lesson.gradientColors.from}, ${lesson.gradientColors.via}, ${lesson.gradientColors.to})`
                     }}
@@ -214,13 +198,13 @@ export function MathLearning() {
                       scale: 1.02,
                       transition: { duration: 0.2 }
                     }}
-                    className="relative block bg-gradient-to-br from-white to-white/20 rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2"
+                    className="relative block bg-gradient-to-br from-white to-white/20 rounded-[16px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2"
                     style={{
                       borderColor: lesson.gradientColors.from
                     }}
                   >
                     <div className="absolute inset-0 bg-white/90 transition-opacity group-hover:opacity-95"></div>
-                    <div className="relative p-8">
+                    <div className="relative p-4">
                       <div className="flex flex-col items-center text-center">
                         <motion.div
                           whileHover={{ 
@@ -228,14 +212,14 @@ export function MathLearning() {
                             rotate: [0, -5, 5, 0],
                             transition: { duration: 0.3 }
                           }}
-                          className="p-6 rounded-2xl mb-6 relative overflow-hidden group-hover:shadow-lg transition-all duration-300"
+                          className="p-3 rounded-lg mb-3 relative overflow-hidden group-hover:shadow-lg transition-all duration-300"
                           style={{
-                            background: `linear-gradient(135deg, ${lesson.gradientColors.from}20, ${lesson.gradientColors.to}20)`
+                            background: `linear-gradient(135deg, ${lesson.gradientColors.from}10, ${lesson.gradientColors.to}10)`
                           }}
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 group-hover:translate-x-full transition-all duration-1000"></div>
                           {React.cloneElement(lesson.icon, {
-                            className: `h-16 w-16 transform transition-transform group-hover:scale-110 duration-300`,
+                            className: `h-10 w-10 transform transition-transform group-hover:scale-110 duration-300`,
                             style: { color: lesson.gradientColors.from }
                           })}
                         </motion.div>
@@ -244,14 +228,14 @@ export function MathLearning() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.2 }}
                         >
-                          <h3 className="text-2xl font-bold mb-3"
+                          <h3 className="text-lg font-bold mb-1"
                             style={{
                               background: `linear-gradient(to right, ${lesson.gradientColors.from}, ${lesson.gradientColors.to})`,
                               WebkitBackgroundClip: 'text',
                               WebkitTextFillColor: 'transparent'
                             }}
                           >{lesson.title}</h3>
-                          <p className="text-gray-600 text-lg">{lesson.description}</p>
+                          <p className="text-gray-600 text-sm">{lesson.description}</p>
                         </motion.div>
                       </div>
                     </div>
