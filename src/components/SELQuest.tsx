@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BaseLayout } from './layouts/BaseLayout';
-import { Heart, Star, Frown, Smile, Meh, ThumbsUp, MessageCircle, Sparkles, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Heart, Star, Frown, Smile, Meh, ThumbsUp, MessageCircle, Sparkles, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Calendar, Mic, MicOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import type { SELQuest, SELResponse } from '../lib/types';
@@ -64,6 +64,8 @@ export function SELQuest() {
   const [userId, setUserId] = useState<string | null>(null);
   const [expandedResponseId, setExpandedResponseId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const responsesPerPage = 5;
   // カレンダー表示用の状態
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
@@ -106,12 +108,25 @@ export function SELQuest() {
   }, [fetchUserId]);
 
   useEffect(() => {
-    if (selectedEmotion) {
-      fetchAIFeedback(selectedEmotion);
-    } else {
-      setFeedback(null);
+    // Web Speech APIの初期化
+    if ('webkitSpeechRecognition' in window) {
+      const recognition = new (window.webkitSpeechRecognition as any)();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'ja-JP';
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        setNote(prev => prev + transcript);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      setRecognition(recognition);
     }
-  }, [selectedEmotion]);
+  }, []);
 
   const fetchQuests = async () => {
     if (!supabase) return;
@@ -164,6 +179,20 @@ export function SELQuest() {
     if (!selectedEmotionData) return;
 
     try {
+      // 子どもの出来事に基づいてメッセージを生成
+      const prompt = `子どもの感情が「${emotion}」で、以下の出来事について話しています：
+      ${note}
+
+      ものしり博士として、以下の点に注意してメッセージを生成してください：
+      1. 子どもの気持ちに寄り添い、共感を示す
+      2. 子どもの出来事に対して具体的なコメントをする
+      3. 励ましやアドバイスを含める
+      4. 優しく、親しみやすい口調で話す
+      5. 子どもの年齢（小学生）に合わせた表現を使う
+
+      メッセージは100文字程度で、以下のような形式で返してください：
+      「[子どもの出来事への具体的なコメント] [励ましやアドバイス]」`;
+
       const { data, error } = await supabase
         .from('sel_ai_feedback_templates')
         .select('feedback_template')
@@ -172,6 +201,20 @@ export function SELQuest() {
         .single();
 
       if (error) throw error;
+
+      // 子どもの出来事が入力されている場合は、より具体的なメッセージを生成
+      if (note.trim()) {
+        const { data: aiResponse, error: aiError } = await supabase.functions.invoke('generate-feedback', {
+          body: { prompt }
+        });
+
+        if (!aiError && aiResponse?.message) {
+          setFeedback(aiResponse.message);
+          return;
+        }
+      }
+
+      // 出来事が入力されていない場合は、デフォルトのテンプレートを使用
       setFeedback(data?.feedback_template || null);
     } catch (error) {
       console.error('Error fetching AI feedback:', error);
@@ -225,7 +268,7 @@ export function SELQuest() {
         return;
       }
 
-      const { error: responseError, data: responseData } = await supabase
+      const { error: responseError } = await supabase
         .from('sel_responses')
         .insert([{
           user_id: userId,
@@ -233,33 +276,81 @@ export function SELQuest() {
           emotion: selectedEmotion,
           intensity: selectedEmotionData.intensity,
           note: note.trim() || null
-        }])
-        .select()
-        .single();
+        }]);
 
       if (responseError) throw responseError;
 
-      if (feedback && responseData) {
-        const { error: feedbackError } = await supabase
-          .from('sel_feedback')
-          .insert([{
-            response_id: responseData.id,
-            feedback_text: feedback
-          }]);
+      // ものしり博士からのメッセージを生成
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `子どもの感情が「${selectedEmotion}」で、以下の出来事について話しています：
+                ${note}
 
-        if (feedbackError) throw feedbackError;
+                ものしり博士として、以下の点に注意してメッセージを生成してください：
+                1. 子どもの気持ちに寄り添い、共感を示す
+                2. 子どもの出来事に対して具体的なコメントをする
+                3. 励ましやアドバイスを含める
+                4. 優しく、親しみやすい口調で話す
+                5. 子どもの年齢（3歳～8歳）に合わせた表現を使う
+                6. 漢字には必ずふりがなを付ける（例：お肉（おにく））
+                7. 自然な会話の流れにする（[子どもの出来事への具体的なコメント]などの記号は使用しない）
+                8. メッセージは100文字程度で、1つの文章として自然に流れるようにする
+
+                例：
+                「お肉（おにく）がおいしかったんだね！どんなお肉（おにく）だったのかな？またおいしいお肉（おにく）を食べられるといいね！」
+                「お友達（ともだち）と遊（あそ）べて楽（たの）しかったんだね！どんな遊（あそ）びをしたのかな？また一緒（いっしょ）に遊（あそ）べるといいね！」`
+              }]
+            }]
+          }),
+        });
+
+        const data = await response.json();
+        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+          setFeedback(data.candidates[0].content.parts[0].text);
+        } else {
+          console.error('Unexpected API response:', data);
+          setFeedback('すみません、メッセージの生成に失敗しました。もう一度お試しください。');
+        }
+      } catch (error) {
+        console.error('Gemini API error:', error);
+        setFeedback('すみません、メッセージの生成に失敗しました。もう一度お試しください。');
       }
 
-      toast.success('気持ちを記録しました！');
+      // 成功メッセージを表示
+      toast.success('気持ちを記録しました！', {
+        duration: 3000,
+        position: 'top-center',
+      });
+
       setNote('');
       setSelectedEmotion(null);
-      setFeedback(null);
       fetchResponses(userId);
     } catch (error) {
       console.error('Error:', error);
       toast.error('記録に失敗しました');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleListening = () => {
+    if (!recognition) {
+      toast.error('お使いのブラウザでは音声入力がサポートされていません');
+      return;
+    }
+
+    if (isListening) {
+      recognition.stop();
+    } else {
+      recognition.start();
+      setIsListening(true);
     }
   };
 
@@ -402,28 +493,34 @@ export function SELQuest() {
                     ))}
                   </div>
 
-                  {feedback && (
-                    <div className="mb-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 transform hover:scale-102 transition-transform">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 bg-white rounded-lg">
-                          <Sparkles className="h-4 w-4 text-indigo-600" />
-                        </div>
-                        <span className="text-base font-bold text-indigo-900">AIからのメッセージ</span>
-                      </div>
-                      <p className="text-sm text-indigo-700 leading-relaxed">{feedback}</p>
-                    </div>
-                  )}
-
                   <label className="block text-base font-bold text-[#5d7799] mb-2">
                     きょうのできごと
                   </label>
-                  <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
-                    rows={3}
-                    placeholder="どんなことがあったかな？"
-                  />
+                  <div className="relative">
+                    <textarea
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                      rows={3}
+                      placeholder="どんなことがあったかな？"
+                    />
+                    <div className="absolute right-2 bottom-2 flex flex-col items-center gap-1">
+                      <button
+                        onClick={toggleListening}
+                        className={`p-3 rounded-full transition-all duration-300 shadow-md hover:shadow-lg ${
+                          isListening 
+                            ? 'bg-red-500 text-white hover:bg-red-600' 
+                            : 'bg-indigo-500 text-white hover:bg-indigo-600'
+                        }`}
+                        title={isListening ? '音声入力を停止' : '音声入力開始'}
+                      >
+                        {isListening ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+                      </button>
+                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                        {isListening ? 'タップして停止' : 'タップして話す'}
+                      </span>
+                    </div>
+                  </div>
 
                   <button
                     onClick={handleSubmit}
@@ -433,6 +530,19 @@ export function SELQuest() {
                     <ThumbsUp className="h-5 w-5" />
                     <span>きろくする</span>
                   </button>
+
+                  {/* ものしり博士からのメッセージ */}
+                  {feedback && (
+                    <div className="mt-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 transform hover:scale-102 transition-transform">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-white rounded-lg">
+                          <Sparkles className="h-4 w-4 text-indigo-600" />
+                        </div>
+                        <span className="text-base font-bold text-indigo-900">ものしり博士からのメッセージ</span>
+                      </div>
+                      <p className="text-sm text-indigo-700 leading-relaxed">{feedback}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -519,7 +629,7 @@ export function SELQuest() {
                                     <div className="p-3 bg-white/80 rounded-lg border border-indigo-100">
                                       <div className="flex items-center gap-1.5 mb-1.5">
                                         <Sparkles className="h-4 w-4 text-indigo-600" />
-                                        <span className="font-bold text-xs text-indigo-900">AIからのメッセージ</span>
+                                        <span className="font-bold text-xs text-indigo-900">ものしり博士からのメッセージ</span>
                                       </div>
                                       <p className="text-xs text-indigo-700">{response.sel_feedback[0].feedback_text}</p>
                                     </div>
@@ -657,7 +767,7 @@ export function SELQuest() {
                                               <div className="p-2 bg-white/80 rounded-lg border border-indigo-100">
                                                 <div className="flex items-center gap-1.5 mb-1">
                                                   <Sparkles className="h-3 w-3 text-indigo-600" />
-                                                  <span className="font-bold text-xs text-indigo-900">AIからのメッセージ</span>
+                                                  <span className="font-bold text-xs text-indigo-900">ものしり博士からのメッセージ</span>
                                                 </div>
                                                 <p className="text-xs text-indigo-700">{response.sel_feedback[0].feedback_text}</p>
                                               </div>
