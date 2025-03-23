@@ -421,9 +421,11 @@ const AiDoctor: React.FC = () => {
         className="group relative"
       >
         <motion.div
-          className="text-white w-24 h-24 rounded-full shadow-lg flex items-center justify-center bg-gradient-to-br from-blue-300 to-purple-300 hover:from-blue-400 hover:to-purple-400 transition-colors duration-200"
+          className="text-white w-24 h-24 rounded-full shadow-lg flex items-center justify-center transition-all duration-200"
           onMouseDown={handleMouseDown}
-          style={{ backgroundColor: settings.themeColor }}
+          style={{
+            background: `linear-gradient(to bottom right, ${settings.themeColor}CC, ${settings.themeColor})`
+          }}
         >
           <span className="text-4xl">{settings.avatar}</span>
         </motion.div>

@@ -87,13 +87,21 @@ const AiDoctorCustomizeModal: React.FC<AiDoctorCustomizeModalProps> = ({ isOpen,
                 <button
                   key={color}
                   onClick={() => updateSettings({ themeColor: color })}
-                  className={`w-8 h-8 rounded-xl transition-all duration-200 ${
+                  className={`w-8 h-8 rounded-xl transition-all duration-200 relative ${
                     settings.themeColor === color
-                      ? 'border-2 border-blue-200 shadow-md transform scale-105'
-                      : 'hover:opacity-80 hover:scale-102'
+                      ? 'transform scale-105 ring-2 ring-offset-2 ring-blue-200'
+                      : 'hover:scale-102 hover:shadow-md'
                   }`}
-                  style={{ backgroundColor: color }}
-                />
+                  style={{
+                    background: `linear-gradient(to bottom right, ${color}CC, ${color})`
+                  }}
+                >
+                  {settings.themeColor === color && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-white shadow-sm"></div>
+                    </div>
+                  )}
+                </button>
               ))}
             </div>
           </div>
