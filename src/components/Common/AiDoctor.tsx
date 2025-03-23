@@ -113,15 +113,33 @@ const AiDoctor: React.FC = () => {
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance();
       utterance.lang = 'ja-JP';
-      utterance.rate = 0.9;
-      utterance.pitch = 1.1;
+      utterance.rate = 1.0;  // 読み上げ速度を少し上げる
+      utterance.pitch = 1.2; // 声のピッチを少し高めに
+      utterance.volume = 1.0; // 音量を最大に
+
+      // 利用可能な音声を取得
+      window.speechSynthesis.onvoiceschanged = () => {
+        const voices = window.speechSynthesis.getVoices();
+        // 日本語の音声を探す
+        const jaVoice = voices.find(voice => 
+          voice.lang.includes('ja-JP') && voice.localService
+        );
+        if (jaVoice) {
+          utterance.voice = jaVoice;
+        }
+      };
+
       utteranceRef.current = utterance;
     }
   }, []);
 
-  // フリガナを除去する関数
+  // フリガナを除去する関数を改善
   const removeRuby = (text: string): string => {
-    return text.replace(/[（(].+?[)）]/g, '');
+    // フリガナと思われる部分を削除
+    let cleaned = text.replace(/[（(]([ぁ-んァ-ン]|ー)+[)）]/g, '');
+    // 句読点の後に適切な間を入れる
+    cleaned = cleaned.replace(/([。、！？])/g, '$1 ');
+    return cleaned;
   };
 
   // 音声認識の開始/停止
@@ -238,56 +256,79 @@ const AiDoctor: React.FC = () => {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="bg-white rounded-lg shadow-lg p-4 mb-4 w-[32rem]"
+            className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl shadow-lg p-4 mb-4 w-[32rem] border border-blue-100"
             onMouseDown={handleMouseDown}
           >
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">AIはかせ</h2>
+              <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">ものしり博士</h2>
               <div className="flex space-x-2">
                 <button
                   onClick={() => setIsCustomizeModalOpen(true)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-blue-300 hover:text-blue-400 transition-colors duration-200"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-5 w-5" />
                 </button>
                 <button
                   onClick={handleMinimize}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-blue-300 hover:text-blue-400 transition-colors duration-200"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className="h-5 w-5" />
                 </button>
                 <button
                   onClick={handleClose}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-blue-300 hover:text-blue-400 transition-colors duration-200"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
-            <div className="h-80 overflow-y-auto mb-4 px-2">
+            <div className="h-80 overflow-y-auto mb-4 px-2 space-y-4">
               {messages.map((msg, index) => (
                 <div
                   key={index}
-                  className={`mb-3 ${
-                    msg.isUser ? 'text-right' : 'text-left'
+                  className={`flex ${
+                    msg.isUser ? 'justify-end' : 'justify-start'
                   }`}
                 >
+                  {!msg.isUser && (
+                    <div className="flex-shrink-0 mr-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white shadow-md">
+                        {settings.avatar}
+                      </div>
+                    </div>
+                  )}
                   <div
-                    className={`inline-block p-3 rounded-lg max-w-[80%] ${
+                    className={`rounded-2xl p-3 max-w-[80%] shadow-md ${
                       msg.isUser
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-800'
+                        ? 'bg-gradient-to-br from-blue-400 to-purple-400 text-white rounded-br-none'
+                        : 'bg-gradient-to-br from-blue-50 to-purple-50 text-gray-700 rounded-bl-none border border-blue-100'
                     }`}
                   >
-                    {msg.text}
+                    <p className="text-base leading-relaxed">{msg.text}</p>
                   </div>
+                  {msg.isUser && (
+                    <div className="flex-shrink-0 ml-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center shadow-md">
+                        👤
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {isLoading && (
-                <div className="text-left mb-3">
-                  <div className="inline-block p-3 rounded-lg bg-gray-100 text-gray-800">
-                    考え中...
+                <div className="flex justify-start">
+                  <div className="flex-shrink-0 mr-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white shadow-md">
+                      {settings.avatar}
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-3 rounded-bl-none shadow-md border border-blue-100">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -297,15 +338,15 @@ const AiDoctor: React.FC = () => {
             <div className="flex items-center space-x-3 px-2">
               <button
                 onClick={toggleListening}
-                className={`p-3 rounded-xl ${
-                  isListening ? 'bg-red-500' : 'bg-blue-500'
+                className={`p-2 rounded-xl ${
+                  isListening ? 'bg-gradient-to-br from-red-300 to-pink-300' : 'bg-gradient-to-br from-blue-300 to-purple-300'
                 } text-white transition-all duration-200 shadow-lg hover:scale-110 transform hover:rotate-3`}
                 title={isListening ? '音声入力を停止' : '音声入力を開始'}
               >
-                <div className="bg-white rounded-full p-3">
+                <div className="bg-white rounded-full p-2">
                   {isListening ? 
-                    <MicOff className="h-8 w-8 text-red-500" /> : 
-                    <Mic className="h-8 w-8 text-blue-500" />
+                    <MicOff className="h-6 w-6 text-red-300" /> : 
+                    <Mic className="h-6 w-6 text-blue-300" />
                   }
                 </div>
               </button>
@@ -319,7 +360,7 @@ const AiDoctor: React.FC = () => {
                   }
                 }}
                 placeholder="ここにメッセージをかいてね！"
-                className="flex-1 p-3 border-2 border-blue-200 rounded-xl text-base shadow-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                className="flex-1 p-2 border-2 border-blue-100 rounded-xl text-base shadow-sm focus:border-blue-200 focus:ring-2 focus:ring-blue-100 transition-all bg-white"
                 disabled={isListening}
               />
               {messages.length > 0 && !messages[messages.length - 1].isUser && (
@@ -342,28 +383,28 @@ const AiDoctor: React.FC = () => {
                       setIsSpeaking(false);
                     }
                   }}
-                  className={`p-3 rounded-xl ${
-                    isSpeaking ? 'bg-gray-500' : 'bg-green-500'
+                  className={`p-2 rounded-xl ${
+                    isSpeaking ? 'bg-gradient-to-br from-gray-300 to-gray-400' : 'bg-gradient-to-br from-green-300 to-teal-300'
                   } text-white transition-all duration-200 shadow-lg hover:scale-110 transform hover:-rotate-3`}
                   title={isSpeaking ? '読み上げを停止' : '回答を読み上げる'}
                 >
-                  <div className="bg-white rounded-full p-3">
+                  <div className="bg-white rounded-full p-2">
                     {isSpeaking ? (
-                      <VolumeX className="h-8 w-8 text-gray-500" />
+                      <VolumeX className="h-6 w-6 text-gray-400" />
                     ) : (
-                      <Volume2 className="h-8 w-8 text-green-500" />
+                      <Volume2 className="h-6 w-6 text-green-300" />
                     )}
                   </div>
                 </button>
               )}
               <button
                 onClick={handleSendMessage}
-                className="p-3 rounded-xl bg-blue-500 text-white transition-all duration-200 shadow-lg hover:scale-110 transform hover:rotate-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:rotate-0"
+                className="p-2 rounded-xl bg-gradient-to-br from-blue-300 to-purple-300 text-white transition-all duration-200 shadow-lg hover:scale-110 transform hover:rotate-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:rotate-0"
                 disabled={!inputMessage.trim() || isLoading}
                 title="メッセージを送信"
               >
-                <div className="bg-white rounded-full p-3">
-                  <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="bg-white rounded-full p-2">
+                  <svg className="h-6 w-6 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </div>
@@ -373,22 +414,24 @@ const AiDoctor: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <motion.button
+      <motion.div
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={handleClick}
-        className="text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center"
-        onMouseDown={handleMouseDown}
-        style={{ backgroundColor: settings.themeColor }}
+        className="group relative"
       >
-        {isMinimized ? (
-          <Maximize2 className="h-6 w-6" />
-        ) : (
-          <span role="img" aria-label="AI Doctor" className="text-2xl">
-            {settings.avatar}
-          </span>
-        )}
-      </motion.button>
+        <motion.div
+          className="text-white w-24 h-24 rounded-full shadow-lg flex items-center justify-center bg-gradient-to-br from-blue-300 to-purple-300 hover:from-blue-400 hover:to-purple-400 transition-colors duration-200"
+          onMouseDown={handleMouseDown}
+          style={{ backgroundColor: settings.themeColor }}
+        >
+          <span className="text-4xl">{settings.avatar}</span>
+        </motion.div>
+        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 rounded-xl shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+          <div className="text-gray-700 text-sm font-medium">ものしり博士</div>
+          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-white"></div>
+        </div>
+      </motion.div>
 
       <AiDoctorCustomizeModal
         isOpen={isCustomizeModalOpen}
