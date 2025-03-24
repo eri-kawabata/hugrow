@@ -628,9 +628,9 @@ const WorksHeader = memo(({
       <GradientHeader 
         title="わたしの作品" 
         gradientColors={{
-          from: '#8ec5d6',
-          via: '#f7c5c2',
-          to: '#f5f6bf'
+          from: '#FFD700',  // 明るい黄色
+          via: '#FF9E9E',   // サーモンピンク
+          to: '#B19CD9'     // 優しい紫
         }}
       />
       
