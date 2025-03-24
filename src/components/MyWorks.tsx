@@ -346,6 +346,10 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
         scale: 1.02,
         transition: { duration: 0.2 }
       }}
+      whileTap={{ 
+        scale: 0.98,
+        transition: { duration: 0.2 }
+      }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleCardClick}
@@ -781,21 +785,42 @@ const MyWorks = () => {
   // 背景アニメーション用の要素を作成
   const renderBackgroundAnimation = () => (
     <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: -1 }}>
-      {/* ふわふわ浮かぶ円形 */}
-      {[...Array(20)].map((_, i) => (
+      {/* ふわふわ浮かぶ円形 (大) */}
+      {[...Array(15)].map((_, i) => (
         <div
-          key={`circle-${i}`}
+          key={`circle-large-${i}`}
           className={`absolute rounded-full bg-gradient-to-b ${
             i % 3 === 0 ? 'from-pink-200/60 to-purple-200/50' : 
             i % 3 === 1 ? 'from-indigo-200/60 to-blue-200/50' : 
             'from-amber-200/60 to-yellow-200/50'
           } opacity-90 animate-float`}
           style={{
-            width: `${Math.random() * 80 + 40}px`,
-            height: `${Math.random() * 80 + 40}px`,
+            width: `${Math.random() * 100 + 80}px`,
+            height: `${Math.random() * 100 + 80}px`,
             top: `${Math.random() * 100}%`,
             left: `${Math.random() * 100}%`,
-            animationDuration: `${Math.random() * 10 + 15}s`,
+            animationDuration: `${Math.random() * 10 + 20}s`,
+            animationDelay: `${Math.random() * 5}s`,
+            filter: 'blur(2px)'
+          }}
+        />
+      ))}
+      
+      {/* ふわふわ浮かぶ円形 (中) */}
+      {[...Array(15)].map((_, i) => (
+        <div
+          key={`circle-medium-${i}`}
+          className={`absolute rounded-full bg-gradient-to-b ${
+            i % 3 === 0 ? 'from-pink-200/50 to-purple-200/40' : 
+            i % 3 === 1 ? 'from-indigo-200/50 to-blue-200/40' : 
+            'from-amber-200/50 to-yellow-200/40'
+          } opacity-85 animate-float-medium`}
+          style={{
+            width: `${Math.random() * 60 + 40}px`,
+            height: `${Math.random() * 60 + 40}px`,
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animationDuration: `${Math.random() * 8 + 15}s`,
             animationDelay: `${Math.random() * 5}s`,
             filter: 'blur(1px)'
           }}
@@ -803,7 +828,7 @@ const MyWorks = () => {
       ))}
 
       {/* キラキラ光るエフェクト */}
-      {[...Array(30)].map((_, i) => (
+      {[...Array(40)].map((_, i) => (
         <div
           key={`sparkle-${i}`}
           className="absolute w-2 h-2 bg-white rounded-full animate-twinkle"
@@ -830,7 +855,7 @@ const MyWorks = () => {
       <BaseLayout hideHeader={true}>
         {renderBackgroundAnimation()}
         <div className="relative flex flex-col min-h-screen" style={{ zIndex: 1 }}>
-          <div className="sticky top-0 z-20 bg-white/60 backdrop-blur-md shadow-md">
+          <div className="sticky top-0 z-20 bg-white/60 backdrop-blur-md shadow-md transition-all duration-300">
             <WorksHeader 
               activeFilter={selectedType} 
               setActiveFilter={setSelectedType}
@@ -841,7 +866,7 @@ const MyWorks = () => {
             <div className="bg-white/90 rounded-[32px] shadow-lg p-8 text-center my-12 relative overflow-hidden backdrop-blur-sm border border-white">
               {/* キラキラエフェクト */}
               <div className="absolute inset-0 pointer-events-none">
-                {[...Array(10)].map((_, i) => (
+                {[...Array(15)].map((_, i) => (
                   <div 
                     key={i} 
                     className="absolute w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-70"
@@ -853,16 +878,48 @@ const MyWorks = () => {
                     }}
                   />
                 ))}
+                
+                {/* グラデーションの波紋 */}
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={`ripple-${i}`}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-indigo-200/30 via-pink-200/30 to-yellow-200/30 animate-ripple"
+                    style={{
+                      animationDelay: `${i * 2}s`,
+                      animationDuration: '8s'
+                    }}
+                  />
+                ))}
               </div>
               
-              <div className="mb-6 bg-[#f8fbfd] p-6 rounded-full inline-block relative">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-200 via-purple-200 to-indigo-200 opacity-30 animate-pulse"></div>
-                <Image className="w-20 h-20 text-[#8ec5d6] mx-auto relative z-10" />
+              <div className="mb-8 p-6 relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-100/50 via-pink-100/50 to-amber-100/50 rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 bg-white/50 backdrop-blur-sm rounded-full"></div>
+                <div className="relative z-10 transform transition duration-500 hover:scale-110">
+                  <Image className="w-24 h-24 text-[#8ec5d6] mx-auto" />
+                </div>
               </div>
-              <h2 className="text-2xl font-bold text-[#5d7799] mb-3">作品がありません</h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                新しい作品を作成して、あなたの才能を表現してみましょう！
+              
+              <h2 className="text-2xl font-bold text-[#5d7799] mb-4">まだ作品がありません</h2>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                新しい作品を作成して、あなたの才能を表現してみましょう！<br/>
+                お絵かき、写真、音声などを使って自由に表現できます。
               </p>
+              
+              <div className="flex flex-wrap gap-4 justify-center mb-2">
+                <div className="bg-indigo-50 rounded-xl p-3 flex items-center gap-2 text-indigo-600 shadow-sm">
+                  <Palette className="h-5 w-5" />
+                  <span>お絵かき</span>
+                </div>
+                <div className="bg-emerald-50 rounded-xl p-3 flex items-center gap-2 text-emerald-600 shadow-sm">
+                  <Camera className="h-5 w-5" />
+                  <span>写真</span>
+                </div>
+                <div className="bg-amber-50 rounded-xl p-3 flex items-center gap-2 text-amber-600 shadow-sm">
+                  <Music className="h-5 w-5" />
+                  <span>音声</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -874,7 +931,7 @@ const MyWorks = () => {
     <BaseLayout hideHeader={true}>
       {renderBackgroundAnimation()}
       <div className="relative flex flex-col min-h-screen" style={{ zIndex: 1 }}>
-        <div className="sticky top-0 z-20 bg-white/60 backdrop-blur-md shadow-md">
+        <div className="sticky top-0 z-20 bg-white/60 backdrop-blur-md shadow-md transition-all duration-300">
           <WorksHeader 
             activeFilter={selectedType} 
             setActiveFilter={setSelectedType}
@@ -885,14 +942,47 @@ const MyWorks = () => {
           {/* ローディング状態 */}
           {loading ? (
             <div className="flex items-center justify-center min-h-[60vh]">
-              <div className="text-center bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg">
-                <div className="h-12 w-12 text-[#8ec5d6] animate-spin mx-auto mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+              <div className="text-center bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg relative overflow-hidden">
+                <div className="absolute inset-0 opacity-20">
+                  {[...Array(8)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute rounded-full bg-gradient-to-r from-indigo-300 to-purple-300"
+                      style={{
+                        width: `${Math.random() * 40 + 20}px`,
+                        height: `${Math.random() * 40 + 20}px`,
+                        top: `${Math.random() * 100}%`,
+                        left: `${Math.random() * 100}%`,
+                        animation: `float ${5 + Math.random() * 5}s ease-in-out infinite`,
+                        animationDelay: `${Math.random() * 2}s`
+                      }}
+                    />
+                  ))}
                 </div>
-                <p className="text-gray-600">読み込み中...</p>
+                
+                <div className="relative z-10">
+                  <div className="h-16 w-16 text-[#8ec5d6] mx-auto mb-4 relative">
+                    <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-50">
+                      {[...Array(8)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="absolute w-1 h-1 bg-blue-400 rounded-full animate-ping"
+                          style={{
+                            top: `${50 + Math.cos(i * Math.PI / 4) * 30}%`,
+                            left: `${50 + Math.sin(i * Math.PI / 4) * 30}%`,
+                            animationDelay: `${i * 0.1}s`,
+                            animationDuration: `${1 + Math.random()}s`
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-gray-600 font-medium">作品を読み込み中です...</p>
+                </div>
               </div>
             </div>
           ) : (
@@ -918,6 +1008,13 @@ const MyWorks = () => {
                     </div>
                   </motion.div>
                 ))}
+                
+                {/* 作品数が少ない場合、空のアイテムでグリッドを埋める */}
+                {childFilteredWorks.length > 0 && childFilteredWorks.length < 3 && (
+                  [...Array(3 - childFilteredWorks.length)].map((_, i) => (
+                    <div key={`empty-${i}`} className="hidden sm:block lg:hidden"></div>
+                  ))
+                )}
               </div>
             </>
           )}
@@ -962,6 +1059,19 @@ const MyWorks = () => {
           animation-iteration-count: infinite;
         }
         
+        @keyframes float-medium {
+          0% { transform: translateY(0) rotate(0deg); }
+          33% { transform: translateY(-15px) rotate(-8deg); }
+          66% { transform: translateY(-30px) rotate(8deg); }
+          100% { transform: translateY(0) rotate(0deg); }
+        }
+        .animate-float-medium {
+          animation-name: float-medium;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+          animation-duration: 18s;
+        }
+        
         /* フェードインアニメーション */
         @keyframes fadeIn {
           from {
@@ -975,6 +1085,24 @@ const MyWorks = () => {
         }
         .animate-fade-in {
           animation: fadeIn 0.6s ease-out forwards;
+        }
+
+        @keyframes ripple {
+          0% {
+            width: 0px;
+            height: 0px;
+            opacity: 0.8;
+          }
+          100% {
+            width: 500px;
+            height: 500px;
+            opacity: 0;
+          }
+        }
+        .animate-ripple {
+          animation-name: ripple;
+          animation-timing-function: cubic-bezier(0, 0.2, 0.8, 1);
+          animation-iteration-count: infinite;
         }
       `}</style>
     </BaseLayout>
