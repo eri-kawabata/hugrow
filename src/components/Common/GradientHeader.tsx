@@ -24,7 +24,7 @@ export const GradientHeader: React.FC<GradientHeaderProps> = ({
   return (
     <div className="w-full mx-auto">
       <div 
-        className="px-6 py-6 rounded-[24px] shadow-lg relative overflow-hidden mx-4 mb-6 h-24"
+        className="px-6 py-6 rounded-[24px] shadow-lg relative overflow-hidden mx-auto mb-6 h-24 max-w-5xl"
         style={gradientStyle}
       >
         {/* 背景のパターン */}

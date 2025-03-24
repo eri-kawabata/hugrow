@@ -16,19 +16,21 @@ export function WorkUpload() {
         via: '#f472b6',
         to: '#e879f9'
       },
-      iconColor: '#ff6b6b'
+      iconColor: '#fa5c7c',
+      borderColor: 'border-pink-300'
     },
     {
       to: "/child/works/camera",
       icon: <Camera className="h-12 w-12" />,
-      title: "しゃしん・どうが",
+      title: "しゃしん",
       description: "たのしい しゅんかんを とろう",
       gradient: {
         from: '#60a5fa',
         via: '#818cf8',
         to: '#a78bfa'
       },
-      iconColor: '#4dabf7'
+      iconColor: '#4d94ff',
+      borderColor: 'border-blue-300'
     },
     {
       to: "/child/works/audio",
@@ -40,7 +42,8 @@ export function WorkUpload() {
         via: '#2dd4bf',
         to: '#22d3ee'
       },
-      iconColor: '#69db7c'
+      iconColor: '#40c785',
+      borderColor: 'border-green-300'
     }
   ];
 
@@ -49,12 +52,12 @@ export function WorkUpload() {
       {/* 背景の装飾要素 */}
       <div className="absolute inset-0 pointer-events-none">
         {/* 虹色の光の輪 */}
-        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-pink-300/40 via-blue-300/40 to-green-300/40 rounded-full blur-3xl animate-slow-spin"></div>
-        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-purple-300/40 via-yellow-300/40 to-blue-300/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
+        <div className="absolute w-[900px] h-[900px] -top-[300px] -left-[300px] bg-gradient-to-r from-[#7ab5c9]/40 via-[#f3a6a6]/40 to-[#f2e07c]/40 rounded-full blur-3xl animate-slow-spin"></div>
+        <div className="absolute w-[700px] h-[700px] -bottom-[200px] -right-[200px] bg-gradient-to-r from-[#7ab5c9]/40 via-[#f3a6a6]/40 to-[#f2e07c]/40 rounded-full blur-3xl animate-slow-spin-reverse"></div>
         
         {/* 追加の光の輪 */}
-        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-orange-300/30 via-red-300/30 to-yellow-300/30 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-indigo-300/30 via-purple-300/30 to-pink-300/30 rounded-full blur-3xl animate-float-reverse"></div>
+        <div className="absolute w-[600px] h-[600px] top-[30%] right-[20%] bg-gradient-to-r from-[#f2e07c]/30 via-[#f3a6a6]/30 to-[#7ab5c9]/30 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute w-[500px] h-[500px] bottom-[40%] left-[15%] bg-gradient-to-r from-[#f3a6a6]/30 via-[#f2e07c]/30 to-[#7ab5c9]/30 rounded-full blur-3xl animate-float-reverse"></div>
         
         {/* 浮かぶ泡 */}
         {[...Array(15)].map((_, i) => (
@@ -86,7 +89,13 @@ export function WorkUpload() {
         {[...Array(25)].map((_, i) => (
           <motion.div
             key={`sparkle-${i}`}
-            className="absolute bg-gradient-to-r from-white via-yellow-200 to-white rounded-full"
+            className={`absolute rounded-full ${
+              i % 3 === 0 
+                ? 'bg-gradient-to-r from-white via-[#7ab5c9]/80 to-white' 
+                : i % 3 === 1 
+                  ? 'bg-gradient-to-r from-white via-[#f3a6a6]/80 to-white' 
+                  : 'bg-gradient-to-r from-white via-[#f2e07c]/80 to-white'
+            }`}
             style={{
               width: `${Math.random() * 4 + 2}px`,
               height: `${Math.random() * 4 + 2}px`,
@@ -135,25 +144,25 @@ export function WorkUpload() {
         <GradientHeader 
           title="どんなさくひんを つくる？" 
           gradientColors={{
-            from: '#8ec5d6',
-            via: '#f7c5c2',
-            to: '#f5f6bf'
+            from: '#7ab5c9',  // 鮮やかな水色
+            via: '#f3a6a6',   // 鮮やかなピンク
+            to: '#f2e07c'     // 鮮やかな黄色
           }}
         />
         
-        <div className="px-8 py-12">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 max-w-6xl mx-auto">
+        <div className="px-6 py-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 max-w-6xl mx-auto">
             {createTypes.map((type, index) => (
               <motion.div
                 key={type.to}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ 
-                  duration: 0.5,
-                  delay: index * 0.1,
+                  duration: 0.6,
+                  delay: index * 0.15,
                   type: "spring",
-                  stiffness: 260,
-                  damping: 20
+                  stiffness: 220,
+                  damping: 22
                 }}
               >
                 <Link
@@ -163,14 +172,15 @@ export function WorkUpload() {
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-[#60a5fa] via-[#e879f9] to-[#fcd34d] rounded-[28px] opacity-30 group-hover:opacity-50 blur transition duration-500"></div>
                   <motion.div
                     whileHover={{ 
-                      scale: 1.02,
-                      transition: { duration: 0.2 }
+                      scale: 1.03,
+                      y: -5,
+                      transition: { duration: 0.3 }
                     }}
-                    className="relative block bg-gradient-to-br from-white to-white/20 rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-[#8ec5d6]"
+                    className={`relative block bg-gradient-to-br from-white to-white/20 rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 ${type.borderColor}`}
                   >
                     <div className="absolute inset-0 bg-white/90 transition-opacity group-hover:opacity-95"></div>
                     <div className="absolute inset-0 pointer-events-none">
-                      {[...Array(3)].map((_, i) => (
+                      {[...Array(5)].map((_, i) => (
                         <div
                           key={i}
                           className="absolute w-1 h-1 bg-white rounded-full"
@@ -190,7 +200,7 @@ export function WorkUpload() {
                             rotate: [0, -5, 5, 0],
                             transition: { duration: 0.3 }
                           }}
-                          className={`p-6 bg-gradient-to-br from-${type.gradient.from}/10 to-${type.gradient.to}/10 rounded-2xl mb-6 relative overflow-hidden group-hover:shadow-lg transition-all duration-300`}
+                          className={`p-6 bg-gradient-to-br from-${type.gradient.from}/10 to-${type.gradient.to}/10 rounded-2xl mb-6 relative overflow-hidden group-hover:shadow-md transition-all duration-300`}
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 group-hover:translate-x-full transition-all duration-1000"></div>
                           {React.cloneElement(type.icon, {
@@ -203,7 +213,11 @@ export function WorkUpload() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.2 }}
                         >
-                          <h3 className="text-2xl font-bold bg-gradient-to-r from-[#5d7799] to-[#8ec5d6] bg-clip-text text-transparent mb-3">{type.title}</h3>
+                          <h3 className={`text-2xl font-bold bg-gradient-to-r ${
+                            index === 0 ? 'from-pink-500 to-purple-500' :
+                            index === 1 ? 'from-blue-500 to-indigo-500' :
+                            'from-green-500 to-teal-500'
+                          } bg-clip-text text-transparent mb-3`}>{type.title}</h3>
                           <p className="text-gray-600 text-lg">{type.description}</p>
                         </motion.div>
                       </div>
