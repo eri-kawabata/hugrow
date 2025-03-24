@@ -299,7 +299,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({ children, hideHeader }) 
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-transparent">
       <div className="flex flex-col min-h-screen">
         {!hideHeader && (
           <Header 
@@ -308,7 +308,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({ children, hideHeader }) 
             onLogout={handleLogout} 
           />
         )}
-        <main className="flex-1">
+        <main className="flex-1 relative z-0">
           {children}
         </main>
         <AiDoctorProvider>

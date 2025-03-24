@@ -342,8 +342,6 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
   
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
       whileHover={{ 
         scale: 1.02,
         transition: { duration: 0.2 }
@@ -351,13 +349,18 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onClick={handleCardClick}
-      className="group relative"
+      className="group relative h-full w-full"
     >
       {/* グラデーションの背景 */}
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#60a5fa] via-[#e879f9] to-[#fcd34d] rounded-[28px] opacity-30 group-hover:opacity-50 blur transition duration-500"></div>
-      <div className="relative block bg-gradient-to-br from-white to-white/20 rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-[#8ec5d6]">
-        <div className="absolute inset-0 bg-white/90 transition-opacity group-hover:opacity-95"></div>
-        <div className="relative p-6">
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-[#60a5fa] via-[#e879f9] to-[#fcd34d] rounded-[28px] opacity-30 group-hover:opacity-70 blur transition duration-500"></div>
+      
+      {/* メインのカード */}
+      <div className="relative block bg-gradient-to-br from-white/90 to-white/85 rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-white/80 backdrop-blur-sm h-full flex flex-col">
+        {/* 背景テクスチャ */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuMDUiIG51bU9jdGF2ZXM9IjIiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48ZmVDb2xvck1hdHJpeCB0eXBlPSJzYXR1cmF0ZSIgdmFsdWVzPSIwIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjUwMCIgaGVpZ2h0PSI1MDAiIGZpbHRlcj0idXJsKCNub2lzZSkiIG9wYWNpdHk9IjAuMDUiLz48L3N2Zz4=')] opacity-40 mix-blend-overlay"></div>
+        
+        <div className="absolute inset-0 bg-white/80 transition-opacity group-hover:opacity-90"></div>
+        <div className="relative p-4 flex flex-col flex-1">
           {/* サムネイル部分 */}
           <div className="relative">
             {renderThumbnail()}
@@ -400,10 +403,10 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
           </div>
           
           {/* コンテンツ部分 */}
-          <div className="p-4">
-            <div className="min-h-[4.5rem]">
+          <div className="p-3 flex-1 flex flex-col">
+            <div className="min-h-[4.5rem] mb-2">
               <motion.h2 
-                className="font-bold text-lg mb-2 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
+                className="font-bold text-lg mb-1.5 text-gray-800 group-hover:text-[#5d7799] transition-colors duration-300 line-clamp-2"
               >
                 {work.title || 'タイトルなし'}
               </motion.h2>
@@ -418,9 +421,9 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300"
+                className="mt-auto mb-3 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl group-hover:shadow-md transition-all duration-300 overflow-hidden"
               >
-                <div className="px-4 py-3 border-b border-purple-100/50">
+                <div className="px-3 py-2 border-b border-purple-100/50 bg-gradient-to-r from-purple-100/30 to-blue-100/30">
                   <div className="flex items-center gap-2">
                     <MessageCircle className="h-4 w-4 text-purple-500" />
                     <span className="text-sm font-medium text-purple-700">
@@ -428,15 +431,16 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
                     </span>
                   </div>
                 </div>
-                <div className="px-4 py-3">
-                  <p className="text-sm text-gray-700 leading-relaxed line-clamp-2">{feedbackContent}</p>
+                <div className="px-3 py-2 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-200/5 to-blue-200/5"></div>
+                  <p className="text-sm text-gray-700 leading-relaxed line-clamp-2 relative">{feedbackContent}</p>
                 </div>
               </motion.div>
             )}
             
             {/* フッター部分 */}
-            <div className="mt-4 flex items-center justify-between">
-              <div className="text-sm text-gray-500 flex items-center gap-2">
+            <div className="mt-auto flex items-center justify-between">
+              <div className="text-sm text-gray-500 flex items-center gap-2 bg-gray-50/80 px-2.5 py-1 rounded-full">
                 <Calendar className="h-4 w-4" />
                 {formatDate(work.created_at)}
               </div>
@@ -471,13 +475,23 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
 
       {/* キラキラエフェクト */}
       {isHovered && (
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(12)].map((_, i) => (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[...Array(15)].map((_, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.1, duration: 0.5 }}
+              animate={{ 
+                opacity: [0, 1, 0], 
+                scale: [0, 1, 0],
+                x: Math.random() * 20 - 10,
+                y: Math.random() * 20 - 10
+              }}
+              transition={{ 
+                duration: 1.5 + Math.random(),
+                delay: i * 0.1,
+                repeat: Infinity,
+                repeatDelay: Math.random() * 2
+              }}
               className="absolute w-1.5 h-1.5 bg-yellow-300 rounded-full"
               style={{
                 top: `${Math.random() * 100}%`,
@@ -624,18 +638,20 @@ const WorksHeader = memo(({
   ], []);
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <GradientHeader 
-        title="わたしの作品" 
-        gradientColors={{
-          from: '#FFD700',  // 明るい黄色
-          via: '#FF9E9E',   // サーモンピンク
-          to: '#B19CD9'     // 優しい紫
-        }}
-      />
+    <div className="w-full">
+      <div className="max-w-5xl mx-auto">
+        <GradientHeader 
+          title="わたしの作品" 
+          gradientColors={{
+            from: '#FFD700',  // 明るい黄色
+            via: '#FF9E9E',   // サーモンピンク
+            to: '#B19CD9'     // 優しい紫
+          }}
+        />
+      </div>
       
-      <div className="px-6 -mt-8 relative z-20">
-        <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg p-3 flex flex-wrap items-center justify-center gap-2.5 max-w-2xl mx-auto border border-white/50">
+      <div className="px-6 -mt-8 relative z-10">
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-3 flex flex-wrap items-center justify-center gap-2.5 max-w-2xl mx-auto border border-white/50 mb-4">
           {getFilterInfo().map(filter => (
             <button
               key={filter.type}
@@ -643,7 +659,7 @@ const WorksHeader = memo(({
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
                 activeFilter === filter.type 
                   ? 'bg-gradient-to-r from-[#8ec5d6] to-[#5d7799] text-white shadow-md transform scale-105' 
-                  : 'bg-white/80 text-[#5d7799] hover:bg-[#5d7799]/5 border border-[#5d7799]/10'
+                  : 'bg-white/70 text-[#5d7799] hover:bg-[#5d7799]/10 border border-[#5d7799]/10'
               }`}
             >
               <div className={`${activeFilter === filter.type ? 'text-white' : 'text-[#5d7799]'} transition-colors`}>
@@ -762,44 +778,92 @@ const MyWorks = () => {
     navigate(`/child/works/${work.id}`);
   };
 
+  // 背景アニメーション用の要素を作成
+  const renderBackgroundAnimation = () => (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: -1 }}>
+      {/* ふわふわ浮かぶ円形 */}
+      {[...Array(20)].map((_, i) => (
+        <div
+          key={`circle-${i}`}
+          className={`absolute rounded-full bg-gradient-to-b ${
+            i % 3 === 0 ? 'from-pink-200/60 to-purple-200/50' : 
+            i % 3 === 1 ? 'from-indigo-200/60 to-blue-200/50' : 
+            'from-amber-200/60 to-yellow-200/50'
+          } opacity-90 animate-float`}
+          style={{
+            width: `${Math.random() * 80 + 40}px`,
+            height: `${Math.random() * 80 + 40}px`,
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animationDuration: `${Math.random() * 10 + 15}s`,
+            animationDelay: `${Math.random() * 5}s`,
+            filter: 'blur(1px)'
+          }}
+        />
+      ))}
+
+      {/* キラキラ光るエフェクト */}
+      {[...Array(30)].map((_, i) => (
+        <div
+          key={`sparkle-${i}`}
+          className="absolute w-2 h-2 bg-white rounded-full animate-twinkle"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 5}s`,
+            animationDuration: `${1 + Math.random() * 3}s`,
+            opacity: Math.random() * 0.8 + 0.6,
+            boxShadow: '0 0 6px 2px rgba(255, 255, 255, 0.7)'
+          }}
+        />
+      ))}
+
+      {/* グラデーション背景 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/80 via-white/30 to-amber-100/80 animate-gradient-slow opacity-95" />
+    </div>
+  );
+
   // 作品がない場合のメッセージ
   if (childFilteredWorks.length === 0 && !loading) {
     console.log('MyWorks - 表示する作品がありません - selectedChildProfileId:', selectedChildProfileId);
     return (
       <BaseLayout hideHeader={true}>
-        <WorksHeader 
-          activeFilter={selectedType} 
-          setActiveFilter={setSelectedType}
-          worksCount={works.length}
-        />
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="bg-white rounded-[32px] shadow-md p-8 text-center my-12 relative overflow-hidden">
-            {/* キラキラエフェクト */}
-            <div className="absolute inset-0 pointer-events-none">
-              {[...Array(10)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className="absolute w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-70"
-                  style={{
-                    top: `${Math.random() * 100}%`,
-                    left: `${Math.random() * 100}%`,
-                    animationDelay: `${Math.random() * 2}s`,
-                    animationDuration: `${2 + Math.random() * 3}s`
-                  }}
-                />
-              ))}
+        {renderBackgroundAnimation()}
+        <div className="relative flex flex-col min-h-screen" style={{ zIndex: 1 }}>
+          <div className="sticky top-0 z-20 bg-white/60 backdrop-blur-md shadow-md">
+            <WorksHeader 
+              activeFilter={selectedType} 
+              setActiveFilter={setSelectedType}
+              worksCount={works.length}
+            />
+          </div>
+          <div className="max-w-5xl mx-auto px-4 flex-1 pb-40">
+            <div className="bg-white/90 rounded-[32px] shadow-lg p-8 text-center my-12 relative overflow-hidden backdrop-blur-sm border border-white">
+              {/* キラキラエフェクト */}
+              <div className="absolute inset-0 pointer-events-none">
+                {[...Array(10)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="absolute w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-70"
+                    style={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                      animationDelay: `${Math.random() * 2}s`,
+                      animationDuration: `${2 + Math.random() * 3}s`
+                    }}
+                  />
+                ))}
+              </div>
+              
+              <div className="mb-6 bg-[#f8fbfd] p-6 rounded-full inline-block relative">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-200 via-purple-200 to-indigo-200 opacity-30 animate-pulse"></div>
+                <Image className="w-20 h-20 text-[#8ec5d6] mx-auto relative z-10" />
+              </div>
+              <h2 className="text-2xl font-bold text-[#5d7799] mb-3">作品がありません</h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                新しい作品を作成して、あなたの才能を表現してみましょう！
+              </p>
             </div>
-            
-            <div className="mb-6 bg-[#f8fbfd] p-6 rounded-full inline-block relative">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-200 via-purple-200 to-indigo-200 opacity-30 animate-pulse"></div>
-              <Image className="w-20 h-20 text-[#8ec5d6] mx-auto relative z-10" />
-            </div>
-            <h2 className="text-2xl font-bold text-[#5d7799] mb-3">作品がありません</h2>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
-              新しい作品を作成して、あなたの才能を表現してみましょう！
-            </p>
-            
-            <CreateWorkButton />
           </div>
         </div>
       </BaseLayout>
@@ -808,44 +872,56 @@ const MyWorks = () => {
 
   return (
     <BaseLayout hideHeader={true}>
-      <WorksHeader 
-        activeFilter={selectedType} 
-        setActiveFilter={setSelectedType}
-        worksCount={works.length}
-      />
-      <div className="max-w-4xl mx-auto px-4">
-        {/* ローディング状態 */}
-        {loading ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              <div className="h-12 w-12 text-[#8ec5d6] animate-spin mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </div>
-              <p className="text-gray-600">読み込み中...</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* 作品一覧 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-8">
-              {childFilteredWorks.map((work, index) => (
-                <div 
-                  key={work.id} 
-                  className="animate-fade-in" 
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <WorkCard 
-                    work={work} 
-                    onView={() => handleViewWork(work)}
-                  />
+      {renderBackgroundAnimation()}
+      <div className="relative flex flex-col min-h-screen" style={{ zIndex: 1 }}>
+        <div className="sticky top-0 z-20 bg-white/60 backdrop-blur-md shadow-md">
+          <WorksHeader 
+            activeFilter={selectedType} 
+            setActiveFilter={setSelectedType}
+            worksCount={works.length}
+          />
+        </div>
+        <div className="max-w-5xl mx-auto px-4 flex-1 pb-40">
+          {/* ローディング状態 */}
+          {loading ? (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="text-center bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg">
+                <div className="h-12 w-12 text-[#8ec5d6] animate-spin mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
                 </div>
-              ))}
+                <p className="text-gray-600">読み込み中...</p>
+              </div>
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              {/* 作品一覧 */}
+              <div className="py-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-20">
+                {childFilteredWorks.map((work, index) => (
+                  <motion.div 
+                    key={work.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      delay: index * 0.1,
+                      duration: 0.4
+                    }}
+                    className="w-full flex justify-center"
+                  >
+                    <div className="w-full max-w-[280px]">
+                      <WorkCard 
+                        work={work} 
+                        onView={() => handleViewWork(work)}
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* カスタムアニメーションのためのスタイル */}
@@ -856,9 +932,9 @@ const MyWorks = () => {
           100% { transform: scaleY(0.3); }
         }
         @keyframes twinkle {
-          0% { opacity: 0.2; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.2); }
-          100% { opacity: 0.2; transform: scale(0.8); }
+          0% { opacity: 0.3; transform: scale(0.8); filter: blur(2px); }
+          50% { opacity: 1; transform: scale(1.8); filter: blur(1px); }
+          100% { opacity: 0.3; transform: scale(0.8); filter: blur(2px); }
         }
         @keyframes gradient {
           0% { background-position: 0% 50%; }
@@ -868,6 +944,37 @@ const MyWorks = () => {
         .animate-gradient {
           background-size: 200% 200%;
           animation: gradient 8s ease infinite;
+        }
+        .animate-gradient-slow {
+          background-size: 300% 300%;
+          animation: gradient 25s ease infinite;
+        }
+        @keyframes float {
+          0% { transform: translateY(0) rotate(0deg); }
+          25% { transform: translateY(-20px) rotate(5deg); }
+          50% { transform: translateY(-40px) rotate(10deg); }
+          75% { transform: translateY(-20px) rotate(15deg); }
+          100% { transform: translateY(0) rotate(0deg); }
+        }
+        .animate-float {
+          animation-name: float;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+        }
+        
+        /* フェードインアニメーション */
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.6s ease-out forwards;
         }
       `}</style>
     </BaseLayout>

@@ -22,7 +22,7 @@ export const GradientHeader: React.FC<GradientHeaderProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="w-full mx-auto">
       <div 
         className="px-6 py-6 rounded-[24px] shadow-lg relative overflow-hidden mx-4 mb-6 h-24"
         style={gradientStyle}

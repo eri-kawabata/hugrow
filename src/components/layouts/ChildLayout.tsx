@@ -14,11 +14,11 @@ export const ChildLayout: React.FC = () => {
 
   return (
     <BaseLayout>
-      <div className="min-h-screen bg-[#f8fbfd] pb-24">
+      <div className="min-h-screen bg-[#f8fbfd] pb-32">
         <Outlet />
       </div>
       {/* Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 w-full h-16 bg-gradient-to-t from-white to-[#f8fbfd] border-t-4 border-[#8ec5d6]/30 shadow-lg">
+      <footer className="fixed bottom-0 left-0 right-0 w-full h-16 bg-gradient-to-t from-white to-[#f8fbfd] border-t-4 border-[#8ec5d6]/30 shadow-lg z-30">
         <nav className="w-full h-full max-w-3xl mx-auto">
           <ul className="h-full grid grid-cols-5 items-center justify-items-center w-full px-2">
             <li className="w-full flex justify-center">
