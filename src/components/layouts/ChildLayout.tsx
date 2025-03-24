@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Home, PlusSquare, BookOpen, Image, Heart } from 'lucide-react';
 import { BaseLayout } from './BaseLayout';
-import AiDoctor from '../Common/AiDoctor';
+
 export const ChildLayout: React.FC = () => {
   const location = useLocation();
   const isActive = (path: string) => {

@@ -275,6 +275,18 @@ Header.displayName = 'Header';
 export const BaseLayout: React.FC<BaseLayoutProps> = ({ children, hideHeader }) => {
   const navigate = useNavigate();
   const { signOut, profile } = useAuth();
+  const location = useLocation();
+  
+  // デバッグ用にパスをより詳細に表示
+  console.log('BaseLayout - 詳細パス情報:', {
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+    key: location.key
+  });
+  
+  // 常にAiDoctorを表示するように修正（問題解決のため）
+  const showAiDoctor = true;
   
   const handleLogout = useCallback(async () => {
     try {
@@ -311,6 +323,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({ children, hideHeader }) 
         <main className="flex-1 relative z-0">
           {children}
         </main>
+        {/* 常にAiDoctorを表示 */}
         <AiDoctorProvider>
           <AiDoctor />
         </AiDoctorProvider>

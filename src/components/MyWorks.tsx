@@ -790,9 +790,10 @@ const MyWorks = () => {
         <div
           key={`circle-large-${i}`}
           className={`absolute rounded-full bg-gradient-to-b ${
-            i % 3 === 0 ? 'from-pink-200/60 to-purple-200/50' : 
-            i % 3 === 1 ? 'from-indigo-200/60 to-blue-200/50' : 
-            'from-amber-200/60 to-yellow-200/50'
+            i % 4 === 0 ? 'from-pink-200/60 to-purple-200/50' : 
+            i % 4 === 1 ? 'from-indigo-200/60 to-blue-200/50' : 
+            i % 4 === 2 ? 'from-amber-200/60 to-yellow-200/50' :
+            'from-emerald-200/60 to-teal-200/50'
           } opacity-90 animate-float`}
           style={{
             width: `${Math.random() * 100 + 80}px`,
@@ -811,9 +812,10 @@ const MyWorks = () => {
         <div
           key={`circle-medium-${i}`}
           className={`absolute rounded-full bg-gradient-to-b ${
-            i % 3 === 0 ? 'from-pink-200/50 to-purple-200/40' : 
-            i % 3 === 1 ? 'from-indigo-200/50 to-blue-200/40' : 
-            'from-amber-200/50 to-yellow-200/40'
+            i % 4 === 0 ? 'from-pink-200/50 to-purple-200/40' : 
+            i % 4 === 1 ? 'from-indigo-200/50 to-blue-200/40' : 
+            i % 4 === 2 ? 'from-amber-200/50 to-yellow-200/40' : 
+            'from-emerald-200/50 to-teal-200/40'
           } opacity-85 animate-float-medium`}
           style={{
             width: `${Math.random() * 60 + 40}px`,
@@ -827,8 +829,29 @@ const MyWorks = () => {
         />
       ))}
 
+      {/* 背景装飾用の星形 */}
+      {[...Array(8)].map((_, i) => (
+        <div
+          key={`star-${i}`}
+          className="absolute opacity-40"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animation: `float ${Math.random() * 10 + 15}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 5}s`
+          }}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path 
+              d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" 
+              fill={i % 3 === 0 ? '#FFD700' : i % 3 === 1 ? '#60A5FA' : '#E879F9'} 
+            />
+          </svg>
+        </div>
+      ))}
+
       {/* キラキラ光るエフェクト */}
-      {[...Array(40)].map((_, i) => (
+      {[...Array(30)].map((_, i) => (
         <div
           key={`sparkle-${i}`}
           className="absolute w-2 h-2 bg-white rounded-full animate-twinkle"
