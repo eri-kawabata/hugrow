@@ -27,7 +27,7 @@ const emotions = [
   },
   { 
     name: 'ふつう', 
-    icon: Meh, 
+    icon: Smile, 
     color: 'text-purple-500',
     bgColor: 'bg-purple-100',
     borderColor: 'border-purple-200',
@@ -36,7 +36,7 @@ const emotions = [
   },
   { 
     name: 'すこしかなしい', 
-    icon: Frown, 
+    icon: Meh, 
     color: 'text-blue-500',
     bgColor: 'bg-blue-100',
     borderColor: 'border-blue-200',
@@ -45,7 +45,7 @@ const emotions = [
   },
   { 
     name: 'かなしい', 
-    icon: Smile, 
+    icon: Frown,
     color: 'text-indigo-500',
     bgColor: 'bg-indigo-100',
     borderColor: 'border-indigo-200',
