@@ -444,9 +444,9 @@ export function SELQuest() {
         <GradientHeader 
           title="きもちクエスト" 
           gradientColors={{
-            from: '#8ec5d6',
-            via: '#f7c5c2',
-            to: '#f5f6bf'
+            from: '#FFB6C1',
+            via: '#FFE4B5',
+            to: '#E6E6FA'
           }}
         />
 
