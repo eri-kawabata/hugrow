@@ -249,23 +249,24 @@ export function AuthProvider() {
           const profile = await fetchProfile(session.user.id);
           if (profile && mounted) {
             updateAuthState(session.user, profile, true);
+            setInitializing(false);
           } else {
             updateAuthState(null, null, false);
+            setInitializing(false);
           }
         } else if (mounted) {
           updateAuthState(null, null, false);
+          setInitializing(false);
         }
       } catch (error) {
         console.error('認証の初期化エラー:', error);
         if (mounted) {
           setInitializationFailed(true);
           updateAuthState(null, null, false);
+          setInitializing(false);
         }
       } finally {
         clearTimeout(timeoutId);
-        if (mounted) {
-          setInitializing(false);
-        }
       }
     };
 
@@ -319,8 +320,8 @@ export function AuthProvider() {
     return <Navigate to="/auth/login" replace />;
   }
 
-  // 認証済みで認証ページにアクセスした場合は適切なダッシュボードへリダイレクト
-  if (isAuthenticated && isPublicPath) {
+  // 認証済みで認証ページにアクセスした場合のみリダイレクト
+  if (isAuthenticated && location.pathname.startsWith('/auth/')) {
     const redirectPath = profile?.role === 'parent' ? '/parent/dashboard' : '/select-child';
     return <Navigate to={redirectPath} replace />;
   }

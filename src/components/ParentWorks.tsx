@@ -757,10 +757,15 @@ export default function ParentWorks() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredWorks.map((work) => (
-              <WorkCard key={work.id} work={work} />
+              <WorkCard 
+                key={work.id} 
+                work={work} 
+                onFeedbackClick={() => {}} 
+                getSafeMediaUrl={getSafeMediaUrl}
+              />
             ))}
-        </div>
-      )}
+          </div>
+        )}
       </div>
     </div>
   );
