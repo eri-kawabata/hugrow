@@ -144,9 +144,9 @@ export function WorkUpload() {
         <GradientHeader 
           title="どんなさくひんを つくる？" 
           gradientColors={{
-            from: '#7ab5c9',  // 鮮やかな水色
-            via: '#f3a6a6',   // 鮮やかなピンク
-            to: '#f2e07c'     // 鮮やかな黄色
+            from: '#fb7185',  // 鮮やかなピンク（おえかきカードに合わせて）
+            via: '#60a5fa',   // 鮮やかな青（しゃしんカードに合わせて）
+            to: '#34d399'     // 鮮やかな緑（おとをろくおんカードに合わせて）
           }}
         />
         
@@ -172,39 +172,69 @@ export function WorkUpload() {
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-[#60a5fa] via-[#e879f9] to-[#fcd34d] rounded-[28px] opacity-30 group-hover:opacity-50 blur transition duration-500"></div>
                   <motion.div
                     whileHover={{ 
-                      scale: 1.03,
-                      y: -5,
-                      transition: { duration: 0.3 }
+                      scale: 1.05,
+                      y: -10,
+                      rotate: 1,
+                      transition: { 
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 25
+                      }
                     }}
-                    className={`relative block bg-gradient-to-br from-white to-white/20 rounded-[24px] shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 ${type.borderColor}`}
+                    whileTap={{ scale: 0.98 }}
+                    className={`relative block bg-gradient-to-br from-white to-white/20 rounded-[24px] shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border-2 ${type.borderColor}`}
                   >
                     <div className="absolute inset-0 bg-white/90 transition-opacity group-hover:opacity-95"></div>
-                    <div className="absolute inset-0 pointer-events-none">
-                      {[...Array(5)].map((_, i) => (
-                        <div
+                    
+                    {/* キラキラエフェクト */}
+                    <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      {[...Array(8)].map((_, i) => (
+                        <motion.div
                           key={i}
                           className="absolute w-1 h-1 bg-white rounded-full"
+                          initial={false}
+                          animate={{
+                            scale: [0, 1.5, 0],
+                            opacity: [0, 1, 0],
+                            x: [0, (Math.random() - 0.5) * 100],
+                            y: [0, (Math.random() - 0.5) * 100],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            delay: i * 0.2,
+                            ease: "easeOut"
+                          }}
                           style={{
-                            top: `${Math.random() * 100}%`,
                             left: `${Math.random() * 100}%`,
-                            animation: `twinkle ${2 + Math.random() * 2}s infinite ${Math.random() * 2}s`
+                            top: `${Math.random() * 100}%`,
+                            filter: 'blur(0.5px)',
+                            background: `linear-gradient(135deg, ${type.gradient.from}, ${type.gradient.to})`
                           }}
                         />
                       ))}
                     </div>
+
+                    {/* 光の波紋エフェクト */}
+                    <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1500 ease-in-out"></div>
+                    </div>
+
                     <div className="relative p-8">
                       <div className="flex flex-col items-center text-center">
                         <motion.div
                           whileHover={{ 
-                            scale: 1.1,
-                            rotate: [0, -5, 5, 0],
-                            transition: { duration: 0.3 }
+                            scale: 1.15,
+                            rotate: [0, -5, 5, -5, 0],
+                            transition: { 
+                              duration: 0.5,
+                              ease: "easeInOut"
+                            }
                           }}
-                          className={`p-6 bg-gradient-to-br from-${type.gradient.from}/10 to-${type.gradient.to}/10 rounded-2xl mb-6 relative overflow-hidden group-hover:shadow-md transition-all duration-300`}
+                          className={`p-6 bg-gradient-to-br from-${type.gradient.from}/10 to-${type.gradient.to}/10 rounded-2xl mb-6 relative overflow-hidden group-hover:shadow-lg transition-all duration-300`}
                         >
-                          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 group-hover:translate-x-full transition-all duration-1000"></div>
                           {React.cloneElement(type.icon, {
-                            className: `h-16 w-16 transform transition-transform group-hover:scale-110 duration-300`,
+                            className: `h-16 w-16 transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-[360deg]`,
                             style: { color: type.iconColor }
                           })}
                         </motion.div>
@@ -213,12 +243,20 @@ export function WorkUpload() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.2 }}
                         >
-                          <h3 className={`text-2xl font-bold bg-gradient-to-r ${
-                            index === 0 ? 'from-pink-500 to-purple-500' :
-                            index === 1 ? 'from-blue-500 to-indigo-500' :
-                            'from-green-500 to-teal-500'
-                          } bg-clip-text text-transparent mb-3`}>{type.title}</h3>
-                          <p className="text-gray-600 text-lg">{type.description}</p>
+                          <motion.h3 
+                            className={`text-2xl font-bold bg-gradient-to-r ${
+                              index === 0 ? 'from-pink-500 to-purple-500' :
+                              index === 1 ? 'from-blue-500 to-indigo-500' :
+                              'from-green-500 to-teal-500'
+                            } bg-clip-text text-transparent mb-3`}
+                            whileHover={{
+                              scale: 1.05,
+                              transition: { duration: 0.2 }
+                            }}
+                          >
+                            {type.title}
+                          </motion.h3>
+                          <p className="text-gray-600 text-lg group-hover:text-gray-800 transition-colors duration-300">{type.description}</p>
                         </motion.div>
                       </div>
                     </div>
