@@ -33,7 +33,7 @@ export const ChildLayout: React.FC = () => {
                 <div className={`p-1.5 rounded-full ${isActive('/child/home') ? 'bg-[#8ec5d6]/30' : 'hover:bg-[#8ec5d6]/20'}`}>
                   <Home className="h-4 w-4" />
                 </div>
-                <span className="text-[10px] font-bold">ほーむ</span>
+                <span className="text-[10px] font-bold">ホーム</span>
               </Link>
             </li>
             <li className="w-full flex justify-center">

@@ -204,11 +204,11 @@ export function Home() {
       <BackgroundDecorations />
       <div className="relative max-w-6xl mx-auto space-y-12 pb-28 z-10">
         <GradientHeader 
-          title="ほーむ" 
+          title="ホーム" 
           gradientColors={{
-            from: '#89f7fe',
-            via: '#66a6ff',
-            to: '#f78fb3'
+            from: '#3b82f6',
+            via: '#ec4899',
+            to: '#facc15'
           }}
         />
 
