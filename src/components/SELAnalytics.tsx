@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, TrendingUp, MessageCircle, Download, PieChart as PieChartIcon, BarChart as BarChartIcon, Brain, Lightbulb, ArrowLeft, Star, Heart, Meh, Frown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, TrendingUp, MessageCircle, Download, PieChart as PieChartIcon, BarChart as BarChartIcon, Brain, Lightbulb, ArrowLeft, Star, Heart, Meh, Frown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { SELResponse } from '../lib/types';
 import {
@@ -113,68 +113,86 @@ export function SELAnalytics() {
   const [emotionFilter, setEmotionFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [children, setChildren] = useState<ChildProfile[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
 
-  useEffect(() => {
-    console.log('SELAnalytics useEffect triggered - きもちクエスト版');
-    fetchResponses();
-  }, [timeRange]);
-
+  // fetchResponses関数を追加
   const fetchResponses = async () => {
-    if (!supabase) return;
-
+    if (!selectedChildId) {
+      console.log('No child selected');
+      return;
+    }
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // 期間に応じたデータ取得
-      const now = new Date();
-      const startDate = new Date();
-      switch (timeRange) {
-        case 'week':
-          startDate.setDate(now.getDate() - 7);
-          break;
-        case 'month':
-          startDate.setMonth(now.getMonth() - 1);
-          break;
-        case 'year':
-          startDate.setFullYear(now.getFullYear() - 1);
-          break;
-      }
-
-      // 自分の感情記録を取得
+      console.log('Fetching responses for child:', selectedChildId);
       const { data, error } = await supabase
         .from('sel_responses')
-        .select(`
-          *,
-          sel_feedback (
-            id,
-            feedback_text,
-            created_at
-          )
-        `)
-        .eq('user_id', user.id) // 認証ユーザーのIDを使用
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: true });
+        .select('*')
+        .eq('profile_id', selectedChildId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      // プロフィール情報を取得
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('user_id', user.id)
-        .single();
-
-      setChildName(profile?.username || '');
+      console.log('Fetched responses:', data);
       setResponses(data || []);
     } catch (error) {
       console.error('感情データの取得エラー:', error);
-      toast.error('データの取得に失敗しました');
+      toast.error('データの読み込みに失敗しました');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    console.log('SELAnalytics useEffect triggered - きもちクエスト版');
+    fetchResponses();
+  }, [timeRange, selectedChildId]); // selectedChildIdを依存配列に追加
+
+  // 子供一覧を取得
+  useEffect(() => {
+    const fetchChildren = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // 親のプロファイルIDを取得
+        const { data: parentProfile, error: parentError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('role', 'parent')
+          .single();
+
+        if (parentError) {
+          console.error('親プロファイル取得エラー:', parentError);
+          return;
+        }
+
+        // 親に関連付けられた子供を取得
+        const { data: childProfiles, error: childrenError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url, user_id')
+          .eq('parent_id', parentProfile.id)
+          .eq('role', 'child');
+
+        if (childrenError) {
+          console.error('子供プロファイル取得エラー:', childrenError);
+          return;
+        }
+
+        setChildren(childProfiles || []);
+        
+        // 最初の子供を選択
+        if (childProfiles && childProfiles.length > 0) {
+          setSelectedChildId(childProfiles[0].id);
+        }
+      } catch (err) {
+        console.error('子供データ取得エラー:', err);
+      }
+    };
+
+    fetchChildren();
+  }, []);
 
   // 感情トレンドデータの生成
   const emotionTrendData = useMemo(() => {
@@ -668,8 +686,39 @@ export function SELAnalytics() {
     setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
   };
 
+  // 子供選択コンポーネント
+  const ChildSelector = () => (
+    <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+      <h3 className="text-lg font-semibold text-[#5d7799] mb-4">お子様を選択</h3>
+      <div className="flex flex-wrap gap-3">
+        {children.map(child => (
+          <button
+            key={child.id}
+            onClick={() => setSelectedChildId(child.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+              selectedChildId === child.id 
+                ? 'bg-[#5d7799] text-white' 
+                : 'bg-gray-100 text-[#5d7799] hover:bg-gray-200'
+            }`}
+          >
+            {child.avatar_url ? (
+              <img 
+                src={child.avatar_url} 
+                alt={child.username} 
+                className="w-6 h-6 rounded-full object-cover"
+              />
+            ) : (
+              <User className="w-5 h-5" />
+            )}
+            <span>{child.username}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* 完全に新しいヘッダーデザイン */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 rounded-xl p-6 text-white shadow-lg mb-8">
         <div className="flex items-center justify-between">
@@ -687,6 +736,9 @@ export function SELAnalytics() {
           </button>
         </div>
       </div>
+
+      {/* 子供選択UIをここに移動 */}
+      <ChildSelector />
 
       {/* 期間選択部分をボタン形式に変更 */}
       <div className="mb-6 bg-white rounded-lg shadow-md p-4">

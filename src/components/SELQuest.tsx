@@ -6,6 +6,36 @@ import toast from 'react-hot-toast';
 import type { SELQuest, SELResponse } from '../lib/types';
 import { GradientHeader } from '@/components/Common/GradientHeader';
 
+// Web Speech APIの型定義
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResult {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: {
+    [index: number]: {
+      transcript: string;
+    }
+  };
+}
+
+interface SpeechRecognitionInterface extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onend: () => void;
+}
+
 const emotions = [
   { 
     name: 'とてもうれしい', 
@@ -54,6 +84,14 @@ const emotions = [
   },
 ] as const;
 
+// Windowインターフェースを拡張
+declare global {
+  interface Window {
+    switchChildProfile?: (childId: string) => void;
+    availableChildProfiles?: {id: string, full_name: string}[];
+  }
+}
+
 export function SELQuest() {
   const [selectedQuest, setSelectedQuest] = useState<SELQuest | null>(null);
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
@@ -65,7 +103,7 @@ export function SELQuest() {
   const [expandedResponseId, setExpandedResponseId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [recognition, setRecognition] = useState<SpeechRecognitionInterface | null>(null);
   const responsesPerPage = 5;
   // カレンダー表示用の状態
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
@@ -73,6 +111,10 @@ export function SELQuest() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  // 子供プロファイル関連の状態
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [childProfiles, setChildProfiles] = useState<{id: string, full_name: string}[]>([]);
+  const [selectedChildName, setSelectedChildName] = useState<string | null>(null);
 
   const fetchUserId = useCallback(async () => {
     if (!supabase) return null;
@@ -95,13 +137,76 @@ export function SELQuest() {
   useEffect(() => {
     const initialize = async () => {
       const id = await fetchUserId();
-      if (id) {
-        setUserId(id);
-        await Promise.all([
-          fetchQuests(),
-          fetchResponses(id)
-        ]);
+      if (!id) return;
+      
+      setUserId(id);
+      
+      // URLからプロファイルIDを取得（URLパラメータ優先）
+      const urlParams = new URLSearchParams(window.location.search);
+      const profileId = urlParams.get('profile_id');
+
+      console.log('初期化時にURLから取得したprofile_id:', profileId);
+
+      if (profileId) {
+        // プロファイルの存在を確認
+        try {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', profileId)
+            .eq('role', 'child')
+            .maybeSingle();
+            
+          if (!error && profileData) {
+            console.log(`URLで指定されたプロファイルを選択しました:`, profileData.full_name);
+            setSelectedChildId(profileId);
+            setSelectedChildName(profileData.full_name);
+            
+            // 全ての子供プロファイルも取得し、状態を更新
+            const { data: allProfiles } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .eq('role', 'child');
+              
+            if (allProfiles) {
+              setChildProfiles(allProfiles);
+            }
+            
+            await Promise.all([
+              fetchQuests(),
+              fetchResponses(id, profileId)
+            ]);
+            return; // URLにプロファイルIDがあれば、他の処理は行わない
+          }
+        } catch (e) {
+          console.error('プロファイル確認エラー:', e);
+        }
       }
+      
+      // ヘッダーからの情報取得を試みる
+      await fetchChildProfiles(id);
+      
+      // リアルタイムでプロファイル変更を監視
+      const profilesSubscription = supabase
+        .channel('profiles-changes')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'profiles',
+            filter: 'role=eq.child'
+          }, 
+          payload => {
+            console.log('プロファイル変更検知:', payload);
+            // 子供プロファイルの変更を検知したら一覧を再取得
+            fetchChildProfiles(id);
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        profilesSubscription.unsubscribe();
+      };
     };
 
     initialize();
@@ -110,7 +215,8 @@ export function SELQuest() {
   useEffect(() => {
     // Web Speech APIの初期化
     if ('webkitSpeechRecognition' in window) {
-      const recognition = new (window.webkitSpeechRecognition as any)();
+      const SpeechRecognition = (window as { webkitSpeechRecognition: new () => SpeechRecognitionInterface }).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'ja-JP';
@@ -147,10 +253,21 @@ export function SELQuest() {
     }
   };
 
-  const fetchResponses = async (id: string) => {
+  const fetchResponses = async (id: string, profileId?: string | null) => {
     if (!supabase) return;
 
     try {
+      // 選択された子供のプロファイルIDを使用
+      const targetProfileId = profileId || selectedChildId;
+      
+      if (!targetProfileId) {
+        console.warn('子供が選択されていません。');
+        return;
+      }
+
+      console.log('fetchResponses: 使用するprofile_id:', targetProfileId);
+
+      // 直接プロファイルIDで感情データを取得
       const { data, error } = await supabase
         .from('sel_responses')
         .select(`
@@ -158,13 +275,23 @@ export function SELQuest() {
           sel_feedback (
             id,
             feedback_text
+          ),
+          profiles:profile_id (
+            full_name
           )
         `)
-        .eq('user_id', id)
+        .eq('profile_id', targetProfileId)
         .order('created_at', { ascending: false })
         .limit(5);
 
       if (error) throw error;
+      
+      console.log('取得した感情データ:', data);
+      
+      if (data && data.length > 0 && data[0].profiles) {
+        console.log('感情データの所有者:', data[0].profiles.full_name);
+      }
+      
       setResponses(data || []);
     } catch (error) {
       console.error('Error fetching responses:', error);
@@ -231,12 +358,48 @@ export function SELQuest() {
     try {
       setLoading(true);
 
+      // 選択された子供のプロファイルIDを使用
+      if (!selectedChildId) {
+        toast.error('子供を選択してください');
+        setLoading(false);
+        return;
+      }
+
+      console.log('handleSubmit: 使用するprofile_id:', selectedChildId);
+      console.log('handleSubmit: 使用する子供名:', selectedChildName);
+
+      // プロファイル情報を取得
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('id', selectedChildId)
+        .single();
+
+      if (profileError) {
+        console.error('プロファイル取得エラー:', profileError);
+        toast.error('プロファイル情報の取得に失敗しました');
+        setLoading(false);
+        return;
+      }
+
+      if (!profileData) {
+        console.error('プロファイルが見つかりません');
+        toast.error('プロファイル情報が見つかりません');
+        setLoading(false);
+        return;
+      }
+
+      console.log('取得したプロファイル:', profileData); // デバッグ用
+
       // 選択された感情からintensityを取得
       const selectedEmotionData = emotions.find(e => e.name === selectedEmotion);
       if (!selectedEmotionData) {
         toast.error('感情データが不正です');
         return;
       }
+
+      // ものしり博士からのメッセージを取得
+      await fetchAIFeedback(selectedEmotion);
 
       // quest_idを取得（選択されたクエストまたはデフォルトクエスト）
       let questId = selectedQuest?.id;
@@ -249,7 +412,7 @@ export function SELQuest() {
             .select('id')
             .eq('emotion_type', 'daily_mood')
             .limit(1)
-            .single();
+            .maybeSingle();
             
           if (error) throw error;
           questId = data?.id;
@@ -268,70 +431,36 @@ export function SELQuest() {
         return;
       }
 
+      // 感情データを保存
+      const responseData = {
+        user_id: userId,
+        profile_id: profileData.id,
+        quest_id: questId,
+        emotion: selectedEmotion,
+        intensity: selectedEmotionData.intensity,
+        note: note.trim() || null
+      };
+
+      console.log('保存するデータ:', responseData); // デバッグ用
+
       const { error: responseError } = await supabase
         .from('sel_responses')
-        .insert([{
-          user_id: userId,
-          quest_id: questId,
-          emotion: selectedEmotion,
-          intensity: selectedEmotionData.intensity,
-          note: note.trim() || null
-        }]);
+        .insert([responseData]);
 
-      if (responseError) throw responseError;
-
-      // ものしり博士からのメッセージを生成
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `子どもの感情が「${selectedEmotion}」で、以下の出来事について話しています：
-                ${note}
-
-                ものしり博士として、以下の点に注意してメッセージを生成してください：
-                1. 子どもの気持ちに寄り添い、共感を示す
-                2. 子どもの出来事に対して具体的なコメントをする
-                3. 励ましやアドバイスを含める
-                4. 優しく、親しみやすい口調で話す
-                5. 子どもの年齢（3歳～8歳）に合わせた表現を使う
-                6. 漢字には必ずふりがなを付ける（例：お肉（おにく））
-                7. 自然な会話の流れにする（[子どもの出来事への具体的なコメント]などの記号は使用しない）
-                8. メッセージは100文字程度で、1つの文章として自然に流れるようにする
-
-                例：
-                「お肉（おにく）がおいしかったんだね！どんなお肉（おにく）だったのかな？またおいしいお肉（おにく）を食べられるといいね！」
-                「お友達（ともだち）と遊（あそ）べて楽（たの）しかったんだね！どんな遊（あそ）びをしたのかな？また一緒（いっしょ）に遊（あそ）べるといいね！」`
-              }]
-            }]
-          }),
-        });
-
-        const data = await response.json();
-        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-          setFeedback(data.candidates[0].content.parts[0].text);
-        } else {
-          console.error('Unexpected API response:', data);
-          setFeedback('すみません、メッセージの生成に失敗しました。もう一度お試しください。');
-        }
-      } catch (error) {
-        console.error('Gemini API error:', error);
-        setFeedback('すみません、メッセージの生成に失敗しました。もう一度お試しください。');
+      if (responseError) {
+        console.error('感情データ保存エラー:', responseError);
+        throw responseError;
       }
 
       // 成功メッセージを表示
-      toast.success('気持ちを記録しました！', {
+      toast.success(`${profileData.full_name}の気持ちを記録しました！`, {
         duration: 3000,
         position: 'top-center',
       });
 
       setNote('');
       setSelectedEmotion(null);
-      fetchResponses(userId);
+      fetchResponses(userId, selectedChildId);
     } catch (error) {
       console.error('Error:', error);
       toast.error('記録に失敗しました');
@@ -365,7 +494,7 @@ export function SELQuest() {
 
   // ページネーション関連の計算
   const totalPages = Math.ceil(responses.length / responsesPerPage);
-  const paginatedResponses = responses.slice(
+  const displayedResponses = responses.slice(
     (currentPage - 1) * responsesPerPage,
     currentPage * responsesPerPage
   );
@@ -438,6 +567,134 @@ export function SELQuest() {
   const responsesByDate = getResponsesByDate();
   const calendarDays = generateCalendarDays();
 
+  // 子供プロファイル一覧を取得
+  const fetchChildProfiles = async (userId: string) => {
+    if (!supabase) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('role', 'child')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // 子供プロファイル一覧を状態に保存（内部処理用）
+        setChildProfiles(data);
+        
+        // 1. URL検索（最優先）
+        const urlParams = new URLSearchParams(window.location.search);
+        const profileIdFromUrl = urlParams.get('profile_id');
+          
+        if (profileIdFromUrl) {
+          const targetChild = data.find(child => child.id === profileIdFromUrl);
+          if (targetChild) {
+            setSelectedChildId(targetChild.id);
+            setSelectedChildName(targetChild.full_name);
+            fetchResponses(userId, targetChild.id);
+            return;
+          }
+        }
+        
+        // 2. ヘッダーから子供名を取得（次に優先）
+        try {
+          // より多くのセレクタを追加して確実にヘッダーテキストを取得
+          const headerElements = [
+            ...document.querySelectorAll('header a'),
+            ...document.querySelectorAll('header div'),
+            ...document.querySelectorAll('header span'),
+            ...document.querySelectorAll('a.cursor-pointer'),
+            ...document.querySelectorAll('.cursor-pointer'),
+            ...document.querySelectorAll('header'),
+            ...document.querySelectorAll('nav a'),
+            ...document.querySelectorAll('nav span'),
+            ...document.querySelectorAll('.navbar'),
+            ...document.querySelectorAll('.nav-item'),
+            ...document.querySelectorAll('.user-menu'),
+          ];
+          
+          let foundName = null;
+          for (const el of headerElements) {
+            const text = el.textContent || '';
+            // より柔軟な正規表現パターンで「ようこそ」テキストから名前を抽出
+            const matches = [
+              text.match(/ようこそ[、,]?\s*([^\s]+)\s*さん/),
+              text.match(/ようこそ\s*([^\s]+)\s*/),
+              text.match(/([^\s]+)\s*さん/)
+            ];
+            
+            for (const match of matches) {
+              if (match && match[1]) {
+                foundName = match[1];
+                break;
+              }
+            }
+            
+            if (foundName) break;
+          }
+          
+          if (foundName) {
+            console.log('ヘッダーから抽出した名前:', foundName);
+            
+            // 名前の一部分が含まれるプロファイルを探す（部分一致）
+            const targetChild = data.find(child => 
+              child.full_name === foundName || 
+              child.full_name.includes(foundName) ||
+              foundName.includes(child.full_name)
+            );
+            
+            if (targetChild) {
+              setSelectedChildId(targetChild.id);
+              setSelectedChildName(targetChild.full_name);
+              fetchResponses(userId, targetChild.id);
+              return;
+            }
+          }
+        } catch (e) {
+          console.error('ヘッダー情報取得エラー:', e);
+        }
+        
+        // 3. 最終手段：先頭の子供を選択
+        setSelectedChildId(data[0].id);
+        setSelectedChildName(data[0].full_name);
+        fetchResponses(userId, data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching child profiles:', error);
+      toast.error('子供プロファイルの取得に失敗しました');
+    }
+  };
+
+  // 子供の切り替え機能（コンソールからデバッグ用に使用可能）
+  const switchChild = useCallback((childId: string) => {
+    const child = childProfiles.find(c => c.id === childId);
+    if (child && userId) {
+      setSelectedChildId(childId);
+      setSelectedChildName(child.full_name);
+      fetchResponses(userId, childId);
+      console.log(`子供を切り替えました: ${child.full_name}`);
+    } else {
+      console.error('指定されたIDの子供が見つかりません');
+    }
+  }, [childProfiles, userId]);
+
+  // グローバルにデバッグ関数を公開（必要に応じてコンソールから使用）
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.switchChildProfile = switchChild;
+      window.availableChildProfiles = childProfiles;
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.switchChildProfile;
+        delete window.availableChildProfiles;
+      }
+    };
+  }, [childProfiles, switchChild]);
+
   return (
     <BaseLayout hideHeader={true}>
       <div className="max-w-5xl mx-auto pb-28">
@@ -449,6 +706,15 @@ export function SELQuest() {
             to: '#E6E6FA'
           }}
         />
+
+        {/* 現在選択されている子供の名前のみ表示（切り替えUIは削除） */}
+        <div className="px-6 mb-4">
+          {selectedChildName && (
+            <div className="w-full flex items-center justify-center bg-indigo-50 rounded-full py-2 px-4 border border-indigo-100 text-indigo-700 text-sm font-medium">
+              <span>{selectedChildName}さんの気持ち</span>
+            </div>
+          )}
+        </div>
 
         <div className="px-6">
           <div className="space-y-8">
@@ -588,7 +854,7 @@ export function SELQuest() {
                   {viewMode === 'list' ? (
                     <>
                       <div className="space-y-3">
-                        {responses.map((response) => {
+                        {displayedResponses.map((response) => {
                           const emotion = emotions.find(e => e.name === response.emotion);
                           const isExpanded = expandedResponseId === response.id;
                           
