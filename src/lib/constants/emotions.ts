@@ -25,7 +25,7 @@ export const emotions = [
     color: '#60A5FA',
     intensity: 2,
     description: '少し落ち込んでいる',
-    icon: '😢'
+    icon: '😕'
   },
   { 
     name: 'かなしい', 

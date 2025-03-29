@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, TrendingUp, MessageCircle, Download, PieChart as PieChartIcon, BarChart as BarChartIcon, Brain, Lightbulb, ArrowLeft, Star, Heart, Meh, Frown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { Calendar, TrendingUp, MessageCircle, Download, PieChart as PieChartIcon, BarChart as BarChartIcon, Brain, Lightbulb, ArrowLeft, Star, Heart, Smile, Frown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User, Meh } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { SELResponse } from '../lib/types';
 import {
@@ -46,7 +46,7 @@ const emotions = [
   },
   { 
     name: 'ふつう', 
-    icon: Meh, 
+    icon: Smile, 
     color: 'text-purple-500',
     bgColor: 'bg-purple-100',
     borderColor: 'border-purple-200',
@@ -56,7 +56,7 @@ const emotions = [
   },
   { 
     name: 'すこしかなしい', 
-    icon: Frown, 
+    icon: Meh, 
     color: 'text-blue-500',
     bgColor: 'bg-blue-100',
     borderColor: 'border-blue-200',
@@ -718,7 +718,7 @@ export function SELAnalytics() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 pb-32">
       {/* 完全に新しいヘッダーデザイン */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 rounded-xl p-6 text-white shadow-lg mb-8">
         <div className="flex items-center justify-between">
@@ -852,7 +852,7 @@ export function SELAnalytics() {
         <div>
           {/* タブコンテンツ */}
           {activeTab === 'overview' && (
-            <div className="space-y-8">
+            <div className="space-y-8 mb-16">
               {/* 感情トレンドグラフ */}
               <div className="bg-white rounded-lg shadow p-6 mb-6">
                 <div className="mb-4">
@@ -863,8 +863,8 @@ export function SELAnalytics() {
                     </div>
                   </div>
                 </div>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
                     <LineChart 
                       data={emotionTrendData} 
                       margin={{ left: 50, right: 20, top: 20, bottom: 20 }}
@@ -883,16 +883,16 @@ export function SELAnalytics() {
                         axisLine={false}
                         tickLine={false}
                       />
-                  <Tooltip
-                    content={({ payload }) => {
-                      if (!payload?.length) return null;
+                      <Tooltip
+                        content={({ payload }) => {
+                          if (!payload?.length) return null;
                           const data = payload[0].payload;
                           const emotion = emotions.find(e => e.name === data.emotion);
                           if (!emotion) return null;
                           
                           const Icon = emotion.icon;
                           
-                      return (
+                          return (
                             <div className="bg-white p-4 border border-gray-200 rounded-lg shadow">
                               <div className="flex items-center gap-3 mb-2">
                                 <Icon className={emotion.color} size={24} />
@@ -907,22 +907,22 @@ export function SELAnalytics() {
                                   <span className="text-xs text-gray-400">（最も多かった感情を表示）</span>
                                 </p>
                               )}
-                        </div>
-                      );
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="intensity"
-                    stroke="#6366F1"
-                    strokeWidth={2}
+                            </div>
+                          );
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="intensity"
+                        stroke="#6366F1"
+                        strokeWidth={2}
                         dot={{ fill: '#6366F1', r: 4 }}
                         activeDot={{ r: 6, fill: '#4F46E5' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
 
               {/* 感情分布 */}
               <div className="bg-white rounded-lg shadow-md p-6 border border-purple-100">
@@ -932,15 +932,15 @@ export function SELAnalytics() {
                     <h2 className="text-lg font-medium text-gray-900">感情の分布</h2>
                   </div>
                 </div>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart margin={{ left: 20, right: 20, top: 20, bottom: 20 }}>
-                  <Pie
-                    data={emotionDistributionData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
+                      <Pie
+                        data={emotionDistributionData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
                         outerRadius={120}
                         label={({ name, value, percent }) => {
                           // NaN%を防ぐため、percentが有効な数値かチェック
@@ -959,7 +959,7 @@ export function SELAnalytics() {
                             />
                           );
                         })}
-                  </Pie>
+                      </Pie>
                       <Tooltip 
                         content={({ payload }) => {
                           if (!payload?.length) return null;
@@ -983,11 +983,11 @@ export function SELAnalytics() {
                           );
                         }}
                       />
-                </PieChart>
-              </ResponsiveContainer>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
           )}
           
           {/* インサイトタブ */}
@@ -1213,6 +1213,8 @@ export function SELAnalytics() {
           )}
         </div>
       )}
-      </div>
+      {/* 下部に余白を追加 */}
+      <div className="h-8"></div>
+    </div>
   );
 } 
