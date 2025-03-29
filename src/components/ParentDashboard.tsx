@@ -1208,7 +1208,7 @@ export const ParentDashboard: React.FC = () => {
         {/* 右側カラム - 成長指標 */}
         <div className="space-y-6">
           {/* 成長指標カード - デザイン強化 */}
-          <div className="bg-gradient-to-br from-white to-indigo-50 rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300">
+          <div className="bg-gradient-to-br from-white to-indigo-50 rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300 h-full">
             <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white">
               <h3 className="font-bold text-gray-800 flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-indigo-500" />
@@ -1326,25 +1326,22 @@ export const ParentDashboard: React.FC = () => {
                   <span className="text-xs text-gray-500">100%</span>
                 </div>
               </div>
+              
+              {/* 追加の説明テキスト */}
+              <div className="mt-6 bg-indigo-50 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-indigo-100 rounded-full mt-0.5">
+                    <AlertCircle className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-indigo-900">成長指標について</p>
+                    <p className="text-xs text-indigo-800 mt-1 leading-relaxed">
+                      この指標はお子様のアプリ使用状況から算出された目安です。感情理解、学習進捗、創造性の3つの観点から総合的な成長を評価しています。詳しい分析は詳細ページでご確認ください。
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* クイックアクセスボタン */}
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              to={`/parent/analytics/sel?child=${selectedChildId}`}
-              className="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-4 rounded-xl text-center shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.03]"
-            >
-              <Heart className="h-6 w-6 mx-auto mb-2" />
-              <span className="text-sm font-medium">感情分析</span>
-            </Link>
-            <Link
-              to={`/parent/analytics/learning?child=${selectedChildId}`}
-              className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-4 rounded-xl text-center shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.03]"
-            >
-              <BookOpenCheck className="h-6 w-6 mx-auto mb-2" />
-              <span className="text-sm font-medium">STEAM学習</span>
-            </Link>
           </div>
         </div>
       </div>
