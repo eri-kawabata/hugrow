@@ -13,6 +13,7 @@ type ActivityItem = {
   subject?: string;
   date: string;
   created_at: string;
+  profile_id: string;
 };
 
 // 子供データの型定義
@@ -95,126 +96,169 @@ const StatCard = React.memo(({
 const ActivityCard = React.memo(({ 
   activity, 
   selectedChildId, 
-  getActivityIcon 
+  getActivityIcon,
+  getEmotionIcon
 }: { 
   activity: ActivityItem; 
   selectedChildId: string;
   getActivityIcon: (type: string) => React.ReactNode;
-}) => (
-  <div key={activity.id} className={`flex items-center justify-between p-3 rounded-lg hover:shadow-sm transition-all ${
-    activity.type === '作品' ? 'bg-indigo-50 hover:bg-indigo-100' : 
-    activity.type === '感情記録' ? 'bg-pink-50 hover:bg-pink-100' : 
-    'bg-blue-50 hover:bg-blue-100'
-  }`}>
-    <div className="flex items-center gap-3">
-      <div className={`p-2 rounded-full ${
-        activity.type === '作品' ? 'bg-white text-indigo-600' : 
-        activity.type === '感情記録' ? 'bg-white text-pink-600' : 
-        'bg-white text-blue-600'
-      }`}>
-        {getActivityIcon(activity.type)}
-      </div>
-      <div>
-        <p className={`font-medium text-sm ${
-          activity.type === '作品' ? 'text-indigo-900' : 
-          activity.type === '感情記録' ? 'text-pink-900' : 
-          'text-blue-900'
-        }`}>
-          {activity.type === '作品' && (activity.title || '無題の作品')}
-          {activity.type === '感情記録' && `感情: ${activity.emotion || '記録なし'}`}
-          {activity.type === '学習' && `科目: ${activity.subject || '一般'}`}
-        </p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-            activity.type === '作品' ? 'bg-indigo-100 text-indigo-800' : 
-            activity.type === '感情記録' ? 'bg-pink-100 text-pink-800' : 
-            'bg-blue-100 text-blue-800'
-          }`}>
-            {activity.type}
-          </span>
-          <span className="text-xs text-gray-500">{activity.date}</span>
+  getEmotionIcon: (emotion: string) => React.ReactNode;
+}) => {
+  // 活動タイプに応じたコンテンツを返す
+  const renderContent = () => {
+    if (activity.type === '感情記録' && activity.emotion) {
+      return (
+        <div className="flex items-center gap-2">
+          {getEmotionIcon(activity.emotion)}
+          <span className="font-medium text-pink-900">{activity.emotion}</span>
+        </div>
+      );
+    } else if (activity.type === '作品') {
+      return (
+        <span className="font-medium text-indigo-900">{activity.title || '無題の作品'}</span>
+      );
+    } else if (activity.type === '学習') {
+      return (
+        <span className="font-medium text-blue-900">科目: {activity.subject || '一般'}</span>
+      );
+    }
+  };
+
+  // 活動タイプに応じたカラーとスタイルを選択
+  const getCardStyle = () => {
+    switch (activity.type) {
+      case '感情記録':
+        return {
+          bg: 'bg-pink-50 hover:bg-pink-100',
+          iconColor: 'text-pink-500',
+          labelColor: 'text-pink-500',
+          linkPath: `/parent/analytics/sel?child=${selectedChildId}`
+        };
+      case '作品':
+        return {
+          bg: 'bg-indigo-50 hover:bg-indigo-100',
+          iconColor: 'text-indigo-500',
+          labelColor: 'text-indigo-500',
+          linkPath: `/parent/works/${activity.id}?child=${selectedChildId}`
+        };
+      case '学習':
+        return {
+          bg: 'bg-blue-50 hover:bg-blue-100',
+          iconColor: 'text-blue-500',
+          labelColor: 'text-blue-500',
+          linkPath: `/parent/analytics/learning?child=${selectedChildId}`
+        };
+      default:
+        return {
+          bg: 'bg-gray-50 hover:bg-gray-100',
+          iconColor: 'text-gray-500',
+          labelColor: 'text-gray-500',
+          linkPath: `/parent/analytics?child=${selectedChildId}`
+        };
+    }
+  };
+
+  const style = getCardStyle();
+
+  return (
+    <div key={activity.id} className={`flex items-center justify-between p-4 rounded-lg transition-all ${style.bg}`}>
+      <div className="flex items-center gap-3 flex-1">
+        <div className={style.iconColor}>
+          {activity.type === '感情記録' && <Heart className="h-5 w-5" />}
+          {activity.type === '作品' && <Image className="h-5 w-5" />}
+          {activity.type === '学習' && <BookOpen className="h-5 w-5" />}
+        </div>
+        <div className="flex-1">
+          {renderContent()}
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`text-xs font-medium ${style.labelColor}`}>{activity.type}</span>
+            <span className="text-xs text-gray-500">{activity.date}</span>
+          </div>
         </div>
       </div>
+      <Link 
+        to={style.linkPath}
+        className="text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        <ChevronDown className="h-5 w-5 transform -rotate-90" />
+      </Link>
     </div>
-    <Link to={
-      activity.type === '作品' ? `/parent/works/${activity.id}?child=${selectedChildId}` : 
-      activity.type === '感情記録' ? `/parent/analytics/sel?child=${selectedChildId}` : 
-      `/parent/analytics?child=${selectedChildId}`
-    } className={`p-1.5 rounded-full ${
-      activity.type === '作品' ? 'text-indigo-600 hover:bg-indigo-100' : 
-      activity.type === '感情記録' ? 'text-pink-600 hover:bg-pink-100' : 
-      'text-blue-600 hover:bg-blue-100'
-    }`}>
-      <ChevronDown className="h-4 w-4 transform -rotate-90" />
-    </Link>
-  </div>
-));
+  );
+});
 
 // 子供選択ボタンコンポーネント
 const ChildSelectButton = React.memo(({ 
   child, 
   selectedChildId, 
   onSelect, 
-  formatDate 
+  formatDate,
+  recentActivities
 }: { 
   child: ChildProfile; 
   selectedChildId: string;
   onSelect: (id: string) => void;
   formatDate: (date: string) => string;
-}) => (
-  <button
-    key={child.id}
-    onClick={() => onSelect(child.id)}
-    className={`flex items-center p-3 rounded-xl transition-all w-full ${
-      selectedChildId === child.id 
-        ? 'bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-700 shadow-md ring-1 ring-indigo-300' 
-        : 'bg-white border border-gray-100 text-gray-700 hover:bg-gray-50 hover:shadow-sm'
-    }`}
-  >
-    <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${
-      selectedChildId === child.id ? 'ring-2 ring-indigo-300 shadow-sm' : 'ring-1 ring-gray-200'
-    }`}>
-      {child.avatar_url ? (
-        <img 
-          src={child.avatar_url} 
-          alt={child.full_name} 
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-      ) : (
-        <div className="w-full h-full bg-indigo-100 flex items-center justify-center">
-          <Users className="h-6 w-6 text-indigo-500" />
-        </div>
-      )}
-    </div>
-    <div className="ml-3 flex-1">
-      <p className="font-medium text-base">{child.full_name}</p>
-      <p className="text-xs text-gray-500">
-        {child.birthday ? `${new Date(child.birthday).getFullYear()}年生まれ・${child.age}歳` : '年齢不明'}
-      </p>
-      
-      {/* アクティビティインジケーター */}
-      <div className="flex items-center gap-1.5 mt-1">
-        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" title="作品活動"></div>
-        <div className="w-1.5 h-1.5 rounded-full bg-pink-400" title="感情記録"></div>
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-400" title="学習活動"></div>
-        {child.last_active_at && (
-          <span className="text-xs text-gray-400 ml-1">
-            最終活動: {formatDate(child.last_active_at).split(' ')[0]}
-          </span>
+  recentActivities: ActivityItem[];
+}) => {
+  // 誕生日をフォーマットする関数
+  const formatBirthday = (dateString: string | null | undefined) => {
+    if (!dateString) return '誕生日不明';
+    const date = new Date(dateString);
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+  };
+
+  return (
+    <button
+      key={child.id}
+      onClick={() => onSelect(child.id)}
+      className={`flex items-center p-3 rounded-xl transition-all duration-300 w-full group ${
+        selectedChildId === child.id 
+          ? 'bg-gradient-to-br from-indigo-100 to-blue-50 text-indigo-700 shadow-md ring-1 ring-indigo-300 transform hover:scale-[1.02]' 
+          : 'bg-white border border-gray-100 text-gray-700 hover:bg-gray-50 hover:shadow-sm hover:border-indigo-200'
+      }`}
+    >
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden transition-all duration-300 ${
+        selectedChildId === child.id 
+        ? 'ring-2 ring-indigo-300 shadow-sm' 
+        : 'ring-1 ring-gray-200 group-hover:ring-indigo-200'
+      }`}>
+        {child.avatar_url ? (
+          <img 
+            src={child.avatar_url} 
+            alt={child.full_name} 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-blue-50 flex items-center justify-center">
+            <Users className="h-6 w-6 text-indigo-500" />
+          </div>
         )}
       </div>
-    </div>
-    
-    {selectedChildId === child.id && (
-      <div className="ml-auto">
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white text-xs shadow-sm">
-          <CheckCircle2 className="h-3 w-3" />
-        </span>
+      <div className="ml-3 flex-1">
+        <p className="font-medium text-base">{child.full_name}</p>
+        <p className="text-xs text-gray-600 font-medium">
+          {child.birthday ? `${formatBirthday(child.birthday)}・${child.age || '?'}歳` : '誕生日不明'}
+        </p>
+        
+        {/* アクティビティインジケーター */}
+        <div className="flex gap-1 mt-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" title="作品活動"></div>
+          <div className="w-1.5 h-1.5 rounded-full bg-pink-400" title="感情記録"></div>
+          <div className="w-1.5 h-1.5 rounded-full bg-blue-400" title="学習活動"></div>
+        </div>
       </div>
-    )}
-  </button>
-));
+      
+      {selectedChildId === child.id && (
+        <div className="ml-auto">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white text-xs shadow-sm">
+            <CheckCircle2 className="h-3 w-3" />
+          </span>
+        </div>
+      )}
+    </button>
+  );
+});
 
 // メインコンポーネント
 export const ParentDashboard: React.FC = () => {
@@ -412,11 +456,43 @@ export const ParentDashboard: React.FC = () => {
       console.log('取得した子供プロファイル:', childrenWithAge);
       
       if (childrenWithAge.length > 0) {
-        setChildren(childrenWithAge);
+        // 各子供の最新の活動日を取得
+        const childrenWithLatestActivity = await Promise.all(
+          childrenWithAge.map(async (child) => {
+            try {
+              // 作品、感情記録、学習活動のうち最新のものを取得するSQL
+              const { data: latestActivities, error: activitiesError } = await supabase.rpc(
+                'get_latest_activity_date',
+                { profile_id_param: child.id }
+              );
+              
+              if (activitiesError) {
+                console.error(`子供 ${child.username} の最新活動取得エラー:`, activitiesError);
+                // エラー時は既存の last_active_at を使用
+                return child;
+              }
+              
+              if (latestActivities && latestActivities.length > 0) {
+                const latestDate = latestActivities[0].latest_date;
+                return {
+                  ...child,
+                  last_active_at: latestDate || child.last_active_at
+                };
+              }
+              
+              return child;
+            } catch (error) {
+              console.error(`子供 ${child.username} の最新活動取得エラー:`, error);
+              return child;
+            }
+          })
+        );
+        
+        setChildren(childrenWithLatestActivity);
         
         // localStorageから選択されていた子供のIDを取得
         const savedChildId = localStorage.getItem('selectedChildId');
-        const savedChild = savedChildId ? childrenWithAge.find(child => child.id === savedChildId) : null;
+        const savedChild = savedChildId ? childrenWithLatestActivity.find(child => child.id === savedChildId) : null;
         
         if (savedChild) {
           // 保存されていた子供を選択
@@ -424,8 +500,8 @@ export const ParentDashboard: React.FC = () => {
           setChildName(savedChild.full_name);
         } else {
           // 最初の子供を選択
-          setSelectedChildId(childrenWithAge[0].id);
-          setChildName(childrenWithAge[0].full_name);
+          setSelectedChildId(childrenWithLatestActivity[0].id);
+          setChildName(childrenWithLatestActivity[0].full_name);
         }
         
         // 全ての子供の統計データを取得は別のuseEffectに任せる
@@ -729,7 +805,8 @@ export const ParentDashboard: React.FC = () => {
         type: '作品',
         title: item.title || '無題の作品',
         date: new Date(item.created_at).toLocaleDateString('ja-JP'),
-        created_at: item.created_at
+        created_at: item.created_at,
+        profile_id: item.profile_id
       }));
 
       // 感情データをActivityItem形式に変換
@@ -738,13 +815,14 @@ export const ParentDashboard: React.FC = () => {
         type: '感情記録',
         emotion: item.emotion,
         date: new Date(item.created_at).toLocaleDateString('ja-JP'),
-        created_at: item.created_at
+        created_at: item.created_at,
+        profile_id: item.profile_id
       }));
 
       // 学習活動を取得
       const { data: learningData, error: learningError } = await supabase
         .from('learning_progress')
-        .select('id, lesson_id, completed_at, status')
+        .select('id, lesson_id, completed_at, status, user_id')
         .eq('user_id', childId)
         .eq('status', 'completed')
         .order('completed_at', { ascending: false })
@@ -760,7 +838,8 @@ export const ParentDashboard: React.FC = () => {
         type: '学習',
         subject: item.lesson_id.split('-')[0], // 'science-1' -> 'science'
         date: item.completed_at ? new Date(item.completed_at).toLocaleDateString('ja-JP') : '日付なし',
-        created_at: item.completed_at || ''
+        created_at: item.completed_at || '',
+        profile_id: item.user_id
       }));
 
       // すべてのアクティビティを結合して日付順にソート
@@ -867,17 +946,29 @@ export const ParentDashboard: React.FC = () => {
   const getEmotionIcon = (emotion: string) => {
     switch(emotion) {
       case 'とてもうれしい':
-        return <Star className="h-5 w-5 text-yellow-500" />;
+        return <div className="text-yellow-500 flex items-center justify-center w-6 h-6 bg-yellow-100 rounded-full">
+          <Star className="h-4 w-4" fill="currentColor" />
+        </div>;
       case 'うれしい':
-        return <Heart className="h-5 w-5 text-pink-500" />;
+        return <div className="text-pink-500 flex items-center justify-center w-6 h-6 bg-pink-100 rounded-full">
+          <Heart className="h-4 w-4" fill="currentColor" />
+        </div>;
       case 'ふつう':
-        return <Meh className="h-5 w-5 text-purple-500" />;
+        return <div className="text-purple-500 flex items-center justify-center w-6 h-6 bg-purple-100 rounded-full">
+          <Smile className="h-4 w-4" />
+        </div>;
       case 'すこしかなしい':
-        return <Frown className="h-5 w-5 text-blue-500" />;
+        return <div className="text-blue-500 flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full">
+          <Meh className="h-4 w-4" />
+        </div>;
       case 'かなしい':
-        return <Frown className="h-5 w-5 text-indigo-500" />;
+        return <div className="text-indigo-500 flex items-center justify-center w-6 h-6 bg-indigo-100 rounded-full">
+          <Frown className="h-4 w-4" />
+        </div>;
       default:
-        return <Heart className="h-5 w-5 text-gray-500" />;
+        return <div className="text-gray-500 flex items-center justify-center w-6 h-6 bg-gray-100 rounded-full">
+          <Meh className="h-4 w-4" />
+        </div>;
     }
   };
 
@@ -885,17 +976,17 @@ export const ParentDashboard: React.FC = () => {
   const getEmotionColor = (emotion: string) => {
     switch(emotion) {
       case 'とてもうれしい':
-        return 'text-yellow-500 bg-yellow-50';
+        return 'bg-yellow-500';
       case 'うれしい':
-        return 'text-pink-500 bg-pink-50';
+        return 'bg-pink-500';
       case 'ふつう':
-        return 'text-purple-500 bg-purple-50';
+        return 'bg-purple-500';
       case 'すこしかなしい':
-        return 'text-blue-500 bg-blue-50';
+        return 'bg-blue-500';
       case 'かなしい':
-        return 'text-indigo-500 bg-indigo-50';
+        return 'bg-indigo-500';
       default:
-        return 'text-gray-500 bg-gray-50';
+        return 'bg-gray-500';
     }
   };
 
@@ -934,7 +1025,7 @@ export const ParentDashboard: React.FC = () => {
               </div>
               <div className="bg-indigo-50 rounded-lg p-3">
                 <p className="text-xs text-indigo-700">感情記録数</p>
-                <p className="text-lg font-bold text-indigo-900">{childStats.totalEmotions}<span className="text-xs font-normal ml-1">件</span></p>
+                <p className="text-lg font-bold text-indigo-900">{childrenStats[selectedChildId]?.totalEmotions || 0}<span className="text-xs font-normal ml-1">件</span></p>
               </div>
             </div>
             
@@ -955,29 +1046,47 @@ export const ParentDashboard: React.FC = () => {
             </div>
             
             {/* 感情分布 */}
-            <div>
-              <p className="text-xs text-gray-700 mb-2">最近の感情分布</p>
-              <div className="space-y-2">
-                {emotionStats.recentEmotions.map(emotion => (
-                  <div key={emotion.emotion} className="flex items-center">
-                    <div className={`p-1.5 rounded-full mr-2 ${getEmotionColor(emotion.emotion).split(' ')[1]}`}>
-                      {getEmotionIcon(emotion.emotion)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="flex items-center gap-1">{getEmotionIcon(emotion.emotion)} {emotion.emotion}</span>
-                        <span>{emotion.percentage}%</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full ${getEmotionColor(emotion.emotion).split(' ')[0].replace('text', 'bg')}`}
-                          style={{ width: `${emotion.percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            <div className="space-y-3 pt-2">
+              <p className="text-sm text-gray-700 font-medium">感情の分布</p>
+              <div className="grid grid-cols-5 gap-2 mb-4">
+                <div className="flex flex-col items-center">
+                  {getEmotionIcon('とてもうれしい')}
+                  <p className="text-xs text-gray-600 mt-1">とても<br/>うれしい</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  {getEmotionIcon('うれしい')}
+                  <p className="text-xs text-gray-600 mt-1">うれしい</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  {getEmotionIcon('ふつう')}
+                  <p className="text-xs text-gray-600 mt-1">ふつう</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  {getEmotionIcon('すこしかなしい')}
+                  <p className="text-xs text-gray-600 mt-1">すこし<br/>かなしい</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  {getEmotionIcon('かなしい')}
+                  <p className="text-xs text-gray-600 mt-1">かなしい</p>
+                </div>
               </div>
+              {emotionStats.recentEmotions.map(emotion => (
+                <div key={emotion.emotion} className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      {getEmotionIcon(emotion.emotion)}
+                      <span className="text-sm text-gray-700">{emotion.emotion}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">{emotion.percentage}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${getEmotionColor(emotion.emotion)}`}
+                      style={{ width: `${emotion.percentage}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ) : (
@@ -995,16 +1104,15 @@ export const ParentDashboard: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 pb-16">
-      {/* ヘッダーセクション - 和らかいヘッダー */}
-      <div className="bg-gradient-to-r from-indigo-500 to-blue-400 rounded-xl p-5 text-white shadow-sm mb-5 relative overflow-hidden">
-        <div className="absolute inset-0 bg-pattern opacity-10"></div>
+      {/* ヘッダーセクション - シンプルな青紫色のグラデーション */}
+      <div className="bg-gradient-to-r from-indigo-500 to-blue-500 rounded-xl p-5 text-white shadow-md mb-6 relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold">
+              <h1 className="text-xl md:text-2xl font-bold mb-1">
                 {childName}のダッシュボード
               </h1>
-              <p className="text-blue-50 text-sm">お子様の成長記録</p>
+              <p className="text-blue-50 text-sm">お子様の成長と活動を確認できます</p>
             </div>
             
             {/* シンプルな統計 */}
@@ -1026,321 +1134,318 @@ export const ParentDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 子供選択タブ - シンプル化 */}
+      {/* 子供選択タブ - モダンなデザイン */}
       {children.length >= 1 && (
-        <div className="overflow-auto scrollbar-hide mb-5 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-base font-bold text-gray-700">お子様を選択</h2>
-          </div>
-          <div className="flex gap-2 w-max min-w-full pb-1">
-            {children.map(child => (
-              <button
-                key={child.id}
-                onClick={() => handleChildChange(child.id)}
-                className={`flex items-center p-2 rounded-lg transition-all ${
-                  selectedChildId === child.id 
-                    ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' 
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center overflow-hidden ${
-                  selectedChildId === child.id ? 'ring-2 ring-indigo-300' : 'ring-1 ring-gray-200'
-                }`}>
-                  {child.avatar_url ? (
-                    <img 
-                      src={child.avatar_url} 
-                      alt={child.full_name} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-indigo-100 flex items-center justify-center">
-                      <Users className="h-4 w-4 text-indigo-500" />
-                    </div>
-                  )}
-                </div>
-                <div className="ml-2">
-                  <p className="font-medium text-sm">{child.full_name}</p>
-                </div>
+        <div className="overflow-auto scrollbar-hide mb-6 bg-white rounded-xl p-5 shadow-md border border-gray-100">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-base font-bold text-gray-800 flex items-center">
+              <Users className="h-4 w-4 text-indigo-500 mr-2" />
+              お子様を選択
+            </h2>
+            {children.length > 3 && (
+              <button className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                すべて表示
               </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {children.map(child => (
+              <ChildSelectButton 
+                key={child.id} 
+                child={child} 
+                selectedChildId={selectedChildId} 
+                onSelect={handleChildChange}
+                formatDate={formatDate}
+                recentActivities={recentActivities}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {/* メインコンテンツエリア - 2カラムレイアウト */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* 左側カラム */}
-        <div className="space-y-5">
-          {/* ステータスカード */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-700 flex items-center gap-1.5">
-                <Users className="h-4 w-4 text-indigo-500" />
-                {childName}の活動状況
+      {/* メインコンテンツエリア - モダンな2カラムレイアウト */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* 左側カラム - 8/12 */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* ステータスカード - デザイン強化 */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-indigo-500" />
+                <span>最近の活動</span>
               </h3>
-              <span className="text-xs text-gray-500">
-                最終活動: {recentActivities.length > 0 
-                  ? recentActivities[0].date.split(' ')[0] 
-                  : '記録なし'}
-              </span>
+              <Link to={`/parent/analytics?child=${selectedChildId}`} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center group">
+                <span>詳細を見る →</span>
+              </Link>
             </div>
             
-            <div className="grid grid-cols-3 divide-x divide-gray-100">
-              <div className="p-3">
-                <div className="flex flex-col items-center">
-                  <div className="p-1.5 rounded-full bg-indigo-100 mb-1">
-                    <Image className="h-4 w-4 text-indigo-500" />
-                  </div>
-                  <p className="text-xl font-bold text-indigo-700">{stats.totalWorks}</p>
-                  <p className="text-xs text-gray-500">作品活動</p>
+            <div className="p-5">
+              {recentActivities.length > 0 ? (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-indigo-200 scrollbar-track-gray-100">
+                  {recentActivities.slice(0, 10).map(activity => (
+                    <ActivityCard
+                      key={activity.id}
+                      activity={activity}
+                      selectedChildId={selectedChildId}
+                      getActivityIcon={getActivityIcon}
+                      getEmotionIcon={getEmotionIcon}
+                    />
+                  ))}
                 </div>
-              </div>
-              
-              <div className="p-3">
-                <div className="flex flex-col items-center">
-                  <div className="p-1.5 rounded-full bg-pink-100 mb-1">
-                    <Heart className="h-4 w-4 text-pink-500" />
+              ) : (
+                <div className="p-6 text-center">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center mb-3">
+                    <Activity className="h-6 w-6 text-indigo-400" />
                   </div>
-                  <p className="text-xl font-bold text-pink-700">{stats.totalEmotions}</p>
-                  <p className="text-xs text-gray-500">感情記録</p>
+                  <p className="text-gray-500 mb-1">活動記録がありません</p>
+                  <p className="text-xs text-gray-400">お子様がアプリを使用すると、活動がここに表示されます</p>
                 </div>
-              </div>
-              
-              <div className="p-3">
-                <div className="flex flex-col items-center">
-                  <div className="p-1.5 rounded-full bg-blue-100 mb-1">
-                    <BookOpen className="h-4 w-4 text-blue-500" />
-                  </div>
-                  <p className="text-xl font-bold text-blue-700">{stats.totalLearning}</p>
-                  <p className="text-xs text-gray-500">学習活動</p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
-          
-          {/* 感情分析カード */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-700 flex items-center gap-1.5">
-                <Heart className="h-4 w-4 text-pink-500" />
-                感情分析
+
+          {/* 感情分析カード - デザイン強化 */}
+          <div className="bg-gradient-to-br from-white to-pink-50 rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gradient-to-r from-pink-50 to-white">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <Heart className="h-5 w-5 text-pink-500" />
+                <span>感情分析</span>
               </h3>
-              <Link to={`/parent/analytics/sel?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:underline">
-                詳細を見る
+              <Link to={`/parent/analytics/sel?child=${selectedChildId}`} className="text-sm text-pink-600 hover:text-pink-800 font-medium flex items-center group">
+                <span>詳細分析</span>
+                <span className="ml-1 transition-transform duration-300 group-hover:translate-x-1">→</span>
               </Link>
             </div>
             
             {emotionStats.totalCount > 0 ? (
-              <div className="p-4">
+              <div className="p-5 space-y-4">
                 {/* 最新の感情 */}
                 {emotionStats.latestEmotion && (
-                  <div className="bg-gradient-to-r from-pink-50 to-indigo-50 rounded-lg p-3 mb-3">
-                    <p className="text-xs text-gray-600 mb-1.5">最新の気持ち</p>
+                  <div className="bg-gradient-to-r from-pink-50 to-indigo-50 rounded-lg p-4 mb-3 shadow-sm">
+                    <p className="text-sm text-gray-600 mb-2 font-medium">最新の気持ち</p>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         {getEmotionIcon(emotionStats.latestEmotion)}
-                        <span className="font-medium text-sm">{emotionStats.latestEmotion}</span>
+                        <span className="font-medium text-lg text-gray-800">{emotionStats.latestEmotion}</span>
                       </div>
-                      <span className="text-xs text-gray-500">{emotionStats.latestDate}</span>
+                      <span className="text-sm text-gray-500 bg-white/60 px-2 py-1 rounded-full">{emotionStats.latestDate}</span>
                     </div>
                   </div>
                 )}
                 
-                {/* 感情概要 */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-pink-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-600 mb-1">最も多い感情</p>
+                {/* 感情概要 - リデザイン */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-4 shadow-sm transform transition-transform hover:scale-[1.02] duration-300">
+                    <p className="text-sm text-pink-800 mb-2 font-medium">最も多い感情</p>
                     {emotionStats.mostFrequent ? (
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-3 mt-1">
                         {getEmotionIcon(emotionStats.mostFrequent)}
-                        <span className="text-base font-bold text-pink-900">{emotionStats.mostFrequent}</span>
+                        <span className="text-lg font-bold text-pink-900">{emotionStats.mostFrequent}</span>
                       </div>
                     ) : (
                       <p className="text-sm text-pink-900">データなし</p>
                     )}
                   </div>
-                  <div className="bg-indigo-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-600 mb-1">記録数</p>
-                    <p className="text-lg font-bold text-indigo-700">{stats.totalEmotions}</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="py-8 px-4 text-center">
-                <Heart className="h-10 w-10 text-pink-200 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">まだ感情記録がありません</p>
-                <p className="text-xs text-gray-400 mt-1">きもちクエストで記録を始めましょう</p>
-              </div>
-            )}
-          </div>
-          
-          {/* STEAM学習セクション */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-700 flex items-center gap-1.5">
-                <BookOpenCheck className="h-4 w-4 text-blue-500" />
-                STEAM学習
-              </h3>
-              <Link to={`/parent/learning?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:underline">
-                詳細を見る
-              </Link>
-            </div>
-            
-            <div className="p-4">
-              {/* 進捗バー */}
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-gray-600">完了レッスン</span>
-                  <span className="text-xs font-medium">{learningStats.completedLessons} / {learningStats.totalLessons}</span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-blue-500 rounded-full"
-                    style={{ width: `${(learningStats.completedLessons / learningStats.totalLessons) * 100}%` }}
-                  />
-                </div>
-              </div>
-              
-              {/* STEAM分野表示 */}
-              <div className="bg-blue-50 rounded-lg p-3 mb-3">
-                <div className="flex justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span className="text-xs font-bold text-blue-600">S</span>
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
-                      <span className="text-xs font-bold text-purple-600">T</span>
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center">
-                      <span className="text-xs font-bold text-orange-600">E</span>
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center">
-                      <span className="text-xs font-bold text-pink-600">A</span>
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-                      <span className="text-xs font-bold text-green-600">M</span>
+                  <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 shadow-sm transform transition-transform hover:scale-[1.02] duration-300">
+                    <p className="text-sm text-indigo-800 mb-2 font-medium">感情記録数</p>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-white rounded-full shadow-sm">
+                        <BarChart3 className="h-5 w-5 text-indigo-500" />
+                      </div>
+                      <p className="text-lg font-bold text-indigo-900">{childrenStats[selectedChildId]?.totalEmotions || 0}<span className="text-xs font-normal ml-1">件</span></p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs">{learningStats.steamProgress?.science || 0}</span>
-                    <span className="text-xs">{learningStats.steamProgress?.technology || 0}</span>
-                    <span className="text-xs">{learningStats.steamProgress?.engineering || 0}</span>
-                    <span className="text-xs">{learningStats.steamProgress?.art || 0}</span>
-                    <span className="text-xs">{learningStats.steamProgress?.mathematics || 0}</span>
+                </div>
+                
+                {/* 感情分布グラフ */}
+                <div className="space-y-3 pt-2">
+                  <p className="text-sm text-gray-700 font-medium">感情の分布</p>
+                  <div className="grid grid-cols-5 gap-2 mb-4">
+                    <div className="flex flex-col items-center">
+                      {getEmotionIcon('とてもうれしい')}
+                      <p className="text-xs text-gray-600 mt-1">とても<br/>うれしい</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      {getEmotionIcon('うれしい')}
+                      <p className="text-xs text-gray-600 mt-1">うれしい</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      {getEmotionIcon('ふつう')}
+                      <p className="text-xs text-gray-600 mt-1">ふつう</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      {getEmotionIcon('すこしかなしい')}
+                      <p className="text-xs text-gray-600 mt-1">すこし<br/>かなしい</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      {getEmotionIcon('かなしい')}
+                      <p className="text-xs text-gray-600 mt-1">かなしい</p>
+                    </div>
                   </div>
-                </div>
-              </div>
-              
-              {/* レベルと総ポイント */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-600 mb-1">レベル</p>
-                  <p className="text-xl font-bold text-blue-700">{learningStats.level}</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-600 mb-1">総ポイント</p>
-                  <p className="text-xl font-bold text-green-700">{learningStats.totalPoints}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* 右側カラム */}
-        <div className="space-y-5">
-          {/* 最近の活動カード */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-700 flex items-center gap-1.5">
-                <Activity className="h-4 w-4 text-indigo-500" />
-                最近の活動
-              </h3>
-              {recentActivities.length > 0 && (
-                <Link to={`/parent/analytics?child=${selectedChildId}`} className="text-xs text-indigo-600 hover:underline">
-                  すべて見る
-                </Link>
-              )}
-            </div>
-            
-            <div className="max-h-[350px] overflow-y-auto">
-              {filteredRecentActivities.length > 0 ? (
-                <div className="divide-y divide-gray-100">
-                  {filteredRecentActivities.map(activity => (
-                    <div key={activity.id} className="p-3 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-1.5 rounded-full ${
-                          activity.type === '作品' ? 'bg-indigo-100 text-indigo-600' : 
-                          activity.type === '感情記録' ? 'bg-pink-100 text-pink-600' : 
-                          'bg-blue-100 text-blue-600'
-                        }`}>
-                          {getActivityIcon(activity.type)}
+                  {emotionStats.recentEmotions.map(emotion => (
+                    <div key={emotion.emotion} className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          {getEmotionIcon(emotion.emotion)}
+                          <span className="text-sm text-gray-700">{emotion.emotion}</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">
-                            {activity.type === '作品' && (activity.title || '無題の作品')}
-                            {activity.type === '感情記録' && (
-                              <span className="flex items-center gap-1">
-                                感情: <span className="inline-flex items-center">{getEmotionIcon(activity.emotion || '')} {activity.emotion || '記録なし'}</span>
-                              </span>
-                            )}
-                            {activity.type === '学習' && `科目: ${activity.subject || '一般'}`}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                              activity.type === '作品' ? 'bg-indigo-50 text-indigo-700' : 
-                              activity.type === '感情記録' ? 'bg-pink-50 text-pink-700' : 
-                              'bg-blue-50 text-blue-700'
-                            }`}>
-                              {activity.type}
-                            </span>
-                            <span className="text-xs text-gray-500">{activity.date}</span>
-                          </div>
-                        </div>
-                        <Link to={
-                          activity.type === '作品' ? `/parent/works/${activity.id}?child=${selectedChildId}` : 
-                          activity.type === '感情記録' ? `/parent/analytics/sel?child=${selectedChildId}` : 
-                          `/parent/analytics?child=${selectedChildId}`
-                        } className="text-gray-400 hover:text-gray-700">
-                          <ChevronDown className="h-4 w-4 transform -rotate-90" />
-                        </Link>
+                        <span className="text-xs text-gray-500">{emotion.percentage}%</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${getEmotionColor(emotion.emotion)}`}
+                          style={{ width: `${emotion.percentage}%` }}
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="py-8 px-4 text-center">
-                  <Activity className="h-10 w-10 text-gray-200 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">まだ活動記録がありません</p>
-                  <p className="text-xs text-gray-400 mt-1">お子様に課題を設定してみましょう</p>
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <div className="mx-auto w-14 h-14 rounded-full bg-pink-50 flex items-center justify-center mb-3">
+                  <Heart className="h-7 w-7 text-pink-400" />
                 </div>
-              )}
-            </div>
+                <p className="text-gray-600 mb-1 font-medium">感情記録がありません</p>
+                <p className="text-sm text-gray-500 max-w-xs mx-auto">お子様が感情を記録すると、ここにデータが表示されます</p>
+              </div>
+            )}
           </div>
-          
-          {/* 成長指標カード */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-700 flex items-center gap-1.5">
-                <TrendingUp className="h-4 w-4 text-green-500" />
-                成長指標
+        </div>
+
+        {/* 右側カラム - 4/12 */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* STEAM学習カード - デザイン強化 */}
+          <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-blue-500" />
+                <span>STEAM学習</span>
               </h3>
+              <Link to={`/parent/analytics/learning?child=${selectedChildId}`} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center group">
+                <span>詳細</span>
+                <span className="ml-1 transition-transform duration-300 group-hover:translate-x-1">→</span>
+              </Link>
             </div>
             
-            <div className="p-4 space-y-4">
+            <div className="p-5">
+              {/* レベルとポイント表示 */}
+              <div className="flex justify-between mb-5 bg-blue-50 p-3 rounded-lg">
+                <div className="text-center">
+                  <p className="text-xs text-blue-700 mb-1">レベル</p>
+                  <p className="text-xl font-bold text-blue-900">{learningStats.level}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-blue-700 mb-1">総ポイント</p>
+                  <p className="text-xl font-bold text-blue-900">{learningStats.totalPoints}</p>
+                </div>
+              </div>
+              
+              {/* 科目別進捗 */}
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-gray-700">科目別進捗</p>
+                <div className="grid grid-cols-5 gap-2">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      learningStats.steamProgress.science > 0 ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <span className="font-bold text-sm">S</span>
+                    </div>
+                    <div className="mt-1 h-1 w-6 rounded-full bg-gray-200">
+                      <div className="h-full bg-red-500 rounded-full" style={{ width: `${learningStats.steamProgress.science * 100}%` }}></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      learningStats.steamProgress.technology > 0 ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <span className="font-bold text-sm">T</span>
+                    </div>
+                    <div className="mt-1 h-1 w-6 rounded-full bg-gray-200">
+                      <div className="h-full bg-purple-500 rounded-full" style={{ width: `${learningStats.steamProgress.technology * 100}%` }}></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      learningStats.steamProgress.engineering > 0 ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <span className="font-bold text-sm">E</span>
+                    </div>
+                    <div className="mt-1 h-1 w-6 rounded-full bg-gray-200">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${learningStats.steamProgress.engineering * 100}%` }}></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      learningStats.steamProgress.art > 0 ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <span className="font-bold text-sm">A</span>
+                    </div>
+                    <div className="mt-1 h-1 w-6 rounded-full bg-gray-200">
+                      <div className="h-full bg-pink-500 rounded-full" style={{ width: `${learningStats.steamProgress.art * 100}%` }}></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      learningStats.steamProgress.mathematics > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <span className="font-bold text-sm">M</span>
+                    </div>
+                    <div className="mt-1 h-1 w-6 rounded-full bg-gray-200">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${learningStats.steamProgress.mathematics * 100}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 完了レッスン進捗 */}
+              <div className="mt-5">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm font-medium text-gray-700">完了レッスン</p>
+                  <span className="text-xs text-gray-500">{learningStats.completedLessons}/{learningStats.totalLessons}</span>
+                </div>
+                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+                    style={{ width: `${(learningStats.completedLessons / learningStats.totalLessons) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 成長指標カード - デザイン強化 */}
+          <div className="bg-gradient-to-br from-white to-emerald-50 rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-white">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-emerald-500" />
+                <span>成長指標</span>
+              </h3>
+              <button className="text-sm text-emerald-600 hover:text-emerald-800 font-medium flex items-center group">
+                <span>詳細</span>
+                <span className="ml-1 transition-transform duration-300 group-hover:translate-x-1">→</span>
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-5">
               {/* 感情理解 */}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <div className="p-1 bg-pink-100 rounded-full">
-                      <Heart className="h-3 w-3 text-pink-600" />
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-pink-100 rounded-full">
+                      <Heart className="h-4 w-4 text-pink-600" />
                     </div>
-                    <span className="text-sm text-gray-700">感情理解</span>
+                    <span className="text-sm font-medium text-gray-700">感情理解</span>
                   </div>
-                  <span className="text-xs font-medium">{growthStats.emotionalUnderstanding}%</span>
+                  <span className="text-sm font-medium text-pink-700">{growthStats.emotionalUnderstanding}%</span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
                   <div 
-                    className="h-full bg-pink-500 rounded-full"
+                    className="h-full bg-gradient-to-r from-pink-400 to-pink-600 rounded-full"
                     style={{ width: `${growthStats.emotionalUnderstanding}%` }}
                   />
                 </div>
@@ -1348,18 +1453,18 @@ export const ParentDashboard: React.FC = () => {
               
               {/* 学習進捗 */}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <div className="p-1 bg-blue-100 rounded-full">
-                      <BookOpen className="h-3 w-3 text-blue-600" />
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-blue-100 rounded-full">
+                      <BookOpen className="h-4 w-4 text-blue-600" />
                     </div>
-                    <span className="text-sm text-gray-700">学習進捗</span>
+                    <span className="text-sm font-medium text-gray-700">学習進捗</span>
                   </div>
-                  <span className="text-xs font-medium">{growthStats.learningProgress}%</span>
+                  <span className="text-sm font-medium text-blue-700">{growthStats.learningProgress}%</span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
                   <div 
-                    className="h-full bg-blue-500 rounded-full"
+                    className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"
                     style={{ width: `${growthStats.learningProgress}%` }}
                   />
                 </div>
@@ -1367,39 +1472,39 @@ export const ParentDashboard: React.FC = () => {
               
               {/* 創造性 */}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <div className="p-1 bg-indigo-100 rounded-full">
-                      <Image className="h-3 w-3 text-indigo-600" />
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-emerald-100 rounded-full">
+                      <Image className="h-4 w-4 text-emerald-600" />
                     </div>
-                    <span className="text-sm text-gray-700">創造性</span>
+                    <span className="text-sm font-medium text-gray-700">創造性</span>
                   </div>
-                  <span className="text-xs font-medium">{growthStats.creativity}%</span>
+                  <span className="text-sm font-medium text-emerald-700">{growthStats.creativity}%</span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
                   <div 
-                    className="h-full bg-indigo-500 rounded-full"
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full"
                     style={{ width: `${growthStats.creativity}%` }}
                   />
                 </div>
               </div>
             </div>
           </div>
-          
-          {/* アクションボタン */}
+
+          {/* クイックアクセスボタン */}
           <div className="grid grid-cols-2 gap-3">
-            <Link 
+            <Link
               to={`/parent/analytics/sel?child=${selectedChildId}`}
-              className="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-3 rounded-lg text-center shadow-sm hover:shadow-md transition-shadow"
+              className="bg-gradient-to-r from-pink-500 to-rose-400 text-white p-4 rounded-xl text-center shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.03]"
             >
-              <Heart className="h-5 w-5 mx-auto mb-1" />
+              <Heart className="h-6 w-6 mx-auto mb-2" />
               <span className="text-sm font-medium">感情分析</span>
             </Link>
-            <Link 
-              to={`/parent/learning?child=${selectedChildId}`}
-              className="bg-gradient-to-r from-blue-500 to-indigo-400 text-white p-3 rounded-lg text-center shadow-sm hover:shadow-md transition-shadow"
+            <Link
+              to={`/parent/analytics/learning?child=${selectedChildId}`}
+              className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-4 rounded-xl text-center shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.03]"
             >
-              <BookOpenCheck className="h-5 w-5 mx-auto mb-1" />
+              <BookOpenCheck className="h-6 w-6 mx-auto mb-2" />
               <span className="text-sm font-medium">STEAM学習</span>
             </Link>
           </div>
