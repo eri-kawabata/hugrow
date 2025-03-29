@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Book, CheckCircle, Clock, Star, BarChart, Award, ArrowRight, Lightbulb, User } from 'lucide-react';
+import { Book, CheckCircle, Clock, Star, BarChart, Award, ArrowLeft, Lightbulb, User, Calendar, TrendingUp, BookOpen, ChevronDown, ChevronUp, Brain, Cpu } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // 学習進捗の型定義
 type LearningProgress = {
@@ -45,14 +45,15 @@ type Lesson = {
 
 // 科目の定義
 const subjects = [
-  { id: 'science', name: '理科', color: 'bg-green-500', icon: Lightbulb },
-  { id: 'technology', name: '技術', color: 'bg-blue-500', icon: BarChart },
-  { id: 'engineering', name: '工学', color: 'bg-purple-500', icon: Book },
-  { id: 'art', name: '芸術', color: 'bg-pink-500', icon: Star },
-  { id: 'math', name: '数学', color: 'bg-yellow-500', icon: Clock },
+  { id: 'science', name: '理科', color: 'from-green-400 to-green-600', textColor: 'text-green-600', bgColor: 'bg-green-100', icon: Lightbulb },
+  { id: 'technology', name: '技術', color: 'from-blue-400 to-blue-600', textColor: 'text-blue-600', bgColor: 'bg-blue-100', icon: Cpu },
+  { id: 'engineering', name: '工学', color: 'from-purple-400 to-purple-600', textColor: 'text-purple-600', bgColor: 'bg-purple-100', icon: Brain },
+  { id: 'art', name: '芸術', color: 'from-pink-400 to-pink-600', textColor: 'text-pink-600', bgColor: 'bg-pink-100', icon: Star },
+  { id: 'math', name: '数学', color: 'from-yellow-400 to-yellow-600', textColor: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: BarChart },
 ];
 
 export function LearningAnalytics() {
+  const navigate = useNavigate();
   const [childId, setChildId] = useState<string | null>(null);
   const [childName, setChildName] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -60,57 +61,58 @@ export function LearningAnalytics() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('month');
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
 
-  // 子供のIDを取得
-  useEffect(() => {
-    const fetchChildId = async () => {
-      if (!supabase) return;
+  // フェッチ関数を共通化
+  const fetchChildrenData = async () => {
+    if (!supabase) return;
 
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      // 親のプロファイルIDを取得
+      const { data: parentProfile, error: parentError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', 'parent')
+        .single();
 
-        // 親に関連付けられた子供を取得
-        const { data, error } = await supabase
-          .from('parent_child_relations')
-          .select('child_id')
-          .eq('parent_id', user.id)
-          .eq('status', 'active')
-          .maybeSingle();
-
-        if (error) {
-          console.error('子供の情報取得エラー:', error.message, error.details, error.hint);
-          toast.error('子供の情報取得に失敗しました');
-          return;
-        }
-
-        if (data) {
-          setChildId(data.child_id);
-          
-          // 子供の名前を取得
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('user_id', data.child_id)
-            .maybeSingle();
-            
-          if (profileError) {
-            console.error('プロフィール取得エラー:', profileError.message, profileError.details);
-          } else if (profileData) {
-            setChildName(profileData.username);
-          }
-        } else {
-          // データが見つからない場合の処理
-          console.log('子供の情報が見つかりませんでした。親子関係が設定されていない可能性があります。');
-          toast.warning('子供の情報が見つかりませんでした');
-        }
-      } catch (error) {
-        console.error('エラー:', error);
-        toast.error('データ取得中にエラーが発生しました');
+      if (parentError) {
+        console.error('親プロファイル取得エラー:', parentError);
+        return;
       }
-    };
 
-    fetchChildId();
+      // 親に関連付けられた子供を取得
+      const { data: childProfiles, error: childrenError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, user_id')
+        .eq('parent_id', parentProfile.id)
+        .eq('role', 'child');
+
+      if (childrenError) {
+        console.error('子供プロファイル取得エラー:', childrenError);
+        return;
+      }
+
+      setChildren(childProfiles || []);
+      
+      // 最初の子供を選択
+      if (childProfiles && childProfiles.length > 0) {
+        setSelectedChildId(childProfiles[0].id);
+        setChildId(childProfiles[0].user_id);
+        setChildName(childProfiles[0].username);
+      }
+    } catch (err) {
+      console.error('子供データ取得エラー:', err);
+    }
+  };
+
+  // 子供一覧を取得
+  useEffect(() => {
+    fetchChildrenData();
   }, []);
 
   // 学習進捗とレッスンデータを取得
@@ -161,208 +163,12 @@ export function LearningAnalytics() {
           return;
         }
 
-        // データが存在しない場合はダミーデータを使用
-        if ((!progressData || progressData.length === 0) && (!lessonData || lessonData.length === 0)) {
-          console.log('学習データとレッスンデータが両方とも存在しません。ダミーデータを使用します。');
-          
-          // ダミーのレッスンデータ
-          const dummyLessons: Lesson[] = [
-            {
-              id: 'lesson-science-1',
-              subject: 'science',
-              title: '植物の成長と光合成',
-              description: '植物がどのように成長し、光合成を行うかを学びます。',
-              difficulty: 1,
-              duration: 30,
-              points: 100,
-              order: 1,
-              status: 'active',
-              created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: null
-            },
-            {
-              id: 'lesson-science-2',
-              subject: 'science',
-              title: '動物の生態系',
-              description: '様々な動物の生態系と環境への適応について学びます。',
-              difficulty: 2,
-              duration: 45,
-              points: 150,
-              order: 2,
-              status: 'active',
-              created_at: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: null
-            },
-            {
-              id: 'lesson-technology-1',
-              subject: 'technology',
-              title: 'コンピュータの仕組み',
-              description: 'コンピュータがどのように動作するかの基本を学びます。',
-              difficulty: 1,
-              duration: 40,
-              points: 120,
-              order: 1,
-              status: 'active',
-              created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: null
-            },
-            {
-              id: 'lesson-engineering-1',
-              subject: 'engineering',
-              title: '橋の設計と構造',
-              description: '橋の設計原理と構造力学の基本を学びます。',
-              difficulty: 3,
-              duration: 60,
-              points: 200,
-              order: 1,
-              status: 'active',
-              created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: null
-            },
-            {
-              id: 'lesson-art-1',
-              subject: 'art',
-              title: '色彩理論の基礎',
-              description: '色の組み合わせと感情表現について学びます。',
-              difficulty: 1,
-              duration: 35,
-              points: 110,
-              order: 1,
-              status: 'active',
-              created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: null
-            },
-            {
-              id: 'lesson-math-1',
-              subject: 'math',
-              title: '図形と空間認識',
-              description: '2次元と3次元の図形について学びます。',
-              difficulty: 2,
-              duration: 50,
-              points: 180,
-              order: 1,
-              status: 'active',
-              created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: null
-            }
-          ];
-          
-          // ダミーの学習進捗データ
-          const dummyProgress: LearningProgress[] = [
-            {
-              id: 'progress-1',
-              user_id: childId,
-              lesson_id: 'lesson-science-1',
-              completed: true,
-              completed_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-              started_at: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).toISOString(),
-              last_activity_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-              last_position: 100,
-              quiz_score: 85,
-              score: 90,
-              difficulty_level: 1,
-              time_spent: 1800, // 30分
-              attempts: 1,
-              status: 'completed',
-              progress_data: { total_sections: 5, current_section: 5, completed_sections: [1, 2, 3, 4, 5] },
-              metadata: {},
-              created_at: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 'progress-2',
-              user_id: childId,
-              lesson_id: 'lesson-technology-1',
-              completed: true,
-              completed_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-              started_at: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString(),
-              last_activity_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-              last_position: 100,
-              quiz_score: 90,
-              score: 95,
-              difficulty_level: 1,
-              time_spent: 2400, // 40分
-              attempts: 1,
-              status: 'completed',
-              progress_data: { total_sections: 4, current_section: 4, completed_sections: [1, 2, 3, 4] },
-              metadata: {},
-              created_at: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 'progress-3',
-              user_id: childId,
-              lesson_id: 'lesson-art-1',
-              completed: true,
-              completed_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-              started_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-              last_activity_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-              last_position: 100,
-              quiz_score: 80,
-              score: 85,
-              difficulty_level: 1,
-              time_spent: 2100, // 35分
-              attempts: 1,
-              status: 'completed',
-              progress_data: { total_sections: 3, current_section: 3, completed_sections: [1, 2, 3] },
-              metadata: {},
-              created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 'progress-4',
-              user_id: childId,
-              lesson_id: 'lesson-science-2',
-              completed: false,
-              completed_at: null,
-              started_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-              last_activity_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-              last_position: 60,
-              quiz_score: null,
-              score: null,
-              difficulty_level: 2,
-              time_spent: 1500, // 25分
-              attempts: 1,
-              status: 'in_progress',
-              progress_data: { total_sections: 5, current_section: 3, completed_sections: [1, 2] },
-              metadata: {},
-              created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 'progress-5',
-              user_id: childId,
-              lesson_id: 'lesson-math-1',
-              completed: false,
-              completed_at: null,
-              started_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              last_activity_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              last_position: 30,
-              quiz_score: null,
-              score: null,
-              difficulty_level: 2,
-              time_spent: 900, // 15分
-              attempts: 1,
-              status: 'in_progress',
-              progress_data: { total_sections: 4, current_section: 2, completed_sections: [1] },
-              metadata: {},
-              created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-            }
-          ];
-          
-          setLessons(dummyLessons);
-          setProgressData(dummyProgress);
-        } else {
-          setProgressData(progressData || []);
-          console.log('取得した学習進捗データ:', progressData?.length || 0, '件');
-          setLessons(lessonData || []);
-          console.log('取得したレッスンデータ:', lessonData?.length || 0, '件');
-        }
+        setProgressData(progressData || []);
+        setLessons(lessonData || []);
+        setLoading(false);
       } catch (error) {
         console.error('データ取得エラー:', error);
-        toast.error('データの取得中にエラーが発生しました');
-      } finally {
+        toast.error('データの取得に失敗しました');
         setLoading(false);
       }
     };
@@ -370,379 +176,418 @@ export function LearningAnalytics() {
     fetchData();
   }, [childId, timeRange]);
 
-  // 科目ごとの進捗を計算
+  // 子供選択変更ハンドラー
+  const handleChildChange = (id: string, user_id: string, name: string) => {
+    setSelectedChildId(id);
+    setChildId(user_id);
+    setChildName(name);
+  };
+
+  // 子供選択コンポーネント
+  const ChildSelector = () => (
+    <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+      <h3 className="text-lg font-semibold text-[#5d7799] mb-4">お子様を選択</h3>
+      <div className="flex flex-wrap gap-3">
+        {children.map(child => (
+          <button
+            key={child.id}
+            onClick={() => handleChildChange(child.id, child.user_id, child.username)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+              selectedChildId === child.id 
+                ? 'bg-[#5d7799] text-white' 
+                : 'bg-gray-100 text-[#5d7799] hover:bg-gray-200'
+            }`}
+          >
+            {child.avatar_url ? (
+              <img 
+                src={child.avatar_url} 
+                alt={child.username} 
+                className="w-6 h-6 rounded-full object-cover"
+              />
+            ) : (
+              <User className="w-5 h-5" />
+            )}
+            <span>{child.username}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  // 科目ごとの進捗
   const subjectProgress = subjects.map(subject => {
     const subjectLessons = lessons.filter(lesson => lesson.subject === subject.id);
     const completedLessons = progressData.filter(
-      progress => 
-        subjectLessons.some(lesson => lesson.id === progress.lesson_id) && 
-        progress.status === 'completed'
+      p => subjectLessons.some(l => l.id === p.lesson_id) && p.status === 'completed'
     );
     
-    const totalLessons = subjectLessons.length;
-    const completedCount = completedLessons.length;
-    const completionRate = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+    const totalLessons = subjectLessons.length || 1; // Division by 0を避ける
+    const progress = (completedLessons.length / totalLessons) * 100;
     
-    // 総学習時間（秒）
-    const totalTimeSpent = progressData
-      .filter(progress => subjectLessons.some(lesson => lesson.id === progress.lesson_id))
-      .reduce((sum, progress) => sum + (progress.time_spent || 0), 0);
+    // 平均スコア計算
+    const completedWithScore = completedLessons.filter(p => p.score !== null);
+    const avgScore = completedWithScore.length > 0
+      ? completedWithScore.reduce((acc, curr) => acc + (curr.score || 0), 0) / completedWithScore.length
+      : 0;
     
-    // 平均スコア
-    const scores = completedLessons
-      .map(progress => progress.score)
-      .filter((score): score is number => score !== null);
-    
-    const averageScore = scores.length > 0 
-      ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) 
-      : null;
+    // 総合ポイント
+    const totalPoints = completedLessons.reduce((acc, curr) => acc + (curr.score || 0), 0);
     
     return {
       ...subject,
-      totalLessons,
-      completedCount,
-      completionRate,
-      totalTimeSpent,
-      averageScore,
-      lastActivity: completedLessons.length > 0 
-        ? completedLessons.sort((a, b) => 
-            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-          )[0].updated_at
-        : null
+      progress,
+      completedCount: completedLessons.length,
+      totalCount: totalLessons,
+      avgScore,
+      totalPoints,
     };
   });
 
   // 最近完了したレッスン
   const recentCompletedLessons = progressData
-    .filter(progress => progress.status === 'completed')
-    .sort((a, b) => new Date(b.completed_at || '').getTime() - new Date(a.completed_at || '').getTime())
-    .slice(0, 5)
-    .map(progress => {
-      const lesson = lessons.find(l => l.id === progress.lesson_id);
-      const subject = subjects.find(s => lesson?.subject === s.id);
-      
-      return {
-        ...progress,
-        lessonTitle: lesson?.title || '不明なレッスン',
-        subjectName: subject?.name || '不明',
-        subjectColor: subject?.color || 'bg-gray-500'
-      };
-    });
+    .filter(p => p.status === 'completed')
+    .sort((a, b) => {
+      const dateA = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+      const dateB = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+      return dateB - dateA;
+    })
+    .slice(0, 5);
 
-  // 現在進行中のレッスン
+  // 進行中のレッスン
   const inProgressLessons = progressData
-    .filter(progress => progress.status === 'in_progress')
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-    .slice(0, 3)
-    .map(progress => {
-      const lesson = lessons.find(l => l.id === progress.lesson_id);
-      const subject = subjects.find(s => lesson?.subject === s.id);
-      
-      return {
-        ...progress,
-        lessonTitle: lesson?.title || '不明なレッスン',
-        subjectName: subject?.name || '不明',
-        subjectColor: subject?.color || 'bg-gray-500'
-      };
-    });
+    .filter(p => p.status === 'in_progress')
+    .sort((a, b) => {
+      const dateA = a.last_activity_at ? new Date(a.last_activity_at).getTime() : 0;
+      const dateB = b.last_activity_at ? new Date(b.last_activity_at).getTime() : 0;
+      return dateB - dateA;
+    })
+    .slice(0, 3);
 
-  // 総合統計
-  const totalStats = {
-    completedLessons: progressData.filter(p => p.status === 'completed').length,
-    totalTimeSpent: progressData.reduce((sum, p) => sum + (p.time_spent || 0), 0),
-    averageScore: (() => {
-      const scores = progressData
-        .filter(p => p.status === 'completed')
-        .map(p => p.score)
-        .filter((score): score is number => score !== null);
-      
-      return scores.length > 0 
-        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) 
-        : null;
-    })(),
-    startedLessons: progressData.filter(p => p.status === 'in_progress').length
-  };
+  // 総合達成率
+  const totalLessons = lessons.length || 1;
+  const completedCount = progressData.filter(p => p.status === 'completed').length;
+  const overallProgress = (completedCount / totalLessons) * 100;
 
-  // 時間を表示用にフォーマット
+  // 総合スコア
+  const totalScore = progressData
+    .filter(p => p.status === 'completed')
+    .reduce((acc, curr) => acc + (curr.score || 0), 0);
+
+  // 総学習時間（秒）
+  const totalTimeSpent = progressData.reduce((acc, curr) => acc + (curr.time_spent || 0), 0);
+
+  // 時間をフォーマット: 秒→時間:分:秒
   const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}秒`;
+    
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
     
     if (hours > 0) {
-      return `${hours}時間${minutes > 0 ? ` ${minutes}分` : ''}`;
+      return `${hours}時間${minutes}分`;
+    } else {
+      return `${minutes}分${remainingSeconds}秒`;
     }
-    return `${minutes}分`;
+  };
+
+  // レッスン情報を取得
+  const getLessonInfo = (lessonId: string) => {
+    return lessons.find(lesson => lesson.id === lessonId) || null;
+  };
+
+  // 科目情報を取得
+  const getSubjectInfo = (subjectId: string) => {
+    return subjects.find(subject => subject.id === subjectId) || null;
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">学習進捗</h1>
-        <p className="text-gray-600 mt-1">
-          {childName ? `${childName}さん` : 'お子様'}の学習進捗状況を確認できます
-        </p>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 pb-32">
+      {/* ヘッダー */}
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-xl p-6 text-white shadow-lg mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">学習進捗レポート</h1>
+            <p className="opacity-90">
+              {childName ? `${childName}さん` : 'お子様'}の学習の進捗状況を確認できます
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 text-white" />
+          </button>
+        </div>
       </div>
 
+      {/* 子供選択 */}
+      <ChildSelector />
+
       {/* 期間選択 */}
-      <div className="mb-6 flex justify-end">
-        <div className="inline-flex rounded-md shadow-sm">
-          <button
-            type="button"
-            onClick={() => setTimeRange('week')}
-            className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
-              timeRange === 'week'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            } border border-gray-200`}
-          >
-            週間
-          </button>
-          <button
-            type="button"
-            onClick={() => setTimeRange('month')}
-            className={`px-4 py-2 text-sm font-medium ${
-              timeRange === 'month'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            } border-t border-b border-gray-200`}
-          >
-            月間
-          </button>
-          <button
-            type="button"
-            onClick={() => setTimeRange('all')}
-            className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
-              timeRange === 'all'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            } border border-gray-200`}
-          >
-            全期間
-          </button>
+      <div className="mb-6 bg-white rounded-lg shadow-md p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-indigo-500" />
+            <h2 className="text-lg font-medium text-gray-900">期間</h2>
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setTimeRange('week')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                timeRange === 'week'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              1週間
+            </button>
+            <button
+              onClick={() => setTimeRange('month')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                timeRange === 'month'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              1ヶ月
+            </button>
+            <button
+              onClick={() => setTimeRange('all')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                timeRange === 'all'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              全期間
+            </button>
+          </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : !childId ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-          <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-            <User className="h-8 w-8 text-yellow-500" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">親子関係が設定されていません</h3>
-          <p className="text-gray-500 mb-4">
-            子供のアカウントとの関連付けが必要です。プロフィール設定から親子関係を設定してください。
-          </p>
-          <Link to="/parent/profile" className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-            プロフィール設定へ
-          </Link>
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+          <p className="text-gray-500">データを読み込み中...</p>
         </div>
       ) : progressData.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <Book className="h-8 w-8 text-gray-400" />
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 text-indigo-600 mb-4">
+            <BookOpen size={24} />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">まだ学習データがありません</h3>
-          <p className="text-gray-500">
-            {childName ? `${childName}さん` : 'お子様'}がレッスンを開始すると、ここに進捗が表示されます。
+          <h3 className="text-lg font-medium text-gray-900 mb-2">学習データがありません</h3>
+          <p className="text-gray-500 mb-6">
+            この期間には学習の記録がありません。別の期間を選択するか、新しい学習を開始してください。
           </p>
+          <button
+            onClick={() => navigate('/child/learning')}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            学習を始める
+          </button>
         </div>
       ) : (
-        <>
-          {/* 総合統計 */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-green-100 p-3 mr-4">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+        <div className="space-y-8 mb-16">
+          {/* ダッシュボード概要 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">総合進捗</h3>
+                <div className="p-2 bg-blue-100 rounded-full">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">完了レッスン</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalStats.completedLessons}</p>
+              </div>
+              <div className="mb-3">
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm text-gray-600">完了率</span>
+                  <span className="text-sm font-medium text-gray-900">{Math.round(overallProgress)}%</span>
                 </div>
+                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-400 to-indigo-600 rounded-full"
+                    style={{ width: `${overallProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>{completedCount} / {totalLessons} レッスン完了</span>
               </div>
             </div>
-            
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-blue-100 p-3 mr-4">
-                  <Clock className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">総学習時間</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {totalStats.totalTimeSpent > 0 
-                      ? formatTime(totalStats.totalTimeSpent)
-                      : '0分'}
-                  </p>
+
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">獲得ポイント</h3>
+                <div className="p-2 bg-purple-100 rounded-full">
+                  <Award className="h-5 w-5 text-purple-600" />
                 </div>
               </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-bold text-gray-900">{totalScore}</span>
+                <span className="text-sm text-gray-600 mb-1">ポイント</span>
+              </div>
+              <p className="text-sm text-gray-600 mt-2">
+                レベル: {Math.floor(totalScore / 1000) + 1}
+              </p>
             </div>
-            
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-yellow-100 p-3 mr-4">
-                  <Star className="h-6 w-6 text-yellow-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">平均スコア</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {totalStats.averageScore !== null 
-                      ? `${totalStats.averageScore}点`
-                      : '-'}
-                  </p>
+
+            <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-6 border border-green-100 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">学習時間</h3>
+                <div className="p-2 bg-green-100 rounded-full">
+                  <Clock className="h-5 w-5 text-green-600" />
                 </div>
               </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center">
-                <div className="rounded-full bg-purple-100 p-3 mr-4">
-                  <Book className="h-6 w-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">進行中レッスン</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalStats.startedLessons}</p>
-                </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-bold text-gray-900">{formatTime(totalTimeSpent)}</span>
               </div>
+              <p className="text-sm text-gray-600 mt-2">
+                平均: {formatTime(Math.round(totalTimeSpent / (completedCount || 1)))} / レッスン
+              </p>
             </div>
           </div>
 
           {/* 科目別進捗 */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-800">科目別進捗</h3>
-              <BarChart className="h-5 w-5 text-indigo-600" />
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-medium text-gray-900">科目別進捗</h3>
             </div>
-            
-            <div className="space-y-6">
-              {subjectProgress.map((subject) => {
-                const Icon = subject.icon;
-                return (
-                  <div key={subject.id} className="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center">
-                        <div className={`rounded-full ${subject.color} p-2 mr-3`}>
-                          <Icon className="h-4 w-4 text-white" />
+            <div className="p-6">
+              <div className="space-y-6">
+                {subjectProgress.map((subject) => {
+                  const SubjectIcon = subject.icon;
+                  return (
+                    <div key={subject.id} className="group">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 ${subject.bgColor} rounded-lg`}>
+                            <SubjectIcon className={`h-5 w-5 ${subject.textColor}`} />
+                          </div>
+                          <span className="font-medium text-gray-900">{subject.name}</span>
                         </div>
-                        <h4 className="font-medium text-gray-800">{subject.name}</h4>
+                        <div className="text-sm">
+                          <span className={`font-semibold ${subject.textColor}`}>{subject.completedCount}</span>
+                          <span className="text-gray-500">/{subject.totalCount}完了</span>
+                        </div>
                       </div>
-                      <span className="text-sm font-medium">
-                        {subject.completedCount}/{subject.totalLessons} 完了
-                      </span>
+                      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden group-hover:h-3 transition-all">
+                        <div
+                          className={`h-full bg-gradient-to-r ${subject.color} rounded-full`}
+                          style={{ width: `${subject.progress}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    
-                    <div className="w-full bg-gray-100 rounded-full h-2.5 mb-2">
-                      <div 
-                        className={`h-2.5 rounded-full ${subject.color}`} 
-                        style={{ width: `${subject.completionRate}%` }}
-                      ></div>
-                    </div>
-                    
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>
-                        {subject.totalTimeSpent > 0 
-                          ? `学習時間: ${formatTime(subject.totalTimeSpent)}`
-                          : '未学習'}
-                      </span>
-                      {subject.averageScore !== null && (
-                        <span>平均スコア: {subject.averageScore}点</span>
-                      )}
-                      {subject.lastActivity && (
-                        <span>
-                          最終活動: {format(parseISO(subject.lastActivity), 'MM/dd', { locale: ja })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
           {/* 最近完了したレッスン */}
           {recentCompletedLessons.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-800">最近完了したレッスン</h3>
-                <Award className="h-5 w-5 text-green-600" />
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-medium text-gray-900">最近完了したレッスン</h3>
               </div>
-              
-              <div className="space-y-4">
-                {recentCompletedLessons.map((lesson) => (
-                  <div key={lesson.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <div className={`w-2 h-10 ${lesson.subjectColor} rounded-l-full mr-4`}></div>
-                      <div>
-                        <h4 className="font-medium text-gray-800">{lesson.lessonTitle}</h4>
-                        <div className="flex items-center mt-1">
-                          <span className="text-xs text-gray-500 mr-3">{lesson.subjectName}</span>
-                          {lesson.score !== null && (
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                              {lesson.score}点
-                            </span>
+              <div className="divide-y divide-gray-100">
+                {recentCompletedLessons.map(lesson => {
+                  const lessonInfo = getLessonInfo(lesson.lesson_id);
+                  const subject = lessonInfo ? getSubjectInfo(lessonInfo.subject) : null;
+                  
+                  return (
+                    <div key={lesson.id} className="p-5 hover:bg-gray-50">
+                      <div className="flex justify-between">
+                        <div className="flex items-start gap-4">
+                          {subject && (
+                            <div className={`p-2 ${subject.bgColor} rounded-lg shrink-0 mt-1`}>
+                              <subject.icon className={`h-5 w-5 ${subject.textColor}`} />
+                            </div>
                           )}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-1">
+                              {lessonInfo?.title || 'レッスン名不明'}
+                            </h4>
+                            <p className="text-sm text-gray-500 mb-2">
+                              {subject?.name || '科目不明'} • 難易度: {lessonInfo?.difficulty || '?'}/5
+                            </p>
+                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                <span>{formatTime(lesson.time_spent || 0)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Award className="h-4 w-4" />
+                                <span>{lesson.score || 0}ポイント</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right text-sm text-gray-500">
+                          <span>{lesson.completed_at ? format(new Date(lesson.completed_at), 'M月d日', { locale: ja }) : ''}</span>
+                          <div className="flex items-center gap-1 justify-end mt-1 text-green-600">
+                            <CheckCircle className="h-4 w-4" />
+                            <span>完了</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center">
-                        <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                        <span className="text-sm text-gray-600">完了</span>
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {lesson.completed_at && format(parseISO(lesson.completed_at), 'yyyy/MM/dd', { locale: ja })}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* 進行中のレッスン */}
           {inProgressLessons.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-800">進行中のレッスン</h3>
-                <ArrowRight className="h-5 w-5 text-indigo-600" />
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-medium text-gray-900">進行中のレッスン</h3>
               </div>
-              
-              <div className="space-y-4">
-                {inProgressLessons.map((lesson) => (
-                  <div key={lesson.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <div className={`w-2 h-10 ${lesson.subjectColor} rounded-l-full mr-4`}></div>
-                      <div>
-                        <h4 className="font-medium text-gray-800">{lesson.lessonTitle}</h4>
-                        <div className="flex items-center mt-1">
-                          <span className="text-xs text-gray-500">{lesson.subjectName}</span>
+              <div className="divide-y divide-gray-100">
+                {inProgressLessons.map(lesson => {
+                  const lessonInfo = getLessonInfo(lesson.lesson_id);
+                  const subject = lessonInfo ? getSubjectInfo(lessonInfo.subject) : null;
+                  
+                  return (
+                    <div key={lesson.id} className="p-5 hover:bg-gray-50">
+                      <div className="flex justify-between">
+                        <div className="flex items-start gap-4">
+                          {subject && (
+                            <div className={`p-2 ${subject.bgColor} rounded-lg shrink-0 mt-1`}>
+                              <subject.icon className={`h-5 w-5 ${subject.textColor}`} />
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-1">
+                              {lessonInfo?.title || 'レッスン名不明'}
+                            </h4>
+                            <p className="text-sm text-gray-500 mb-2">
+                              {subject?.name || '科目不明'} • 難易度: {lessonInfo?.difficulty || '?'}/5
+                            </p>
+                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                              <Clock className="h-4 w-4" />
+                              <span>現在の学習時間: {formatTime(lesson.time_spent || 0)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right text-sm text-gray-500">
+                          <div className="mb-1">最終活動日: {lesson.last_activity_at ? format(new Date(lesson.last_activity_at), 'M月d日', { locale: ja }) : ''}</div>
+                          <button className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium hover:bg-indigo-200 transition-colors">
+                            続ける
+                          </button>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="w-32">
-                        <div className="flex justify-between text-xs text-gray-600 mb-1">
-                          <span>進捗</span>
-                          <span>{Math.round(lesson.last_position)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                          <div 
-                            className="h-1.5 rounded-full bg-indigo-500" 
-                            style={{ width: `${lesson.last_position}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
+      
+      {/* 下部の余白 */}
+      <div className="h-8"></div>
     </div>
   );
 } 
