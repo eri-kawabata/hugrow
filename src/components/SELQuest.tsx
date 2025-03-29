@@ -300,23 +300,18 @@ export function SELQuest() {
   };
 
   const fetchAIFeedback = async (emotion: string) => {
-    if (!supabase) return;
-
-    const selectedEmotionData = emotions.find(e => e.name === emotion);
-    if (!selectedEmotionData) return;
-
     try {
-      // 子どもの出来事に基づいてメッセージを生成
-      const prompt = `子どもの感情が「${emotion}」で、以下の出来事について話しています：
-      ${note}
+      if (!selectedEmotion) return;
 
-      ものしり博士として、以下の点に注意してメッセージを生成してください：
-      1. 子どもの気持ちに寄り添い、共感を示す
-      2. 子どもの出来事に対して具体的なコメントをする
-      3. 励ましやアドバイスを含める
-      4. 優しく、親しみやすい口調で話す
-      5. 子どもの年齢（小学生）に合わせた表現を使う
+      const selectedEmotionData = emotions.find(e => e.name === selectedEmotion);
+      if (!selectedEmotionData) return;
 
+      const prompt = `
+      あなたは子どもの社会情緒的発達を支援する「ものしり博士」です。
+      子どもが「${emotion}」という感情（強さ: ${selectedEmotionData.intensity}）を感じています。
+      ${note.trim() ? `その状況は「${note}」です。` : '状況の詳細は提供されていません。'}
+      
+      この感情と状況に応じて、子どもを励ます短いメッセージを作成してください。
       メッセージは100文字程度で、以下のような形式で返してください：
       「[子どもの出来事への具体的なコメント] [励ましやアドバイス]」`;
 
@@ -329,14 +324,49 @@ export function SELQuest() {
 
       if (error) throw error;
 
-      // 子どもの出来事が入力されている場合は、より具体的なメッセージを生成
+      // 子どもの出来事が入力されている場合は、Gemini APIを使用して具体的なメッセージを生成
       if (note.trim()) {
-        const { data: aiResponse, error: aiError } = await supabase.functions.invoke('generate-feedback', {
-          body: { prompt }
-        });
-
-        if (!aiError && aiResponse?.message) {
-          setFeedback(aiResponse.message);
+        try {
+          const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+          
+          if (!geminiApiKey) {
+            console.error('Gemini API キーが設定されていません');
+            setFeedback(data?.feedback_template || null);
+            return;
+          }
+          
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [{ text: prompt }]
+                }]
+              }),
+            }
+          );
+          
+          if (!response.ok) {
+            throw new Error(`Gemini API エラー: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          
+          if (result.candidates && result.candidates[0]?.content?.parts?.length > 0) {
+            const message = result.candidates[0].content.parts[0].text;
+            setFeedback(message);
+            return;
+          } else {
+            throw new Error('Gemini APIからの応答が不正な形式です');
+          }
+        } catch (error) {
+          console.error('Gemini API エラー:', error);
+          // エラーが発生した場合はデフォルトのテンプレートを使用
+          setFeedback(data?.feedback_template || null);
           return;
         }
       }
