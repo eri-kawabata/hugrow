@@ -281,61 +281,75 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
     }
   };
 
+  // フィードバックの状態に応じたメッセージ
+  const renderFeedbackPrompt = () => {
+    if (feedbacks.length === 0 && !loading) {
+      return (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-100 rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 rounded-full">
+              <MessageCircle className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-amber-800">フィードバックしませんか？</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                お子様の成長を促すために、作品へのフィードバックをしましょう。
+                ポジティブな言葉で、お子様の努力や創造性を具体的に褒めることが大切です。
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // ヘッダーのスタイルをフィードバック状態に応じて変更
+  const headerStyle = feedbacks.length > 0 
+    ? "flex items-center justify-between bg-green-50 px-4 py-3 rounded-t-lg border border-green-100"
+    : "flex items-center justify-between bg-amber-50 px-4 py-3 rounded-t-lg border border-amber-100";
+
+  const headerIconColor = feedbacks.length > 0 ? "text-green-500" : "text-amber-500";
+  const headerTextColor = feedbacks.length > 0 ? "text-green-800" : "text-amber-800";
+  const headerCountBg = feedbacks.length > 0 ? "bg-green-200 text-green-800" : "bg-amber-200 text-amber-800";
+
   return (
-    <div className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 mt-6 overflow-hidden">
       <div 
-        className={`p-4 ${feedbacks.length > 0 ? 'bg-gradient-to-r from-blue-50 to-indigo-50' : 'bg-white'} flex justify-between items-center cursor-pointer border-b border-gray-200`}
+        className={headerStyle}
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-3">
-          <div className={`p-2 ${feedbacks.length > 0 ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'} rounded-full shadow-sm`}>
-            <MessageCircle className="h-5 w-5" />
-          </div>
-          <h3 className={`font-medium ${feedbacks.length > 0 ? 'text-gray-800' : 'text-gray-600'} text-base`}>
-            フィードバック一覧
-            {feedbacks.length > 0 && (
-              <span className="ml-2 text-xs bg-gradient-to-r from-indigo-500 to-blue-500 text-white px-2 py-0.5 rounded-full shadow-sm">
-                {feedbacks.length}
-              </span>
-            )}
+        <div className="flex items-center gap-2 cursor-pointer">
+          <MessageCircle className={`h-5 w-5 ${headerIconColor}`} />
+          <h3 className={`font-medium ${headerTextColor}`}>
+            フィードバック
           </h3>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${headerCountBg}`}>
+            {feedbacks.length}件
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <button 
             onClick={handleRefresh}
-            className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-            title="更新"
+            className="p-1 rounded-full hover:bg-gray-100"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-              <path d="M8 16H3v5" />
-            </svg>
+            {loading && (
+              <div className="animate-spin h-5 w-5 border-2 border-t-transparent border-blue-500 rounded-full"></div>
+            )}
           </button>
-          <div className={`transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${feedbacks.length > 0 ? 'text-indigo-500' : 'text-gray-400'}`}>
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </div>
         </div>
       </div>
       
-      <div className={`transition-all duration-500 overflow-hidden ${isExpanded ? 'max-h-[800px]' : 'max-h-0'}`}>
-        {error ? (
-          <div className="p-4 text-center text-red-500">
-            <p>フィードバックの読み込みに失敗しました</p>
-            <button 
-              onClick={() => fetchFeedbacks()}
-              className="mt-2 px-3 py-1 bg-red-100 text-red-600 rounded-md text-sm hover:bg-red-200 transition-colors"
-            >
-              再試行
-            </button>
-          </div>
-        ) : (
-          <FeedbackList feedbacks={feedbacks} loading={loading} onLike={handleLikeToggle} />
-        )}
-      </div>
+      {isExpanded && (
+        <div>
+          {renderFeedbackPrompt()}
+          <FeedbackList 
+            feedbacks={feedbacks} 
+            loading={loading} 
+            onLike={handleLikeToggle} 
+          />
+        </div>
+      )}
     </div>
   );
 });

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Image as ImageIcon, MessageCircle, Calendar, Filter, Search, X, Music, Camera, Palette, Heart, ThumbsUp, Star, Award, Smile, PenLine, MessageSquare, Sparkles, User, Users } from 'lucide-react';
+import { Image as ImageIcon, MessageCircle, Calendar, Filter, Search, X, Music, Camera, Palette, Heart, ThumbsUp, Star, Award, Smile, PenLine, MessageSquare, Sparkles, User, Users, CheckCircle2, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './ParentWorks.css'; // アニメーション用のCSSをインポート
 
 // Work型の定義
@@ -18,6 +18,8 @@ interface Work {
   profile_id?: string;
   created_at: string;
   updated_at: string;
+  work_feedback?: { id: string }[];
+  feedbackCount?: number;
 }
 
 // 子供プロファイル型の定義
@@ -243,10 +245,9 @@ const FeedbackItem = memo(({ feedback, onLike }: {
 FeedbackItem.displayName = 'FeedbackItem';
 
 // 作品カードコンポーネント
-const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0, getSafeMediaUrl }: { 
+const WorkCard = memo(({ work, onFeedbackClick, getSafeMediaUrl }: { 
   work: Work, 
   onFeedbackClick: (work: Work) => void,
-  feedbackCount?: number,
   getSafeMediaUrl: (url: string) => string
 }) => {
   const workType = work.type || work.media_type;
@@ -267,6 +268,10 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0, getSafeMediaU
   
   // media_urlとcontent_urlの両方をチェック
   const mediaUrl = work.media_url || work.content_url;
+  
+  // フィードバック数を取得
+  const feedbackCount = work.feedbackCount || 0;
+  const hasFeedback = feedbackCount > 0;
 
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 animate-fadeIn transform hover:-translate-y-1">
@@ -293,6 +298,25 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0, getSafeMediaU
           <div className={`absolute top-2 right-2 ${typeColor} text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm shadow-md`}>
             {typeLabel}
           </div>
+          
+          {/* フィードバック状態バッジを改善 */}
+          <div className={`absolute top-2 left-2 backdrop-blur-sm flex items-center gap-1 px-2.5 py-1.5 rounded-full shadow-sm transition-all ${
+            hasFeedback 
+              ? 'bg-gradient-to-r from-emerald-500/90 to-green-500/90 text-white' 
+              : 'bg-gradient-to-r from-amber-400/90 to-orange-400/90 text-white'
+          }`}>
+            {hasFeedback ? (
+              <>
+                <CheckCircle2 size={14} className="animate-pulse" />
+                <span className="text-xs font-medium">{feedbackCount}件</span>
+              </>
+            ) : (
+              <>
+                <Clock size={14} className="animate-pulse" />
+                <span className="text-xs font-medium">待ち</span>
+              </>
+            )}
+          </div>
         </div>
       </Link>
       
@@ -316,14 +340,16 @@ const WorkCard = memo(({ work, onFeedbackClick, feedbackCount = 0, getSafeMediaU
               onFeedbackClick(work);
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-              feedbackCount > 0 
-                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              hasFeedback 
+                ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 hover:from-emerald-100 hover:to-green-100 border border-emerald-200' 
+                : 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 hover:from-amber-100 hover:to-orange-100 border border-amber-200'
             }`}
           >
-            <MessageCircle className={`h-4 w-4 ${feedbackCount > 0 ? 'text-indigo-500' : ''}`} />
+            <MessageCircle className={`h-4 w-4 ${hasFeedback ? 'text-emerald-500' : 'text-amber-500'}`} />
             <span>
-              {feedbackCount > 0 ? `${feedbackCount}件` : 'フィードバック'}
+              {hasFeedback 
+                ? `詳細を見る` 
+                : 'フィードバック'}
             </span>
           </button>
         </div>
@@ -413,6 +439,161 @@ const EmptyState = memo(({ filter }: { filter: WorkTypeFilter }) => {
 
 EmptyState.displayName = 'EmptyState';
 
+// フィードバックモーダルコンポーネント
+const FeedbackModal = memo(({ 
+  isOpen, 
+  onClose, 
+  work, 
+  onSubmit 
+}: { 
+  isOpen: boolean,
+  onClose: () => void,
+  work: Work | null,
+  onSubmit: (workId: string, feedback: string) => Promise<void>
+}) => {
+  const [feedback, setFeedback] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedStamp, setSelectedStamp] = useState<string | null>(null);
+
+  // モーダルを閉じる時に状態をリセット
+  useEffect(() => {
+    if (!isOpen) {
+      setFeedback('');
+      setSelectedStamp(null);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!work) return;
+    
+    // スタンプが選択されていて、テキストがない場合は自動でテキストを設定
+    let feedbackText = feedback.trim();
+    if (selectedStamp && !feedbackText) {
+      feedbackText = `[${STAMPS.find(s => s.id === selectedStamp)?.label || 'スタンプ'}] スタンプを送りました`;
+    } else if (selectedStamp) {
+      feedbackText = `[${STAMPS.find(s => s.id === selectedStamp)?.label || 'スタンプ'}] ${feedbackText}`;
+    }
+    
+    if (!feedbackText) {
+      toast.error('フィードバックを入力してください');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      await onSubmit(work.id, feedbackText);
+      onClose();
+    } catch (error) {
+      console.error('フィードバック送信エラー:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // モーダルのオーバーレイ部分をクリックした時に閉じる
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  if (!isOpen || !work) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity animate-fadeIn"
+      onClick={handleOverlayClick}
+    >
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full transform transition-all animate-scaleIn">
+        <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-800">
+            「{work.title}」へのフィードバック
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500 transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-5">
+          {/* スタンプ選択 */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              スタンプを選択 (任意)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {STAMPS.map(stamp => (
+                <button
+                  key={stamp.id}
+                  type="button"
+                  onClick={() => setSelectedStamp(selectedStamp === stamp.id ? null : stamp.id)}
+                  className={`p-2 rounded-full transition-all ${
+                    selectedStamp === stamp.id 
+                      ? 'bg-indigo-100 ring-2 ring-indigo-500 ring-offset-1 scale-110' 
+                      : 'bg-gray-100 hover:bg-gray-200'
+                  }`}
+                >
+                  <div className={stamp.color}>{stamp.icon}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* フィードバックテキスト入力 */}
+          <div className="mb-4">
+            <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
+              フィードバックメッセージ {selectedStamp ? '(任意)' : '(必須)'}
+            </label>
+            <textarea
+              id="feedback"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="お子様の作品について、具体的に褒めてあげましょう！"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+              rows={4}
+            />
+          </div>
+          
+          {/* 送信ボタン */}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors shadow-sm flex items-center gap-2"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  <span>送信中...</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle size={16} />
+                  <span>送信する</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+});
+
+FeedbackModal.displayName = 'FeedbackModal';
+
 export default function ParentWorks() {
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
@@ -423,6 +604,62 @@ export default function ParentWorks() {
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [childrenStats, setChildrenStats] = useState<{[key: string]: {total: number, drawing: number, photo: number, audio: number}}>({});
+  const navigate = useNavigate();
+  
+  // フィードバックモーダル用の状態
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedWork, setSelectedWork] = useState<Work | null>(null);
+
+  // スタイルを追加
+  useEffect(() => {
+    createStyles();
+  }, []);
+
+  // フィードバックボタンのクリックハンドラ
+  const handleFeedbackClick = (work: Work) => {
+    // すでにフィードバックがある場合は詳細ページに遷移
+    if (work.feedbackCount && work.feedbackCount > 0) {
+      navigate(`/parent/works/${work.id}`);
+    } else {
+      // フィードバックがない場合はモーダルを表示
+      setSelectedWork(work);
+      setIsModalOpen(true);
+    }
+  };
+
+  // フィードバック送信処理
+  const handleFeedbackSubmit = async (workId: string, feedbackText: string) => {
+    if (!workId || !feedbackText) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('ログインが必要です');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('work_feedback')
+        .insert({
+          work_id: workId,
+          user_id: user.id,
+          feedback: feedbackText
+        });
+
+      if (error) throw error;
+
+      toast.success('フィードバックを送信しました！');
+      
+      // 作品リストを更新
+      if (selectedChildId) {
+        await fetchWorks();
+      }
+    } catch (err) {
+      console.error('フィードバック送信エラー:', err);
+      toast.error('フィードバックの送信に失敗しました');
+      throw err;
+    }
+  };
 
   // 子供一覧を取得
   useEffect(() => {
@@ -511,30 +748,28 @@ export default function ParentWorks() {
   }, [children]);
 
   // 選択した子供の作品を取得
-  useEffect(() => {
   const fetchWorks = async () => {
-      if (!selectedChildId) return;
+    if (!selectedChildId) return;
 
     try {
       setLoading(true);
-        setError(null);
+      setError(null);
 
-        // 選択した子供の作品を取得
-        const { data, error } = await supabase
+      // まず作品を取得
+      const { data: worksData, error: worksError } = await supabase
         .from('works')
         .select('*')
-          .eq('profile_id', selectedChildId)
+        .eq('profile_id', selectedChildId)
         .order('created_at', { ascending: false });
       
-        if (error) throw error;
+      if (worksError) throw worksError;
       
-      // メディアタイプの正規化
-        const normalizedWorks = (data || []).map(work => {
-        // 元のメディアタイプを保存
+      // 各作品のフィードバック数を取得
+      const worksWithFeedback = await Promise.all(worksData.map(async (work) => {
+        // 正規化ロジック
         const originalType = work.media_type;
         let normalizedType = originalType;
         
-        // 正規化ロジック
         if (originalType === 'image') {
           normalizedType = 'drawing';
         } else if (originalType === 'video') {
@@ -546,22 +781,43 @@ export default function ParentWorks() {
           normalizedType = work.type;
         }
         
+        // この作品のフィードバック数を取得
+        const { count: feedbackCount, error: countError } = await supabase
+          .from('work_feedback')
+          .select('id', { count: 'exact', head: true })
+          .eq('work_id', work.id);
+        
+        if (countError) {
+          console.error(`作品 ${work.id} のフィードバック数取得エラー:`, countError);
+          return {
+            ...work,
+            type: normalizedType,
+            media_type: normalizedType,
+            feedbackCount: 0
+          };
+        }
+        
+        console.log(`作品ID: ${work.id}, タイトル: ${work.title}, フィードバック数: ${feedbackCount}`);
+        
         return {
           ...work,
-            type: normalizedType,
-            media_type: normalizedType
+          type: normalizedType,
+          media_type: normalizedType,
+          feedbackCount: feedbackCount || 0
         };
-      });
+      }));
       
-        setWorks(normalizedWorks);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Unknown error'));
+      setWorks(worksWithFeedback);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
       setLoading(false);
     }
   };
 
-      fetchWorks();
+  // 選択した子供が変わったら作品を取得
+  useEffect(() => {
+    fetchWorks();
   }, [selectedChildId]);
 
   // 作品をフィルタリング
@@ -760,16 +1016,40 @@ export default function ParentWorks() {
               <WorkCard 
                 key={work.id} 
                 work={work} 
-                onFeedbackClick={() => {}} 
+                onFeedbackClick={handleFeedbackClick} 
                 getSafeMediaUrl={getSafeMediaUrl}
               />
             ))}
           </div>
         )}
+        
+        {/* フィードバックモーダル */}
+        <FeedbackModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          work={selectedWork}
+          onSubmit={handleFeedbackSubmit}
+        />
       </div>
     </div>
   );
 }
+
+// CSS追加
+export const createStyles = () => {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes scaleIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    
+    .animate-scaleIn {
+      animation: scaleIn 0.2s ease-out forwards;
+    }
+  `;
+  document.head.appendChild(style);
+};
 
 // 名前付きエクスポートを追加
 export { ParentWorks };
