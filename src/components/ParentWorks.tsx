@@ -1145,7 +1145,7 @@ const FeedbackModal = memo(({
                   ) : (
                     <>
                       <Sparkles size={12} />
-                      <span>Gemini AIで分析</span>
+                      <span>AIで分析</span>
                     </>
                   )}
                 </button>
@@ -1178,38 +1178,40 @@ const FeedbackModal = memo(({
                 <div className="mb-3 px-3 py-2 bg-green-50 border border-green-100 rounded-lg text-xs text-green-700">
                   <p className="flex items-start gap-1.5">
                     <CheckCircle2 className="h-3 w-3 mt-0.5 text-green-500" />
-                    <span>{aiExplanation}</span>
+                    <span></span>
                   </p>
                 </div>
               )}
               
               {/* AI提案リスト */}
               {!isGeneratingAI && aiSuggestions.length > 0 && (
-                <div className="mb-4 space-y-2">
-                  {aiSuggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => handleSelectAISuggestion(suggestion)}
-                      className={`w-full text-left p-3 rounded-lg border transition-all ${
-                        suggestion === feedback
-                          ? 'bg-indigo-50 border-indigo-200 shadow-sm'
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        {suggestion === feedback ? (
-                          <CheckCircle2 className="h-4 w-4 text-indigo-600" />
-                        ) : (
-                          <Sparkles className="h-4 w-4 text-indigo-400" />
-                        )}
-                        <span className={`text-sm font-medium ${suggestion === feedback ? 'text-indigo-700' : 'text-gray-700'}`}>
-                          AI提案 {index + 1}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">{suggestion}</p>
-                    </button>
-                  ))}
+                <div className="mb-4 max-h-60 overflow-y-auto pr-2">
+                  <div className="space-y-2">
+                    {aiSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleSelectAISuggestion(suggestion)}
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${
+                          suggestion === feedback
+                            ? 'bg-indigo-50 border-indigo-200 shadow-sm'
+                            : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          {suggestion === feedback ? (
+                            <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+                          ) : (
+                            <Sparkles className="h-4 w-4 text-indigo-400" />
+                          )}
+                          <span className={`text-sm font-medium ${suggestion === feedback ? 'text-indigo-700' : 'text-gray-700'}`}>
+                            AI提案 {index + 1}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{suggestion}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
