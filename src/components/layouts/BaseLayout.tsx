@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import AiDoctor from '../Common/AiDoctor';
 import { AiDoctorProvider } from '../../contexts/AiDoctorContext';
+import Logo from '../Logo';
 
 type BaseLayoutProps = {
   children?: React.ReactNode;
@@ -141,9 +142,9 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
           <div className="flex items-center gap-6">
             <Link 
               to={isParentMode ? "/parent/dashboard" : "/child/home"}
-              className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity flex items-center"
+              className="flex items-center hover:opacity-80 transition-opacity"
             >
-              <span className="mr-2">Hugrow</span>
+              <Logo width={150} height="auto" className="mr-1" />
               {isParentMode && <Shield className="h-5 w-5 text-indigo-600" />}
             </Link>
             {displayName && (
