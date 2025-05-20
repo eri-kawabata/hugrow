@@ -145,7 +145,6 @@ const Header = memo(({ username, onModeChange, onLogout }: HeaderProps) => {
               className="flex items-center hover:opacity-80 transition-opacity"
             >
               <Logo width={150} height="auto" className="mr-1" />
-              {isParentMode && <Shield className="h-5 w-5 text-indigo-600" />}
             </Link>
             {displayName && (
               <div className="hidden sm:flex items-center gap-2 py-1 px-3 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-full">
@@ -285,9 +284,6 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({ children, hideHeader }) 
     hash: location.hash,
     key: location.key
   });
-  
-  // 常にAiDoctorを表示するように修正（問題解決のため）
-  const showAiDoctor = true;
   
   const handleLogout = useCallback(async () => {
     try {
