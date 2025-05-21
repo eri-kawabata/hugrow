@@ -1774,44 +1774,6 @@ export default function ParentWorks() {
             <div className="text-sm text-amber-700">音声</div>
           </div>
         </div>
-        
-        {/* フィードバック統計 */}
-        <div className="mt-4 bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h4 className="font-medium text-gray-700 flex items-center gap-2">
-              <MessageCircle className="h-4 w-4 text-indigo-500" />
-              フィードバック状況
-            </h4>
-          </div>
-          <div className="p-4">
-            <div className="flex items-center mb-2">
-              <div className="flex-grow">
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  {feedbackStats.total > 0 && (
-                    <div 
-                      className="h-full bg-gradient-to-r from-green-500 to-emerald-500" 
-                      style={{ width: `${(feedbackStats.completed / feedbackStats.total) * 100}%` }}
-                    ></div>
-                  )}
-                </div>
-              </div>
-              <div className="ml-4 text-sm font-medium text-gray-700">
-                {feedbackStats.completed}/{feedbackStats.total}
-              </div>
-            </div>
-            
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <div className="flex items-center">
-                <span className="w-3 h-3 inline-block rounded-full bg-amber-400 mr-1"></span>
-                <span>未フィードバック: {feedbackStats.waiting}</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-3 h-3 inline-block rounded-full bg-emerald-500 mr-1"></span>
-                <span>完了: {feedbackStats.completed}</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     );
   };
@@ -1821,16 +1783,14 @@ export default function ParentWorks() {
     if (feedbackStats.waiting === 0) return null;
     
     return (
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 mb-6 shadow-sm animate-fadeIn">
-        <div className="flex items-start gap-4">
-          <div className="bg-amber-100 rounded-full p-3 shadow-sm">
-            <Clock className="h-6 w-6 text-amber-600" />
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3 mb-6 shadow-sm animate-fadeIn">
+        <div className="flex items-center gap-3">
+          <div className="bg-amber-100 rounded-full p-2 shadow-sm flex-shrink-0">
+            <Clock className="h-5 w-5 text-amber-600" />
           </div>
-          <div>
-            <h3 className="font-semibold text-amber-800 text-lg">
-              フィードバック待ちの作品が{feedbackStats.waiting}件あります
-            </h3>
-          </div>
+          <h3 className="font-medium text-amber-800">
+            フィードバック待ちの作品が{feedbackStats.waiting}件あります
+          </h3>
         </div>
       </div>
     );
