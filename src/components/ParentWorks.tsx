@@ -1239,20 +1239,20 @@ const FeedbackModal = memo(({
         
         {activeTab === 'quick' ? (
           <div className="p-5">
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 mb-5">
               テンプレートをタップすると、すぐにフィードバックが送信されます。
               {withFurigana && <span className="text-indigo-600 font-medium"> ふりがなは自動で付加されます。</span>}
             </p>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               {quickTemplates.map(template => (
                 <button
                   key={template.id}
                   onClick={() => handleQuickFeedback(template.text, template.stamp)}
                   disabled={isSubmitting}
-                  className={`p-3 rounded-lg border ${template.color} text-left hover:opacity-90 transition-opacity`}
+                  className={`p-3.5 rounded-lg border ${template.color} text-left hover:opacity-90 transition-opacity shadow-sm`}
                 >
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1.5">
                     {STAMPS.find(s => s.id === template.stamp)?.icon}
                     <span className="font-medium">タップして送信</span>
                   </div>
@@ -1311,16 +1311,6 @@ const FeedbackModal = memo(({
                 </div>
               )}
               
-              {/* AI分析説明（分析結果が返ってきた場合） */}
-              {!isGeneratingAI && aiExplanation && (
-                <div className="mb-3 px-3 py-2 bg-green-50 border border-green-100 rounded-lg text-xs text-green-700">
-                  <p className="flex items-start gap-1.5">
-                    <CheckCircle2 className="h-3 w-3 mt-0.5 text-green-500" />
-                    <span></span>
-                  </p>
-                </div>
-              )}
-              
               {/* AI提案リスト */}
               {!isGeneratingAI && aiSuggestions.length > 0 && (
                 <div className="mb-4 max-h-60 overflow-y-auto pr-2">
@@ -1352,73 +1342,50 @@ const FeedbackModal = memo(({
                   </div>
                 </div>
               )}
-            </div>
-            
-            {/* スタンプ選択 */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                スタンプを選択 (任意)
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {STAMPS.map(stamp => (
-                  <button
-                    key={stamp.id}
-                    type="button"
-                    onClick={() => setSelectedStamp(selectedStamp === stamp.id ? null : stamp.id)}
-                    className={`p-2 rounded-full transition-all ${
-                      selectedStamp === stamp.id 
-                        ? 'bg-indigo-100 ring-2 ring-indigo-500 ring-offset-1 scale-110' 
-                        : 'bg-gray-100 hover:bg-gray-200'
-                    }`}
-                  >
-                    <div className={stamp.color}>{stamp.icon}</div>
-                  </button>
-                ))}
+              
+              {/* フィードバックテキスト入力 */}
+              <div className="mb-4">
+                <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
+                  フィードバックメッセージ {selectedStamp ? '(任意)' : '(必須)'}
+                </label>
+                <textarea
+                  id="feedback"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="お子様の作品について、具体的に褒めてあげましょう！"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  rows={4}
+                />
               </div>
-            </div>
-            
-            {/* フィードバックテキスト入力 */}
-            <div className="mb-4">
-              <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
-                フィードバックメッセージ {selectedStamp ? '(任意)' : '(必須)'}
-              </label>
-              <textarea
-                id="feedback"
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                placeholder="お子様の作品について、具体的に褒めてあげましょう！"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                rows={4}
-              />
-            </div>
-            
-            {/* 送信ボタン */}
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                disabled={isSubmitting}
-              >
-                キャンセル
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors shadow-sm flex items-center gap-2"
-                disabled={isSubmitting || (withFurigana && isGeneratingFurigana)}
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    <span>送信中...</span>
-                  </>
-                ) : (
-                  <>
-                    <MessageCircle size={16} />
-                    <span>送信する</span>
-                  </>
-                )}
-              </button>
+              
+              {/* 送信ボタン */}
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={isSubmitting}
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors shadow-sm flex items-center gap-2"
+                  disabled={isSubmitting || (withFurigana && isGeneratingFurigana)}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      <span>送信中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle size={16} />
+                      <span>送信する</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         )}
@@ -1860,28 +1827,9 @@ export default function ParentWorks() {
             <Clock className="h-6 w-6 text-amber-600" />
           </div>
           <div>
-            <h3 className="font-semibold text-amber-800 text-lg mb-1">
+            <h3 className="font-semibold text-amber-800 text-lg">
               フィードバック待ちの作品が{feedbackStats.waiting}件あります
             </h3>
-            <p className="text-amber-700 mb-3">
-              たった3秒でお子様を褒めることができます。お子様の自己肯定感を高め、創造性を育みましょう！
-            </p>
-            <div className="flex items-center gap-2 text-sm text-amber-700">
-              <span className="flex items-center gap-1">
-                <Sparkles className="h-4 w-4 text-amber-500" />
-                <span>クイックボタンで即褒め</span>
-              </span>
-              <span className="text-amber-300">•</span>
-              <span className="flex items-center gap-1">
-                <Star className="h-4 w-4 text-amber-500" />
-                <span>効果的な言葉選び</span>
-              </span>
-              <span className="text-amber-300">•</span>
-              <span className="flex items-center gap-1">
-                <Heart className="h-4 w-4 text-amber-500" />
-                <span>自己肯定感UP</span>
-              </span>
-            </div>
           </div>
         </div>
       </div>
