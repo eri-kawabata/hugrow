@@ -291,6 +291,13 @@ const FeedbackItem = memo(({ feedback, onLike }: {
   
   const stamp = stampId ? STAMPS.find(s => s.id === stampId) : null;
   
+  // ふりがなの抽出（<ruby>漢字<rt>ふりがな</rt></ruby>の形式）
+  const hasRuby = feedbackText.includes('<ruby>');
+  const renderFeedbackWithRuby = () => {
+    if (!hasRuby) return feedbackText;
+    return <div dangerouslySetInnerHTML={{ __html: feedbackText }} />;
+  };
+  
   return (
     <div className="bg-white rounded-lg p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200">
       <div className="flex justify-between items-start">
@@ -314,7 +321,9 @@ const FeedbackItem = memo(({ feedback, onLike }: {
         )}
         
         {feedbackText && feedbackText !== 'スタンプを送りました' && (
-          <p className="text-gray-700 whitespace-pre-wrap">{feedbackText}</p>
+          <div className="text-gray-700 whitespace-pre-wrap text-base leading-relaxed">
+            {hasRuby ? renderFeedbackWithRuby() : feedbackText}
+          </div>
         )}
       </div>
       
@@ -556,10 +565,10 @@ const WorkCard = memo(({ work, onFeedbackClick, getSafeMediaUrl, updatedWorkIds,
                 e.stopPropagation();
                 onFeedbackClick(work);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 hover:from-emerald-100 hover:to-green-100 border border-emerald-200"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 hover:from-emerald-100 hover:to-green-100 border border-emerald-200"
             >
-              <MessageCircle className="h-4 w-4 text-emerald-500" />
-              <span>詳細を見る</span>
+              <MessageCircle className="h-5 w-5 text-emerald-500" />
+              <Sparkles className="h-4 w-4 text-emerald-500" />
             </button>
           ) : (
             <div className="flex gap-1">
@@ -604,10 +613,10 @@ const WorkCard = memo(({ work, onFeedbackClick, getSafeMediaUrl, updatedWorkIds,
                   e.stopPropagation();
                   onFeedbackClick(work);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 hover:from-amber-100 hover:to-orange-100 border border-amber-200 ml-2"
+                className="flex items-center justify-center w-10 h-10 ml-2 rounded-full bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all"
+                title="フィードバックする"
               >
-                <MessageCircle className="h-4 w-4 text-amber-500" />
-                <span>詳細</span>
+                <MessageCircle className="h-5 w-5" />
               </button>
             </div>
           )}
@@ -717,6 +726,9 @@ const FeedbackModal = memo(({
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [aiExplanation, setAiExplanation] = useState<string>('');
+  const [withFurigana, setWithFurigana] = useState(true);
+  const [isGeneratingFurigana, setIsGeneratingFurigana] = useState(false);
+  const [previewWithFurigana, setPreviewWithFurigana] = useState('');
 
   // Gemini API設定（実際の実装では環境変数などから取得）
   const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -732,6 +744,9 @@ const FeedbackModal = memo(({
       setAiSuggestions([]);
       setAiExplanation('');
       setIsGeneratingAI(false);
+      setWithFurigana(true);
+      setIsGeneratingFurigana(false);
+      setPreviewWithFurigana('');
     }
   }, [isOpen]);
 
@@ -750,6 +765,11 @@ const FeedbackModal = memo(({
     if (!feedbackText) {
       toast.error('フィードバックを入力してください');
       return;
+    }
+    
+    // ふりがなを追加する場合
+    if (withFurigana && previewWithFurigana) {
+      feedbackText = previewWithFurigana;
     }
     
     setIsSubmitting(true);
@@ -777,7 +797,18 @@ const FeedbackModal = memo(({
       }
     }
     
-    setIsSubmitting(true);
+    // ふりがなを追加する場合
+    if (withFurigana) {
+      try {
+        setIsSubmitting(true);
+        const furiganaText = await generateFurigana(feedbackText);
+        feedbackText = furiganaText;
+      } catch (error) {
+        console.error('ふりがな生成エラー:', error);
+        // エラーの場合はふりがななしで続行
+      }
+    }
+    
     try {
       await onSubmit(work.id, feedbackText);
       toast.success('3秒で褒めました！');
@@ -789,6 +820,90 @@ const FeedbackModal = memo(({
     }
   };
   
+  // ふりがなを生成する関数
+  const generateFurigana = async (text: string): Promise<string> => {
+    try {
+      // 実際の実装ではAPIを呼び出す
+      // モックの実装として、簡易的なふりがな生成を行う
+      setIsGeneratingFurigana(true);
+      
+      // モック: 一般的な漢字のふりがなマッピング
+      const furiganaMap: {[key: string]: string} = {
+        '素晴': 'すば',
+        '素敵': 'すてき',
+        '上手': 'じょうず',
+        '色使': 'いろづか',
+        '気持': 'きも',
+        '頑張': 'がんば',
+        '作品': 'さくひん',
+        '子供': 'こども',
+        '子ども': 'こども',
+        '自分': 'じぶん',
+        '創造': 'そうぞう',
+        '表現': 'ひょうげん',
+        '描': 'か',
+        '絵': 'え',
+        '見': 'み',
+        '感': 'かん',
+        '楽': 'たの',
+        '考': 'かんが',
+        '工夫': 'くふう',
+        '丁寧': 'ていねい',
+        '細': 'こま',
+        '良': 'よ',
+        '良く': 'よく',
+        '凄': 'すご',
+        '凄い': 'すごい',
+        '大切': 'たいせつ',
+        '素晴らしい': 'すばらしい',
+        '好': 'す'
+      };
+      
+      // テキストを簡易的に解析してふりがなを付ける
+      let result = text;
+      
+      // APIリクエストのシミュレーション
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 漢字にふりがなを追加
+      Object.keys(furiganaMap).forEach(kanji => {
+        const furigana = furiganaMap[kanji];
+        const regex = new RegExp(kanji, 'g');
+        result = result.replace(regex, `<ruby>${kanji}<rt>${furigana}</rt></ruby>`);
+      });
+      
+      setPreviewWithFurigana(result);
+      return result;
+    } catch (error) {
+      console.error('ふりがな生成エラー:', error);
+      throw error;
+    } finally {
+      setIsGeneratingFurigana(false);
+    }
+  };
+  
+  // フィードバックテキストが変更されたときにふりがなをプレビュー
+  useEffect(() => {
+    if (activeTab === 'custom' && withFurigana && feedback) {
+      const debounce = setTimeout(async () => {
+        try {
+          await generateFurigana(feedback);
+        } catch (error) {
+          console.error('ふりがなプレビューエラー:', error);
+        }
+      }, 500);
+      
+      return () => clearTimeout(debounce);
+    }
+  }, [feedback, withFurigana, activeTab]);
+  
+  // モーダルがオープンしたときの処理
+  useEffect(() => {
+    if (isOpen && activeTab === 'custom') {
+      setPreviewWithFurigana('');
+    }
+  }, [isOpen, activeTab]);
+
   // 画像をBase64エンコードする関数
   const getBase64FromUrl = async (url: string): Promise<string> => {
     try {
@@ -848,7 +963,7 @@ const FeedbackModal = memo(({
                 4. 感情表現
                 5. 独創性・創造性の要素
                 
-                そして、それらの情報をもとに、子供が喜ぶような具体的で温かい褒め言葉を5つ提案してください。
+                そして、それらの情報をもとに、子供が喜ぶような具体的で温かい褒め言葉を5つ以上提案してください。
                 子供向けの優しい言葉遣いで、「〜だね！」「〜してるね！」などのフレンドリーな表現を使い、
                 作品の良いところを具体的に褒める内容にしてください。`
               },
@@ -999,12 +1114,14 @@ const FeedbackModal = memo(({
       // レスポンスの解析
       const { suggestions, explanation } = analyzeGeminiResponse(response);
       
-      setAiSuggestions(suggestions);
+      // 最大5件の提案を表示
+      const displaySuggestions = suggestions.slice(0, 5);
+      setAiSuggestions(displaySuggestions);
       setAiExplanation(explanation);
       
       // 最初の提案を自動的に選択
-      if (suggestions.length > 0) {
-        setFeedback(suggestions[0]);
+      if (displaySuggestions.length > 0) {
+        setFeedback(displaySuggestions[0]);
       }
       
       toast.success('AIがフィードバックを提案しました');
@@ -1014,7 +1131,8 @@ const FeedbackModal = memo(({
       
       // エラー時にはモックデータを使用
       const mockSuggestions = await mockAIFeedbackGenerator(work);
-      setAiSuggestions(mockSuggestions);
+      // 最大5件に制限
+      setAiSuggestions(mockSuggestions.slice(0, 5));
       setAiExplanation('モックデータによる褒め言葉生成を行いました。');
       
       // 最初の提案を自動的に選択
@@ -1057,8 +1175,8 @@ const FeedbackModal = memo(({
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity animate-fadeIn"
       onClick={handleOverlayClick}
     >
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full transform transition-all animate-scaleIn">
-        <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto transform transition-all animate-scaleIn">
+        <div className="p-5 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
           <h3 className="text-lg font-semibold text-gray-800">
             「{work.title}」へのフィードバック
           </h3>
@@ -1068,6 +1186,25 @@ const FeedbackModal = memo(({
           >
             <X size={20} />
           </button>
+        </div>
+        
+        {/* ふりがなオプション */}
+        <div className="px-5 py-2 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-700">こどもが読めるふりがなを付ける</span>
+            <div className="inline-flex items-center p-1 bg-indigo-50 rounded-md">
+              <Sparkles className="h-3 w-3 text-indigo-500" />
+            </div>
+          </div>
+          <label className="inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={withFurigana}
+              onChange={(e) => setWithFurigana(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
         </div>
         
         {/* タブ切り替え */}
@@ -1104,6 +1241,7 @@ const FeedbackModal = memo(({
           <div className="p-5">
             <p className="text-sm text-gray-600 mb-4">
               テンプレートをタップすると、すぐにフィードバックが送信されます。
+              {withFurigana && <span className="text-indigo-600 font-medium"> ふりがなは自動で付加されます。</span>}
             </p>
             
             <div className="grid grid-cols-2 gap-3">
@@ -1156,8 +1294,8 @@ const FeedbackModal = memo(({
                 <p className="flex items-start gap-1.5">
                   <Sparkles className="h-3 w-3 mt-0.5 text-indigo-500" />
                   <span>
-                    Gemini画像認識AIが作品を分析し、色使いや構図、表現技法などの特徴を検出して、具体的かつ温かい褒め言葉を自動生成します。
-                    お子様の特性や成長に合わせた、個別化されたフィードバックが簡単に作成できます。
+                    画像から特徴を分析し、ポジティブなフィードバックを自動生成します。
+                    お子様の創作意欲を高める褒め言葉が簡単に作成できます。
                   </span>
                 </p>
               </div>
@@ -1267,7 +1405,7 @@ const FeedbackModal = memo(({
               <button
                 type="submit"
                 className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors shadow-sm flex items-center gap-2"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (withFurigana && isGeneratingFurigana)}
               >
                 {isSubmitting ? (
                   <>
@@ -1323,7 +1461,9 @@ export default function ParentWorks() {
   const handleFeedbackClick = (work: Work) => {
     // すでにフィードバックがある場合は詳細ページに遷移
     if (work.feedbackCount && work.feedbackCount > 0) {
-      navigate(`/parent/works/${work.id}`);
+      // フィードバック済みでも追加のフィードバックができるようにモーダルを表示
+      setSelectedWork(work);
+      setIsModalOpen(true);
     } else {
       // フィードバックがない場合はモーダルを表示
       setSelectedWork(work);

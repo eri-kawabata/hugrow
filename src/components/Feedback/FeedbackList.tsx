@@ -60,6 +60,9 @@ const FeedbackItem = memo(({ feedback, onLike }: FeedbackItemProps) => {
     ? feedback.feedback.replace(/^\[(.*?)\]\s*/, '')
     : feedback.feedback;
 
+  // ふりがなの抽出（<ruby>漢字<rt>ふりがな</rt></ruby>の形式）
+  const hasRuby = feedbackText.includes('<ruby>');
+  
   // ユーザー名を取得する関数
   const getUserName = () => {
     // プロフィールのusernameフィールドがあればそれを優先的に使用
@@ -128,9 +131,13 @@ const FeedbackItem = memo(({ feedback, onLike }: FeedbackItemProps) => {
             </div>
           )}
           
-          <p className="text-gray-700 whitespace-pre-wrap break-words">
-            {feedbackText}
-          </p>
+          {hasRuby ? (
+            <div className="text-gray-700 whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: feedbackText }} />
+          ) : (
+            <p className="text-gray-700 whitespace-pre-wrap break-words">
+              {feedbackText}
+            </p>
+          )}
           
           {onLike && (
             <div className="mt-3 flex justify-end">
