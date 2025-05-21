@@ -5,6 +5,70 @@ import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import './ParentWorks.css'; // アニメーション用のCSSをインポート
 
+// 控えめな紙吹雪エフェクト
+export const showConfetti = () => {
+  // CSSでエフェクトを追加
+  const confettiContainer = document.createElement('div');
+  confettiContainer.className = 'confetti-container';
+  document.body.appendChild(confettiContainer);
+  
+  // 紙吹雪の数を減らして控えめに (100→30)
+  for (let i = 0; i < 30; i++) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti';
+    confetti.style.left = `${Math.random() * 100}%`;
+    confetti.style.top = `${Math.random() * 20}%`; // 位置をランダム化
+    confetti.style.animationDelay = `${Math.random() * 2}s`;
+    confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 80%, 60%)`;
+    
+    // シンプルな形状にする
+    if (Math.random() > 0.7) {
+      // 少数だけ特殊な形に
+      const shapes = ['★', '●', '■'];
+      confetti.innerText = shapes[Math.floor(Math.random() * shapes.length)];
+      confetti.style.fontSize = `${8 + Math.random() * 12}px`; // サイズを小さく
+      confetti.style.backgroundColor = 'transparent';
+      confetti.style.color = `hsl(${Math.random() * 360}, 80%, 60%)`;
+    } else {
+      // ほとんどは小さな丸や四角に
+      confetti.style.width = `${4 + Math.random() * 6}px`; // サイズを小さく
+      confetti.style.height = `${4 + Math.random() * 6}px`;
+    }
+    
+    // アニメーションを短く
+    confetti.style.animation = `fall ${2 + Math.random() * 3}s linear forwards, spin ${1 + Math.random() * 2}s linear infinite`;
+    
+    confettiContainer.appendChild(confetti);
+  }
+  
+  // キラキラエフェクトも控えめに
+  for (let i = 0; i < 10; i++) { // 数を減らす
+    const sparkle = document.createElement('div');
+    sparkle.className = 'sparkle';
+    sparkle.style.left = `${Math.random() * 100}%`;
+    sparkle.style.top = `${Math.random() * 100}%`;
+    sparkle.style.animationDelay = `${Math.random() * 1.5}s`;
+    sparkle.style.animationDuration = `${0.5 + Math.random() * 0.8}s`;
+    confettiContainer.appendChild(sparkle);
+  }
+  
+  // 効果音は省略
+  
+  // 3秒後にコンテナを削除 (時間を短く)
+  setTimeout(() => {
+    // フェードアウトアニメーション
+    confettiContainer.style.opacity = '0';
+    confettiContainer.style.transition = 'opacity 0.8s ease-out';
+    
+    // 完全に消える
+    setTimeout(() => {
+      if (document.body.contains(confettiContainer)) {
+        document.body.removeChild(confettiContainer);
+      }
+    }, 800);
+  }, 3000);
+};
+
 // Work型の定義
 interface Work {
   id: string;
@@ -473,29 +537,6 @@ const WorkCard = memo(({ work, onFeedbackClick, getSafeMediaUrl, updatedWorkIds,
       }, 800);
     }
   };
-  
-  // 派手な紙吹雪エフェクト
-  const showConfetti = () => {
-    // CSSでエフェクトを追加
-    const confettiContainer = document.createElement('div');
-    confettiContainer.className = 'confetti-container';
-    document.body.appendChild(confettiContainer);
-    
-    // 50個の紙吹雪を生成
-    for (let i = 0; i < 50; i++) {
-      const confetti = document.createElement('div');
-      confetti.className = 'confetti';
-      confetti.style.left = `${Math.random() * 100}%`;
-      confetti.style.animationDelay = `${Math.random() * 3}s`;
-      confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
-      confettiContainer.appendChild(confetti);
-    }
-    
-    // 3秒後にコンテナを削除
-    setTimeout(() => {
-      document.body.removeChild(confettiContainer);
-    }, 3000);
-  };
 
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 animate-fadeIn transform hover:-translate-y-1">
@@ -559,12 +600,12 @@ const WorkCard = memo(({ work, onFeedbackClick, getSafeMediaUrl, updatedWorkIds,
           
           {/* ローカルステートを使用して表示切り替え */}
           {localHasFeedback ? (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onFeedbackClick(work);
-              }}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onFeedbackClick(work);
+            }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 hover:from-emerald-100 hover:to-green-100 border border-emerald-200"
             >
               <MessageCircle className="h-5 w-5 text-emerald-500" />
@@ -603,8 +644,8 @@ const WorkCard = memo(({ work, onFeedbackClick, getSafeMediaUrl, updatedWorkIds,
                   title="創造的！"
                 >
                   <Award className={`h-5 w-5 ${animatingButtonId === `praise-creative-${work.id}` ? 'animate-bounce' : ''}`} />
-                </button>
-              </div>
+          </button>
+        </div>
               
               {/* 詳細フィードバックボタン */}
               <button
@@ -733,7 +774,7 @@ const FeedbackModal = memo(({
   // Gemini API設定（実際の実装では環境変数などから取得）
   const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
   const GEMINI_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1/models/gemini-pro-vision:generateContent';
-  
+
   // モーダルを閉じる時に状態をリセット
   useEffect(() => {
     if (!isOpen) {
@@ -774,10 +815,13 @@ const FeedbackModal = memo(({
     
     setIsSubmitting(true);
     try {
-      await onSubmit(work.id, feedbackText);
+      const success = await onSubmit(work.id, feedbackText);
+      if (success) {
       onClose();
+      }
     } catch (error) {
       console.error('フィードバック送信エラー:', error);
+      toast.error('フィードバックの送信に失敗しました');
     } finally {
       setIsSubmitting(false);
     }
@@ -810,11 +854,24 @@ const FeedbackModal = memo(({
     }
     
     try {
-      await onSubmit(work.id, feedbackText);
-      toast.success('3秒で褒めました！');
-      onClose();
+      setIsSubmitting(true);
+      const success = await onSubmit(work.id, feedbackText);
+      if (success) {
+        // 送信成功時に紙吹雪エフェクト表示
+        showConfetti();
+        toast.success('3秒で褒めました！', {
+          icon: '🎉',
+          duration: 3000,
+          style: {
+            background: 'linear-gradient(to right, #10B981, #059669)',
+            color: 'white',
+          },
+        });
+        onClose();
+      }
     } catch (error) {
       console.error('フィードバック送信エラー:', error);
+      toast.error('フィードバックの送信に失敗しました');
     } finally {
       setIsSubmitting(false);
     }
@@ -1123,8 +1180,6 @@ const FeedbackModal = memo(({
       if (displaySuggestions.length > 0) {
         setFeedback(displaySuggestions[0]);
       }
-      
-      toast.success('AIがフィードバックを提案しました');
     } catch (error) {
       console.error('AI生成エラー:', error);
       toast.error('フィードバック生成に失敗しました');
@@ -1147,6 +1202,31 @@ const FeedbackModal = memo(({
   // AI提案を選択
   const handleSelectAISuggestion = (suggestion: string) => {
     setFeedback(suggestion);
+    
+    // 選択時にも小さなエフェクトを表示
+    const button = document.querySelector(`button[data-suggestion="${suggestion}"]`);
+    if (button) {
+      // ボタンに小さな輝きエフェクトを追加
+      const glowEffect = document.createElement('span');
+      glowEffect.className = 'suggestion-glow-effect';
+      button.appendChild(glowEffect);
+      
+      // 小さな効果音を再生
+      try {
+        const audio = new Audio('/sounds/click.mp3');
+        audio.volume = 0.2;
+        audio.play().catch(e => console.log('効果音を再生できませんでした:', e));
+      } catch (e) {
+        console.log('効果音の再生に対応していない環境です');
+      }
+      
+      // エフェクトを削除
+      setTimeout(() => {
+        if (button.contains(glowEffect)) {
+          button.removeChild(glowEffect);
+        }
+      }, 700);
+    }
   };
 
   // モーダルのオーバーレイ部分をクリックした時に閉じる
@@ -1262,13 +1342,13 @@ const FeedbackModal = memo(({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-5">
+        <form onSubmit={handleSubmit} className="p-5">
             {/* AIアシスタント */}
-            <div className="mb-4">
+          <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-sm font-medium text-gray-700">
                   画像分析AIによる褒め言葉生成
-                </label>
+            </label>
                 <button
                   type="button"
                   onClick={handleAIGenerate}
@@ -1320,7 +1400,8 @@ const FeedbackModal = memo(({
                         key={index}
                         type="button"
                         onClick={() => handleSelectAISuggestion(suggestion)}
-                        className={`w-full text-left p-3 rounded-lg border transition-all ${
+                        data-suggestion={suggestion}
+                        className={`w-full text-left p-3 rounded-lg border transition-all relative ${
                           suggestion === feedback
                             ? 'bg-indigo-50 border-indigo-200 shadow-sm'
                             : 'border-gray-200 hover:bg-gray-50'
@@ -1337,57 +1418,57 @@ const FeedbackModal = memo(({
                           </span>
                         </div>
                         <p className="text-sm text-gray-600">{suggestion}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* フィードバックテキスト入力 */}
-              <div className="mb-4">
-                <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
-                  フィードバックメッセージ {selectedStamp ? '(任意)' : '(必須)'}
-                </label>
-                <textarea
-                  id="feedback"
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="お子様の作品について、具体的に褒めてあげましょう！"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                  rows={4}
-                />
-              </div>
-              
-              {/* 送信ボタン */}
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  disabled={isSubmitting}
-                >
-                  キャンセル
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors shadow-sm flex items-center gap-2"
-                  disabled={isSubmitting || (withFurigana && isGeneratingFurigana)}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                      <span>送信中...</span>
-                    </>
-                  ) : (
-                    <>
-                      <MessageCircle size={16} />
-                      <span>送信する</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              ))}
             </div>
-          </form>
+          </div>
+              )}
+          
+          {/* フィードバックテキスト入力 */}
+          <div className="mb-4">
+            <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
+              フィードバックメッセージ {selectedStamp ? '(任意)' : '(必須)'}
+            </label>
+            <textarea
+              id="feedback"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="お子様の作品について、具体的に褒めてあげましょう！"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+              rows={4}
+            />
+          </div>
+          
+          {/* 送信ボタン */}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors shadow-sm flex items-center gap-2"
+                  disabled={isSubmitting || (withFurigana && isGeneratingFurigana)}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  <span>送信中...</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle size={16} />
+                  <span>送信する</span>
+                </>
+              )}
+            </button>
+              </div>
+          </div>
+        </form>
         )}
       </div>
     </div>
@@ -1459,7 +1540,17 @@ export default function ParentWorks() {
 
       if (error) throw error;
 
-      toast.success('フィードバックを送信しました！');
+      // 成功したら紙吹雪エフェクトを表示
+      showConfetti();
+
+      toast.success('フィードバックを送信しました！', {
+        icon: '🎉',
+        duration: 4000,
+        style: {
+          background: 'linear-gradient(to right, #10B981, #059669)',
+          color: 'white',
+        },
+      });
       
       // 即時UI更新のためのワークID追加
       setUpdatedWorkIds(prev => [...prev, workId]);
@@ -1485,10 +1576,12 @@ export default function ParentWorks() {
         // 非同期で最新データを取得（ただし即時UIは上記で更新済み）
         await fetchWorks();
       }
+      
+      return true; // 成功を示す値を返す
     } catch (err) {
       console.error('フィードバック送信エラー:', err);
       toast.error('フィードバックの送信に失敗しました');
-      throw err;
+      return false; // 失敗を示す値を返す
     }
   };
 
@@ -1575,7 +1668,7 @@ export default function ParentWorks() {
             .select('id, type')
             .eq('profile_id', child.id);
         
-          if (error) {
+      if (error) {
             console.error(`${child.username}の作品統計取得エラー:`, error);
             continue;
           }
@@ -1715,33 +1808,33 @@ export default function ParentWorks() {
     <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
       <h3 className="text-lg font-semibold text-[#5d7799] mb-4">お子様を選択</h3>
       <div className="flex flex-wrap gap-3">
-        {children.map(child => (
-          <button
-            key={child.id}
+                  {children.map(child => (
+                    <button
+                      key={child.id}
             onClick={() => setSelectedChildId(child.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
-              selectedChildId === child.id 
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                        selectedChildId === child.id 
                 ? 'bg-[#5d7799] text-white' 
                 : 'bg-gray-100 text-[#5d7799] hover:bg-gray-200'
-            }`}
-          >
-            {child.avatar_url ? (
-              <img 
-                src={child.avatar_url} 
-                alt={child.username} 
+                      }`}
+                    >
+                        {child.avatar_url ? (
+                          <img 
+                            src={child.avatar_url} 
+                            alt={child.username} 
                 className="w-6 h-6 rounded-full object-cover"
-              />
-            ) : (
+                          />
+                        ) : (
               <User className="w-5 h-5" />
             )}
             <span>{child.username}</span>
             {childrenStats[child.id] && (
               <span className="text-xs opacity-80">({childrenStats[child.id].total})</span>
             )}
-          </button>
-        ))}
-      </div>
-    </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
   );
 
   // 子供の作品統計コンポーネント
@@ -1760,21 +1853,21 @@ export default function ParentWorks() {
           <div className="bg-blue-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
             <div className="text-sm text-blue-700">合計</div>
-          </div>
+                </div>
           <div className="bg-purple-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-purple-600">{stats.drawing}</div>
             <div className="text-sm text-purple-700">お絵かき</div>
-          </div>
+                      </div>
           <div className="bg-green-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-green-600">{stats.photo}</div>
             <div className="text-sm text-green-700">写真</div>
-          </div>
+                          </div>
           <div className="bg-amber-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-amber-600">{stats.audio}</div>
             <div className="text-sm text-amber-700">音声</div>
-          </div>
-        </div>
-      </div>
+                        </div>
+                        </div>
+                          </div>
     );
   };
   
@@ -1791,8 +1884,8 @@ export default function ParentWorks() {
           <h3 className="font-medium text-amber-800">
             フィードバック待ちの作品が{feedbackStats.waiting}件あります
           </h3>
-        </div>
-      </div>
+                        </div>
+                          </div>
     );
   };
 
@@ -1823,7 +1916,7 @@ export default function ParentWorks() {
             </div>
             
             {/* フィルターボタン */}
-            <button
+                <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50"
             >
@@ -1832,16 +1925,16 @@ export default function ParentWorks() {
                 {filter === 'all' ? 'すべて' : 
                  filter === 'drawing' ? 'お絵かき' : 
                  filter === 'photo' ? '写真' : '音声'}
-              </span>
-            </button>
-          </div>
-        </div>
+                    </span>
+                </button>
+              </div>
+                  </div>
                   
         {/* フィルターメニュー */}
         {isFilterOpen && (
           <div className="bg-white rounded-xl shadow-md p-4 mb-6 flex gap-3">
             {['all', 'drawing', 'photo', 'audio'].map((type) => (
-              <button
+                        <button
                 key={type}
                 onClick={() => {
                   setFilter(type as WorkTypeFilter);
@@ -1862,10 +1955,10 @@ export default function ParentWorks() {
                    type === 'drawing' ? 'お絵かき' : 
                    type === 'photo' ? '写真' : '音声'}
                 </span>
-              </button>
-            ))}
-          </div>
-        )}
+                        </button>
+                      ))}
+                </div>
+              )}
         
         {/* 子供選択UI */}
         <ChildSelector />
@@ -1949,19 +2042,19 @@ export default function ParentWorks() {
           <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6">
             <p className="font-semibold">エラーが発生しました</p>
             <p className="text-sm">{error.message}</p>
-            <button
+                <button
               onClick={() => window.location.reload()}
               className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 rounded-full text-sm"
-            >
+                >
               再読み込み
-            </button>
-          </div>
+                </button>
+            </div>
         ) : filteredWorks.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-8 text-center">
             <div className="flex justify-center mb-4">
               <div className="bg-gray-100 p-4 rounded-full">
                 <ImageIcon className="h-10 w-10 text-gray-400" />
-              </div>
+          </div>
             </div>
             <h3 className="text-xl font-semibold text-gray-700 mb-2">
               {searchTerm ? '検索結果がありません' : '作品がありません'}
@@ -1997,6 +2090,111 @@ export const createStyles = () => {
     
     .animate-scaleIn {
       animation: scaleIn 0.2s ease-out forwards;
+    }
+    
+    @keyframes fall {
+      0% { transform: translateY(-100px); opacity: 1; }
+      80% { opacity: 1; }
+      100% { transform: translateY(100vh); opacity: 0; }
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .confetti-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+      overflow: hidden;
+    }
+    
+    .confetti {
+      position: absolute;
+      top: -20px;
+      border-radius: 50%;
+      width: 8px;
+      height: 8px;
+      opacity: 0.8;
+      animation: fall 5s linear forwards;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    @keyframes sparkle {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+    
+    .sparkle {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 15 15'%3E%3Cpath d='M7.5,0 L9,5 L14,7.5 L9,10 L7.5,15 L6,10 L1,7.5 L6,5 Z' fill='%23FFD700'/%3E%3C/svg%3E");
+      background-size: contain;
+      animation: sparkle 1s ease-in-out infinite;
+      opacity: 0;
+    }
+    
+    @keyframes ai-analysis-appear {
+      0% { transform: translate(-50%, 100%); opacity: 0; }
+      10% { transform: translate(-50%, -50%); opacity: 1; }
+      90% { transform: translate(-50%, -50%); opacity: 1; }
+      100% { transform: translate(-50%, -150%); opacity: 0; }
+    }
+    
+    .ai-analysis-container {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: ai-analysis-appear 2s ease-in-out forwards;
+      pointer-events: none;
+      transition: opacity 0.5s ease-out;
+    }
+    
+    .ai-analysis-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.7));
+    }
+    
+    .ai-analysis-text {
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(to right, #4F46E5, #7C3AED);
+      padding: 8px 16px;
+      border-radius: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    @keyframes suggestion-glow {
+      0% { box-shadow: 0 0 5px rgba(79, 70, 229, 0.3); opacity: 0.3; }
+      50% { box-shadow: 0 0 20px rgba(79, 70, 229, 0.8); opacity: 0.8; }
+      100% { box-shadow: 0 0 5px rgba(79, 70, 229, 0.3); opacity: 0; }
+    }
+    
+    .suggestion-glow-effect {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      animation: suggestion-glow 0.7s ease-in-out forwards;
+      pointer-events: none;
     }
   `;
   document.head.appendChild(style);
