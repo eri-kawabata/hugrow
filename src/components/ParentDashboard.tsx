@@ -268,7 +268,8 @@ export const ParentDashboard: React.FC = () => {
   const [stats, setStats] = useState({
     totalWorks: 0,
     totalEmotions: 0,
-    totalLearning: 0
+    totalLearning: 0,
+    waitingFeedback: 0
   });
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string>('');
@@ -320,7 +321,8 @@ export const ParentDashboard: React.FC = () => {
       setStats({
         totalWorks: 0,
         totalEmotions: 0,
-        totalLearning: 0
+        totalLearning: 0,
+        waitingFeedback: 0
       });
       setEmotions([]);
       setEmotionStats({
@@ -625,6 +627,28 @@ export const ParentDashboard: React.FC = () => {
         emotions: emotionsCount.count
       });
 
+      // フィードバック待ちの作品数を取得
+      const { data: worksData, error: worksDataError } = await supabase
+        .from('works')
+        .select('id, profile_id');
+      
+      if (worksDataError) throw worksDataError;
+      
+      // 各作品のフィードバック状況を確認
+      let waitingFeedbackCount = 0;
+      if (worksData && worksData.length > 0) {
+        const worksForChild = worksData.filter(w => w.profile_id === childId);
+        const feedbackPromises = worksForChild.map(work => 
+          supabase
+            .from('work_feedback')
+            .select('id', { count: 'exact', head: true })
+            .eq('work_id', work.id)
+        );
+        
+        const feedbackResults = await Promise.all(feedbackPromises);
+        waitingFeedbackCount = feedbackResults.filter(result => !result.error && result.count === 0).length;
+      }
+
       // 感情データを取得
       await fetchEmotionData(childId);
       
@@ -634,7 +658,8 @@ export const ParentDashboard: React.FC = () => {
       setStats(prev => ({
         ...prev,
         totalWorks: worksCount.count || 0,
-        totalEmotions: emotionsCount.count || 0
+        totalEmotions: emotionsCount.count || 0,
+        waitingFeedback: waitingFeedbackCount
       }));
     } catch (error) {
       handleSupabaseError(error, '統計情報の取得に失敗しました');
@@ -1129,10 +1154,39 @@ export const ParentDashboard: React.FC = () => {
                 <p className="text-lg font-bold">{stats.totalLearning}</p>
                 <p className="text-xs text-blue-50">学習</p>
               </div>
+              <div className="text-center px-4 first:pl-0 last:pr-0">
+                <p className="text-lg font-bold">{stats.waitingFeedback}</p>
+                <p className="text-xs text-blue-50">フィードバック待ち</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* フィードバック待ちバナー */}
+      {stats.waitingFeedback > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 mb-6 shadow-sm animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-100 rounded-full p-2.5 shadow-sm flex-shrink-0">
+              <Clock className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-amber-800">
+                フィードバック待ちの作品が{stats.waitingFeedback}件あります
+              </h3>
+              <p className="text-xs text-amber-600 mt-1">
+                お子様の成長のために、フィードバックを送りましょう
+              </p>
+            </div>
+            <Link 
+              to="/parent/works" 
+              className="ml-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-full text-sm font-medium shadow-sm transition-colors"
+            >
+              確認する
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* 子供選択タブ - モダンなデザイン */}
       {children.length >= 1 && (
