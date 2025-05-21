@@ -427,7 +427,7 @@ export const ParentDashboard: React.FC = () => {
       // 親に関連付けられた子供を取得
       const { data: childProfiles, error: childrenError } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, birthday, child_number, status, last_active_at')
+        .select('id, username, display_name, avatar_url, birthday, child_number, status, last_active_at')
         .eq('parent_id', parentProfile.id)
         .eq('role', 'child');
       
@@ -439,6 +439,9 @@ export const ParentDashboard: React.FC = () => {
       
       // 子供の年齢を計算して追加
       const childrenWithAge = (childProfiles || []).map(child => {
+        // display_nameがあればそれを使い、なければusernameを使用
+        const full_name = child.display_name || child.username;
+        
         let age = null;
         if (child.birthday) {
           const birthDate = new Date(child.birthday);
@@ -452,7 +455,7 @@ export const ParentDashboard: React.FC = () => {
             age--;
           }
         }
-        return { ...child, age };
+        return { ...child, age, full_name };
       });
       
       console.log('取得した子供プロファイル:', childrenWithAge);
@@ -521,14 +524,16 @@ export const ParentDashboard: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('username, display_name')
         .eq('id', childId)
         .single();
         
       if (error) throw error;
-      if (data && data.full_name) {
-        console.log(`子供名を取得: ${data.full_name}`);
-        setChildName(data.full_name);
+      if (data) {
+        // display_nameがあればそれを優先、なければusernameを使用
+        const childName = data.display_name || data.username;
+        console.log(`子供名を取得: ${childName}`);
+        setChildName(childName);
       }
     } catch (error) {
       console.error('子供名の取得エラー:', error);
@@ -885,13 +890,12 @@ export const ParentDashboard: React.FC = () => {
     setSelectedChildId(childId);
     // 選択した子供のIDをlocalStorageに保存
     localStorage.setItem('selectedChildId', childId);
-    // 子供の名前もlocalStorageに保存（full_nameを使用）
-    const selectedChild = children.find(child => child.id === childId);
-    if (selectedChild && selectedChild.full_name) {
-      localStorage.setItem('childName', selectedChild.full_name);
-    }
+    
+    // 子供の最新データを取得（display_nameの変更を反映するため）
+    fetchChildName(childId);
+    
     setIsChildrenDropdownOpen(false);
-  }, [children]);
+  }, []);
 
   // 日付フォーマット関数
   const formatDate = useCallback((dateString: string) => {

@@ -167,7 +167,7 @@ export function ParentProfile() {
       console.log('Has birthday column:', hasBirthdayColumn);
 
       // 適切なカラムを選択
-      let selectColumns = 'id, username, role, avatar_url, child_number';
+      let selectColumns = 'id, username, role, avatar_url, child_number, display_name';
       if (hasBirthdateColumn) {
         selectColumns += ', birthdate';
       } else if (hasBirthdayColumn) {
@@ -193,6 +193,10 @@ export function ParentProfile() {
         const mappedChild: any = { ...child };
         if (hasBirthdayColumn && !hasBirthdateColumn && child.birthday) {
           mappedChild.birthdate = child.birthday;
+        }
+        // display_nameがある場合はusernameに設定
+        if (child.display_name && !child.username) {
+          mappedChild.username = child.display_name;
         }
         return mappedChild;
       });
@@ -633,7 +637,8 @@ export function ParentProfile() {
       console.log('Has birthday column:', hasBirthdayColumn);
 
       const updateData: any = {
-        username: username.trim() || null,
+        username: username.trim(),
+        display_name: username.trim(), // display_nameもusernameと同じ値に設定
         updated_at: new Date().toISOString()
       };
 
@@ -644,11 +649,13 @@ export function ParentProfile() {
         updateData.birthday = birthday || null;
       }
 
+      console.log('Updating child profile with data:', updateData);
+
+      // 無限再帰エラーを回避するために、eq('role', 'child')フィルタを削除
       const { error } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('id', childId)
-        .eq('role', 'child');
+        .eq('id', childId);
 
       if (error) {
         console.error('Error updating child profile:', error);
@@ -675,12 +682,11 @@ export function ParentProfile() {
     try {
       setUpdating(true);
       
-      // プロフィール削除
+      // プロフィール削除 - 無限再帰エラーを回避するためにroleフィルタを削除
       const { error } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', childId)
-        .eq('role', 'child');
+        .eq('id', childId);
 
       if (error) throw error;
 
@@ -735,7 +741,7 @@ export function ParentProfile() {
         
         const base64Image = e.target.result.toString();
         
-        // プロフィール更新
+        // プロフィール更新 - 無限再帰を避けるためIDのみでフィルタリング
         const { error } = await supabase
           .from('profiles')
           .update({ 
@@ -1062,7 +1068,7 @@ export function ParentProfile() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleUpdateChild(child.id, child.username || '', child.birthdate || '')}
-                          disabled={updating}
+                          disabled={updating || !child.username}
                           className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 
                             transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                         >
