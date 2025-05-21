@@ -511,20 +511,7 @@ const WorkCard = memo(({ work, onFeedbackClick, getSafeMediaUrl, updatedWorkIds,
       // 親コンポーネントに通知して全体の状態も更新
       onQuickFeedbackSubmit(work.id);
 
-      // フィードバックメッセージ
-      const messages = [
-        '3秒で褒めました！',
-        'すばらしい！フィードバック完了！',
-        '子供の自信につながりました！',
-        'ステキな褒め言葉を送りました！'
-      ];
-      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-      toast.success(randomMessage, {
-        icon: praiseType === 'great' ? '🌟' : praiseType === 'effort' ? '❤️' : '🏆',
-        duration: 3000
-      });
-      
-      // 成功エフェクト - 派手な花火のようなアニメーション
+      // 成功エフェクト - 紙吹雪アニメーション
       showConfetti();
       
     } catch (err) {
@@ -817,7 +804,7 @@ const FeedbackModal = memo(({
     try {
       const success = await onSubmit(work.id, feedbackText);
       if (success) {
-      onClose();
+        onClose();
       }
     } catch (error) {
       console.error('フィードバック送信エラー:', error);
@@ -859,14 +846,6 @@ const FeedbackModal = memo(({
       if (success) {
         // 送信成功時に紙吹雪エフェクト表示
         showConfetti();
-        toast.success('3秒で褒めました！', {
-          icon: '🎉',
-          duration: 3000,
-          style: {
-            background: 'linear-gradient(to right, #10B981, #059669)',
-            color: 'white',
-          },
-        });
         onClose();
       }
     } catch (error) {
@@ -1236,17 +1215,105 @@ const FeedbackModal = memo(({
     }
   };
 
-  // クイックフィードバックのテンプレート
-  const quickTemplates = [
-    { id: 'great', text: 'すごい！センスがいいね！', stamp: 'star', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-    { id: 'effort', text: 'よく頑張ったね！素晴らしいよ！', stamp: 'heart', color: 'bg-rose-100 text-rose-700 border-rose-200' },
-    { id: 'creative', text: 'とても創造的で素敵です！', stamp: 'award', color: 'bg-purple-100 text-purple-700 border-purple-200' },
-    { id: 'improvement', text: '前よりも上手になったね！', stamp: 'thumbsup', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-    { id: 'detail', text: '細かいところまで丁寧に作ったね！', stamp: 'smile', color: 'bg-green-100 text-green-700 border-green-200' },
-    { id: 'color', text: '色使いがとても素敵です！', stamp: 'star', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-    { id: 'enjoy', text: '楽しんで作ったのが伝わってくるね！', stamp: 'smile', color: 'bg-green-100 text-green-700 border-green-200' },
-    { id: 'idea', text: 'アイデアが素晴らしいね！', stamp: 'award', color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  ];
+  // 褒め言葉のカテゴリーとその候補文言
+  const praisePhrases = {
+    'creative': {
+      icon: <Award className="h-4 w-4 text-purple-500" />,
+      title: '創造性',
+      buttonClass: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
+      iconClass: 'text-purple-500',
+      iconComponent: Award,
+      stampId: 'award',
+      phrases: [
+        "とても創造的で素敵です！",
+        "アイデアが素晴らしいね！",
+        "想像力が豊かでびっくりしたよ！",
+        "こんなアイデアを思いつくなんてすごい！",
+        "自分だけの世界を作れているね！",
+        "他にはない独創的な表現だね！",
+        "新しい発想が光っているよ！",
+        "工夫がいっぱい詰まってるね！"
+      ]
+    },
+    'effort': {
+      icon: <Heart className="h-4 w-4 text-rose-500" />,
+      title: '頑張り',
+      buttonClass: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
+      iconClass: 'text-rose-500',
+      iconComponent: Heart,
+      stampId: 'heart',
+      phrases: [
+        "よく頑張ったね！素晴らしいよ！",
+        "細かいところまで丁寧に作ったね！",
+        "集中して頑張ったんだね！えらい！",
+        "こんなに手間をかけて作ったんだね！",
+        "一生懸命作った気持ちが伝わってくるよ！",
+        "最後までやり遂げたね！すごい！",
+        "難しいところも諦めずに頑張ったね！",
+        "コツコツ作業したんだね、素晴らしい！"
+      ]
+    },
+    'skill': {
+      icon: <Star className="h-4 w-4 text-amber-500" />,
+      title: '上手さ',
+      buttonClass: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+      iconClass: 'text-amber-500',
+      iconComponent: Star,
+      stampId: 'star',
+      phrases: [
+        "すごい！センスがいいね！",
+        "色使いがとても素敵です！",
+        "バランスがとても良くて見事！",
+        "技術が上手に使えているね！",
+        "形や線がとても美しいよ！",
+        "色の組み合わせが絶妙だね！",
+        "全体のまとまりが素晴らしい！",
+        "プロみたいな仕上がりだね！"
+      ]
+    },
+    'growth': {
+      icon: <ThumbsUp className="h-4 w-4 text-blue-500" />,
+      title: '成長',
+      buttonClass: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+      iconClass: 'text-blue-500',
+      iconComponent: ThumbsUp,
+      stampId: 'thumbsup',
+      phrases: [
+        "前よりも上手になったね！",
+        "どんどん上達しているね！",
+        "新しい表現に挑戦したね！",
+        "成長が感じられる素敵な作品！",
+        "着実に腕を上げているね！",
+        "前回より表現力が増しているよ！",
+        "技術が確実に伸びてるね！",
+        "どんどん自分の世界を広げているね！"
+      ]
+    },
+    'joy': {
+      icon: <Smile className="h-4 w-4 text-green-500" />,
+      title: '楽しさ',
+      buttonClass: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
+      iconClass: 'text-green-500',
+      iconComponent: Smile,
+      stampId: 'smile',
+      phrases: [
+        "楽しんで作ったのが伝わってくるね！",
+        "見ているだけで元気になるよ！",
+        "わくわくする気持ちが伝わってくる！",
+        "楽しい気持ちがあふれてるね！",
+        "明るい気持ちになる作品だね！",
+        "作る喜びが表現されてるね！",
+        "見てる人を笑顔にしてくれるよ！",
+        "幸せな気持ちが伝わってくるね！"
+      ]
+    }
+  };
+
+  // カテゴリーから褒め言葉をランダムに選択する関数
+  const getRandomPraise = (category) => {
+    const phrases = praisePhrases[category].phrases;
+    return phrases[Math.floor(Math.random() * phrases.length)];
+  };
 
   if (!isOpen || !work) return null;
 
@@ -1319,27 +1386,49 @@ const FeedbackModal = memo(({
         
         {activeTab === 'quick' ? (
           <div className="p-5">
-            <p className="text-sm text-gray-600 mb-5">
-              テンプレートをタップすると、すぐにフィードバックが送信されます。
+            <p className="text-sm text-gray-600 mb-3">
+              テンプレートをタップすると、フィードバックが即座に送信されます。
               {withFurigana && <span className="text-indigo-600 font-medium"> ふりがなは自動で付加されます。</span>}
             </p>
             
-            <div className="grid grid-cols-2 gap-4">
-              {quickTemplates.map(template => (
-                <button
-                  key={template.id}
-                  onClick={() => handleQuickFeedback(template.text, template.stamp)}
-                  disabled={isSubmitting}
-                  className={`p-3.5 rounded-lg border ${template.color} text-left hover:opacity-90 transition-opacity shadow-sm`}
-                >
-                  <div className="flex items-center gap-2 mb-1.5">
-                    {STAMPS.find(s => s.id === template.stamp)?.icon}
-                    <span className="font-medium">タップして送信</span>
+            <div className="grid grid-cols-1 gap-3">
+              {/* 各カテゴリーから1つずつランダムに選ぶように変更 */}
+              {Object.keys(praisePhrases).map((categoryKey) => {
+                const category = praisePhrases[categoryKey];
+                // 各カテゴリーごとにランダムな褒め言葉を1つだけ選択
+                const randomIndex = Math.floor(Math.random() * category.phrases.length);
+                const randomPhrase = category.phrases[randomIndex];
+                
+                return (
+                  <div key={categoryKey} className="mb-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      {category.icon}
+                      <h4 className="text-sm font-medium text-gray-700">{category.title}</h4>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        key={`${categoryKey}-${randomIndex}`}
+                        onClick={() => handleQuickFeedback(randomPhrase, category.stampId)}
+                        disabled={isSubmitting}
+                        className={`p-4 rounded-lg border ${category.buttonClass} text-left transition-all shadow-sm flex justify-between items-center`}
+                      >
+                        <span>{randomPhrase}</span>
+                        <category.iconComponent className={`h-5 w-5 ${category.iconClass}`} />
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-sm">{template.text}</p>
-                </button>
-              ))}
+                );
+              })}
             </div>
+
+            {isSubmitting && (
+              <div className="mt-4 flex justify-center">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-lg">
+                  <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full"></div>
+                  <span className="text-sm text-indigo-700">送信中...</span>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
         <form onSubmit={handleSubmit} className="p-5">
