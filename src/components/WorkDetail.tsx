@@ -216,39 +216,37 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
         <div className="absolute top-1/4 -right-20 w-80 h-80 bg-gradient-to-br from-[#81D4FA] to-[#4FC3F7] rounded-full opacity-60 blur-md"></div>
         <div className="absolute bottom-1/5 -left-16 w-72 h-72 bg-gradient-to-br from-[#AED581] to-[#7CB342] rounded-full opacity-50 blur-md"></div>
         
-        {/* 小さな背景の円形装飾を追加 */}
-        <div className="absolute top-1/4 left-1/4 w-36 h-36 bg-gradient-to-br from-[#FFE082] to-[#FFCC80] rounded-full opacity-40 blur-sm"></div>
-        <div className="absolute bottom-1/3 right-1/3 w-32 h-32 bg-gradient-to-br from-[#B39DDB] to-[#9575CD] rounded-full opacity-40 blur-sm"></div>
-        <div className="absolute top-2/3 left-1/3 w-28 h-28 bg-gradient-to-br from-[#80DEEA] to-[#4DD0E1] rounded-full opacity-40 blur-sm"></div>
+        {/* 小さな背景の円形装飾を削減 */}
+        <div className="absolute bottom-1/3 right-1/3 w-24 h-24 bg-gradient-to-br from-[#B39DDB] to-[#9575CD] rounded-full opacity-30 blur-md"></div>
         
-        {/* パーティクルアニメーション - より多くの星を追加 */}
-        {[...Array(18)].map((_, i) => (
+        {/* パーティクルアニメーション - さらに削減して洗練 */}
+        {[...Array(4)].map((_, i) => (
           <motion.div
             key={`star-title-${i}`}
             className="absolute"
             style={{
-              width: `${Math.random() * 14 + 8}px`,
-              height: `${Math.random() * 14 + 8}px`,
+              width: `${Math.random() * 10 + 4}px`,
+              height: `${Math.random() * 10 + 4}px`,
               top: `${Math.random() * 100}%`,
               left: `${Math.random() * 100}%`,
-              background: `radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 70%)`,
+              background: `radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)`,
               borderRadius: '50%',
               zIndex: 5,
             }}
             animate={{
-              scale: [1, 1.8, 1],
-              opacity: [0.7, 1, 0.7],
+              scale: [0.9, 1.2, 0.9],
+              opacity: [0.5, 0.8, 0.5],
             }}
             transition={{
-              duration: 2 + Math.random() * 3,
+              duration: 4 + Math.random() * 2,
               repeat: Infinity,
-              delay: Math.random() * 5,
+              delay: Math.random() * 2,
             }}
           />
         ))}
         
-        {/* 浮かぶ泡 - より多様な動きと色 */}
-        {[...Array(20)].map((_, i) => (
+        {/* 浮かぶ泡 - さらに削減 */}
+        {[...Array(5)].map((_, i) => (
           <motion.div
             key={`bubble-title-${i}`}
             className="absolute rounded-full"
@@ -355,12 +353,12 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
                     </motion.span>
                   ))}
                   
-                  {/* テキスト部分をよりシンプルにし、サイズを小さくする */}
-                  <span className="relative inline-block text-white px-6 py-2 font-extrabold text-3xl"
+                  {/* テキスト部分をよりシンプルで洗練したデザインに */}
+                  <span className="relative inline-block text-white px-5 py-1 font-extrabold text-3xl"
                     style={{
-                      textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                      letterSpacing: '2px',
-                      lineHeight: '1.2'
+                      textShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                      letterSpacing: '1.5px',
+                      lineHeight: '1.05'
                     }}>
                     {work.title}
                   </span>
@@ -392,7 +390,7 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
               </motion.h1>
               {work.description && (
                 <motion.p 
-                  className="text-[#4A154B] text-center mt-6 text-lg font-medium px-8 py-4 rounded-xl bg-white/50 backdrop-blur-sm shadow-inner max-w-[90%] mx-auto border border-white/30"
+                  className="text-[#4A154B] text-center mt-4 text-lg font-medium px-7 py-2.5 rounded-xl bg-white/50 backdrop-blur-sm shadow-inner max-w-[85%] mx-auto border border-white/30"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
@@ -818,7 +816,7 @@ export function WorkDetail() {
       
       {/* キラキラエフェクト（子供向け装飾） */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(12)].map((_, i) => (
           <motion.div
             key={`sparkle-${i}`}
             className="absolute rounded-full"
