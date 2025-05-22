@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Image, Heart, MessageCircle, ArrowRight } from 'lucide-react';
 import { GradientHeader } from '@/components/Common/GradientHeader';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import { ParentFeedbackNotification } from './ParentFeedbackNotification';
 
 // 背景の装飾用コンポーネント
 const BackgroundDecorations = () => (
@@ -199,55 +200,15 @@ const ActionCard: React.FC<{
   </motion.div>
 );
 
-// 親からのメッセージ通知コンポーネント
-const ParentFeedbackNotification: React.FC<{
-  parentName: string;
-  messageCount: number;
-}> = ({ parentName, messageCount }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5, delay: 0.4 }}
-    whileHover={{ scale: 1.03 }}
-    whileTap={{ scale: 0.97 }}
-    className="mx-6 mb-8 mt-2"
-  >
-    <Link
-      to="/child/works"
-      className="relative block overflow-hidden"
-    >
-      <div className="absolute -inset-1 bg-gradient-to-r from-[#60a5fa] via-[#e879f9] to-[#fcd34d] rounded-2xl opacity-70 blur-sm"></div>
-      <div className="relative flex items-center justify-between bg-white rounded-xl p-4 shadow-md border border-indigo-100">
-        <div className="flex items-center gap-3">
-          <div className="relative p-2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full">
-            <MessageCircle className="h-6 w-6 text-indigo-600" />
-            {messageCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">{messageCount}</span>
-            )}
-          </div>
-          <div>
-            <p className="font-medium text-gray-800">
-              <span className="text-indigo-600">{parentName}</span>さんからメッセージがとどいています！
-            </p>
-            <p className="text-sm text-gray-500">
-              {messageCount}つのフィードバックをみてみよう
-            </p>
-          </div>
-        </div>
-        <div className="text-indigo-500 hover:text-indigo-700">
-          <ArrowRight className="h-5 w-5" />
-        </div>
-      </div>
-    </Link>
-  </motion.div>
-);
-
 // フィードバックモーダル通知コンポーネント
 const FeedbackModal: React.FC<{
   parentName: string;
   messageCount: number;
   onClose: () => void;
-}> = ({ parentName, messageCount, onClose }) => (
+}> = ({ parentName, messageCount, onClose }) => {
+  const navigate = useNavigate();
+  
+  return (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -598,7 +559,7 @@ const FeedbackModal: React.FC<{
             whileTap={{ scale: 0.97 }}
             onClick={() => {
               onClose();
-              window.location.href = '/child/works';  // 子供の作品一覧へリンク
+              navigate('/child/works'); // 子供の作品一覧ページに遷移
             }}
             className="w-full py-6 px-6 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-xl font-bold shadow-lg relative overflow-hidden group"
           >
@@ -670,7 +631,8 @@ const FeedbackModal: React.FC<{
       </div>
     </motion.div>
   </motion.div>
-);
+  );
+};
 
 export function Home() {
   const [parentName, setParentName] = useState<string>('');
