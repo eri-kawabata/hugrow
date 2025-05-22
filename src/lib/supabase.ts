@@ -9,14 +9,35 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase環境変数が設定されていません');
 }
 
-// Supabaseクライアントの初期化（最小限の設定）
+// Supabaseクライアントの初期化（詳細な設定）
 export const supabase = createClient(
   supabaseUrl || '',
-  supabaseAnonKey || ''
+  supabaseAnonKey || '',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    },
+    global: {
+      headers: {
+        'Accept': '*/*',
+        'Content-Type': 'application/json',
+        'X-Client-Info': 'hugrow-app'
+      }
+    },
+    db: {
+      schema: 'public'
+    }
+  }
 );
 
+// クライアントIDとキーをデバッグ用に保存（APIキー自体は表示しない）
+supabase.supabaseUrl = supabaseUrl;
+supabase.supabaseKey = supabaseAnonKey;
+
 // 初期化確認
-console.log('Supabaseクライアント初期化完了');
+console.log('Supabaseクライアント初期化完了', supabaseUrl);
 
 // 認証状態の確認
 (async () => {

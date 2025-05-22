@@ -91,7 +91,7 @@ export function useFeedback(workId?: string) {
       // まず基本的なフィードバックデータを取得
       const { data: feedbackData, error: feedbackError } = await supabase
         .from('work_feedback')
-        .select('*')
+        .select('id, work_id, user_id, feedback, created_at, is_read')
         .eq('work_id', workId)
         .order('created_at', { ascending: false });
 

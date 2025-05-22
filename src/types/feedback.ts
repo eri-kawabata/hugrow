@@ -8,6 +8,7 @@ export interface Feedback {
   likes?: number;
   liked_by_me?: boolean;
   isLikeLoading?: boolean;
+  is_read?: boolean | null;
   user_profile?: {
     display_name: string;
     avatar_url?: string;

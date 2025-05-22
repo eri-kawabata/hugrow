@@ -730,12 +730,13 @@ export function Home() {
             // 未読フィードバック数を取得
             const { data: feedback, error: feedbackError } = await supabase
               .from('work_feedback')
-              .select('id', { count: 'exact' })
-              .eq('profile_id', profile.id)
-              .eq('is_read', false);
+              .select('id, is_read', { count: 'exact' })
+              .filter('user_id', 'eq', profile.id)
+              .or('is_read.is.null,is_read.eq.false');
 
             if (feedbackError) {
               console.error('フィードバック取得エラー:', feedbackError);
+              console.error('フィードバックエラー詳細:', JSON.stringify(feedbackError));
               setShowFeedback(true);
               setMessageCount(1);
               setShowModal(true);
@@ -746,6 +747,13 @@ export function Home() {
 
             if (feedback) {
               const hasMessages = feedback.length > 0;
+              console.log("未読フィードバック数:", feedback.length);
+              
+              // フィードバックの詳細をログに出力
+              feedback.forEach((item, index) => {
+                console.log(`フィードバック項目 ${index + 1}:`, item);
+              });
+              
               setMessageCount(feedback.length || 1); // テスト用に0の場合も1にする
               setShowFeedback(true);
               
