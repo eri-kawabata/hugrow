@@ -6,6 +6,7 @@ import { DrawingCanvas } from '../components/DrawingCanvas';
 import { AudioRecorder } from '../components/AudioRecorder';
 import { CameraCapture } from '../components/CameraCapture';
 import { WorkDetail } from '../components/WorkDetail';
+import { FeedbackInbox } from '../components/FeedbackInbox';
 
 export const ChildWorksRoutes: React.FC = () => {
   return (
@@ -15,6 +16,7 @@ export const ChildWorksRoutes: React.FC = () => {
       <Route path="drawing" element={<DrawingCanvas />} />
       <Route path="audio" element={<AudioRecorder />} />
       <Route path="camera" element={<CameraCapture />} />
+      <Route path="inbox" element={<FeedbackInbox />} />
       <Route path=":workId" element={<WorkDetail />} />
     </Routes>
   );
