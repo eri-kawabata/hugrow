@@ -38,6 +38,7 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
   const [editTitle, setEditTitle] = useState(work.title);
   const [editDescription, setEditDescription] = useState(work.description || '');
   const [favorite, setFavorite] = useState(false);
+  const [showStarAnimation, setShowStarAnimation] = useState(false);
   
   // 編集モードの保存
   const handleSave = async () => {
@@ -100,6 +101,15 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
     const newState = !favorite;
     setFavorite(newState);
     saveFavoriteStatus(newState);
+    
+    // お気に入りに追加された場合、星のアニメーションを表示
+    if (newState) {
+      setShowStarAnimation(true);
+      // 3秒後にアニメーションを非表示
+      setTimeout(() => {
+        setShowStarAnimation(false);
+      }, 3000);
+    }
   }, [favorite, saveFavoriteStatus]);
   
   // お気に入り状態を読み込む
@@ -426,7 +436,7 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
           {/* 楽しいデコレーション要素 */}
           <div className="absolute -top-6 -right-6 transform rotate-12 z-10">
             <motion.div
-              animate={{ rotate: [0, 15, 0, -15, 0] }}
+              animate={{ rotate: [0, 15, 0, -15, 0], scale: [1, 1.1, 1, 0.9, 1] }}
               transition={{ repeat: Infinity, duration: 5 }}
             >
               <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -437,21 +447,28 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
         </div>
         
         <div className="flex justify-between items-center mt-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 relative">
             <motion.button 
               onClick={toggleFavorite}
-              whileTap={{ scale: 0.9 }}
-              whileHover={{ scale: 1.1, rotate: [0, 10, -10, 0] }}
-              transition={{ rotate: { duration: 0.5 } }}
-              className={`p-3 rounded-full transition-all duration-300 ${
+              whileTap={{ scale: 0.8 }}
+              whileHover={{ 
+                scale: [1, 3, 2.5], 
+                rotate: [-10, 30, -30, 40, -40, 20, -10, 0],
+                y: [0, -25, -10, -30, -5, 0]
+              }}
+              transition={{ 
+                rotate: { duration: 2.2, ease: "easeInOut" },
+                scale: { duration: 1.2 }
+              }}
+              className={`p-3 rounded-full shadow-md transition-all duration-300 ${
                 favorite 
-                  ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-500 scale-110 shadow-md' 
-                  : 'bg-gray-100 text-gray-400 hover:bg-yellow-50 hover:text-yellow-500'
+                  ? 'bg-gradient-to-r from-yellow-200 to-amber-200 border-2 border-yellow-300' 
+                  : 'bg-gray-100 text-gray-400 hover:bg-yellow-50 hover:text-yellow-500 border-2 border-gray-200'
               }`}
               aria-label="お気に入り"
               title={favorite ? 'お気に入りから削除' : 'お気に入りに追加'}
             >
-              <Star className={`h-6 w-6 ${favorite ? 'fill-yellow-500' : ''}`} />
+              <Star className={`h-6 w-6 ${favorite ? 'text-amber-500 fill-amber-500' : ''}`} />
               {favorite && (
                 <motion.span 
                   initial={{ scale: 0 }}
@@ -461,6 +478,46 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
                 />
               )}
             </motion.button>
+            
+            {/* 星のアニメーション */}
+            <AnimatePresence>
+              {showStarAnimation && (
+                <>
+                  {[...Array(50)].map((_, i) => (
+                    <motion.div
+                      key={`fav-star-animation-${i}`}
+                      className="absolute z-20 pointer-events-none"
+                      initial={{ 
+                        scale: 0.5,
+                        x: 0,
+                        y: 0,
+                        rotate: 0
+                      }}
+                      animate={{ 
+                        scale: Math.random() * 2.5 + 0.8,
+                        x: (Math.random() - 0.5) * 1000,
+                        y: (Math.random() - 0.5) * 1000,
+                        rotate: Math.random() * 1080 - 540,
+                        opacity: [1, 0.8, 0]
+                      }}
+                      exit={{ opacity: 0 }}
+                      transition={{ 
+                        duration: 3 + Math.random() * 2,
+                        ease: [0.16, 0.87, 0.73, 0.97]
+                      }}
+                    >
+                      {Math.random() > 0.6 ? (
+                        <Star className={`h-${Math.floor(Math.random() * 4) + 5} w-${Math.floor(Math.random() * 4) + 5} text-amber-${Math.floor(Math.random() * 3) + 4}00 fill-amber-${Math.floor(Math.random() * 3) + 4}00`} />
+                      ) : (
+                        <div className={`text-${Math.floor(Math.random() * 2) + 3}xl`}>
+                          {['⭐', '✨', '🌟', '⚡', '💫', '✦', '🔆', '🌠'][Math.floor(Math.random() * 8)]}
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </>
+              )}
+            </AnimatePresence>
           </div>
           
           <motion.button 
@@ -524,7 +581,7 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
     >
       <motion.div 
         className={`p-5 ${hasFeedback 
-          ? 'bg-gradient-to-r from-purple-100 to-pink-100' 
+          ? 'bg-gradient-to-r from-purple-100/80 via-pink-100/80 to-indigo-100/80' 
           : 'bg-gradient-to-r from-[#8ec5d6]/20 to-[#f7c5c2]/20'
         } flex justify-between items-center cursor-pointer relative overflow-hidden`}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -582,7 +639,7 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
             )}
           </motion.div>
           <div>
-            <h3 className={`font-bold ${hasFeedback ? 'text-purple-600' : 'text-[#5d7799]'} text-lg`}>
+            <h3 className={`font-bold ${hasFeedback ? 'text-purple-700' : 'text-[#5d7799]'} text-xl`}>
               {hasFeedback ? (
                 <motion.span
                   initial={{ opacity: 0 }}
@@ -608,7 +665,7 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-sm font-medium bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent"
+                className="text-base font-medium bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent"
               >
                 みんなからのメッセージをみてみよう！
               </motion.p>
@@ -618,12 +675,12 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
         <div className="flex items-center gap-2">
           <motion.button
             onClick={handleRefresh}
-            whileHover={{ rotate: 180 }}
+            whileHover={{ rotate: 180, scale: 1.1 }}
             transition={{ duration: 0.3 }}
-            className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-full hover:bg-white/50 transition-colors"
             title="更新"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${hasFeedback ? 'text-purple-500' : 'text-gray-500'}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${hasFeedback ? 'text-purple-500' : 'text-gray-500'}`}>
               <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
               <path d="M21 3v5h-5" />
               <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
@@ -633,6 +690,7 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
           <motion.div 
             animate={{ rotate: isExpanded ? 180 : 0 }}
             transition={{ duration: 0.3 }}
+            className="bg-white/50 p-1 rounded-full"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${hasFeedback ? 'text-purple-600' : 'text-[#5d7799]'}`}>
               <path d="m6 9 6 6 6-6"/>
@@ -648,19 +706,25 @@ const FeedbackSection = memo(({ workId }: { workId: string }) => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="overflow-hidden"
+            className="overflow-hidden bg-gradient-to-b from-purple-50/50 to-white"
           >
             {error ? (
-              <div className="p-4 text-center text-red-500">
-                <p>メッセージの読み込みに失敗しました</p>
-                <motion.button 
-                  onClick={() => fetchFeedbacks()}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="mt-2 px-3 py-1 bg-red-100 text-red-600 rounded-md text-sm hover:bg-red-200 transition-colors"
+              <div className="p-6 text-center">
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="bg-red-50 p-5 rounded-xl border border-red-100 max-w-md mx-auto"
                 >
-                  もう一度試す
-                </motion.button>
+                  <p className="text-red-500 font-medium mb-3">メッセージの読み込みに失敗しました</p>
+                  <motion.button 
+                    onClick={() => fetchFeedbacks()}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-4 py-2 bg-red-100 text-red-600 rounded-full text-sm font-medium hover:bg-red-200 transition-colors shadow-sm"
+                  >
+                    もう一度試す
+                  </motion.button>
+                </motion.div>
               </div>
             ) : (
               <FeedbackList feedbacks={feedbacks} loading={loading} />
