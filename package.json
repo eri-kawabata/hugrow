@@ -12,6 +12,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
     "@headlessui/react": "^2.2.0",
+    "@heroicons/react": "^2.2.0",
     "@sentry/react": "^9.3.0",
     "@supabase/supabase-js": "^2.39.7",
     "canvas-confetti": "^1.9.2",

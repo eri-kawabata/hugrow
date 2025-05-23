@@ -11,6 +11,7 @@ import { useWorks } from '@/hooks/useWorks';
 import { Work } from '@/types/database';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 const BackButton = memo(({ onClick }: { onClick: () => void }) => (
   <motion.button
@@ -33,7 +34,7 @@ const BackButton = memo(({ onClick }: { onClick: () => void }) => (
 
 BackButton.displayName = 'BackButton';
 
-const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: Partial<Work>) => void }) => {
+const WorkContent = memo(({ work, onUpdate, onDelete }: { work: Work, onUpdate: (updates: Partial<Work>) => void, onDelete: () => void }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(work.title);
   const [editDescription, setEditDescription] = useState(work.description || '');
@@ -328,42 +329,7 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 300, damping: 15 }}
               >
-                <span className="relative inline-block">
-                  {/* メインのタイトル背景エフェクトを削除 */}
-                  
-                  {/* タイトルの光輪効果を削除 */}
-                  
-                  {/* フレーム効果を削除 */}
-                  
-                  {/* キラキラ装飾は残す - 必要最小限に整理 */}
-                  {[...Array(5)].map((_, i) => (
-                    <motion.span
-                      key={`title-sparkle-${i}`}
-                      className="absolute inline-flex items-center justify-center"
-                      style={{
-                        top: `${-25 + Math.random() * 80}%`,
-                        left: `${Math.random() * 100}%`,
-                        fontSize: `${Math.random() * 12 + 8}px`,
-                        color: ['#FFD700', '#FF6B6B', '#48DBFB', '#1DD1A1', '#A881FF'][Math.floor(Math.random() * 5)],
-                        filter: `blur(${Math.random() > 0.7 ? '1px' : '0px'})`,
-                        zIndex: 20,
-                        transform: `rotate(${Math.random() * 360}deg)`,
-                      }}
-                      animate={{
-                        opacity: [0, 1, 0],
-                        scale: [0, 1.2, 0],
-                      }}
-                      transition={{
-                        duration: 2 + Math.random() * 3,
-                        repeat: Infinity,
-                        delay: Math.random() * 5
-                      }}
-                    >
-                      {['✦', '✧', '★', '☆', '✨'][Math.floor(Math.random() * 5)]}
-                    </motion.span>
-                  ))}
-                  
-                  {/* テキスト部分をよりシンプルで洗練したデザインに */}
+                <div className="flex justify-center items-center relative px-4">
                   <span className="relative inline-block text-white px-5 py-1 font-extrabold text-3xl"
                     style={{
                       textShadow: '0 1px 3px rgba(0,0,0,0.25)',
@@ -372,31 +338,14 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
                     }}>
                     {work.title}
                   </span>
-                  
-                  {/* 下線効果 - シンプルな下線 */}
-                  <motion.span 
-                    className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-[#FFEB3B] via-[#FF4081] to-[#2979FF] rounded-full shadow-lg"
-                    initial={{ width: '0%', left: '50%', opacity: 0 }}
-                    animate={{ 
-                      width: '100%', 
-                      left: '0%', 
-                      opacity: 0.8,
-                      boxShadow: [
-                        '0 0 4px 1px rgba(255,255,255,0.5)',
-                        '0 0 8px 2px rgba(255,255,255,0.7)',
-                        '0 0 4px 1px rgba(255,255,255,0.5)'
-                      ]
-                    }}
-                    transition={{ 
-                      delay: 0.5, 
-                      duration: 1,
-                      boxShadow: {
-                        repeat: Infinity,
-                        duration: 2
-                      }
-                    }}
-                  />
-                </span>
+                  <button
+                    onClick={onDelete}
+                    className="absolute right-4 text-white hover:text-red-500 p-2 rounded-full hover:bg-white/20 transition-all duration-300"
+                    aria-label="作品を削除"
+                  >
+                    <TrashIcon className="w-6 h-6" />
+                  </button>
+                </div>
               </motion.h1>
               {work.description && (
                 <motion.p 
@@ -745,7 +694,8 @@ export function WorkDetail() {
   const [work, setWork] = useState<Work | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const { updateWork } = useWorks();
+  const { updateWork, deleteWork } = useWorks();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const fetchWork = useCallback(async () => {
     if (!workId || !user) return;
@@ -824,6 +774,17 @@ export function WorkDetail() {
     }
   };
 
+  const handleDeleteWork = async () => {
+    try {
+      await deleteWork(workId);
+      toast.success('作品を削除しました');
+      navigate('/child/works');
+    } catch (error) {
+      toast.error('削除に失敗しました');
+      console.error('Delete work error:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8fbfd]">
@@ -870,7 +831,11 @@ export function WorkDetail() {
           <div className="absolute -top-8 -left-8 w-32 h-16 bg-gradient-to-r from-blue-100/40 to-cyan-100/40 rounded-full blur-md -z-10"></div>
           <div className="absolute -bottom-6 -right-8 w-32 h-20 bg-gradient-to-r from-pink-100/40 to-purple-100/40 rounded-full blur-md -z-10"></div>
           
-          <WorkContent work={work} onUpdate={handleUpdateWork} />
+          <WorkContent 
+            work={work}
+            onUpdate={handleUpdateWork}
+            onDelete={handleDeleteWork}
+          />
         </motion.div>
         
         <FeedbackSection workId={work.id} />

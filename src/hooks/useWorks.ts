@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Work } from '../types/work';
 import toast from 'react-hot-toast';
+import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // メディアURLを安全に取得する関数
 const getSafeMediaUrl = (url?: string): string | undefined => {
@@ -160,11 +162,9 @@ export function useWorks() {
 
       // 作品一覧を更新
       setWorks(prev => prev.filter(w => w.id !== workId));
-      toast.success('作品を削除しました');
-    } catch (err) {
-      console.error('Error deleting work:', err);
-      toast.error('削除に失敗しました');
-      throw err;
+    } catch (error) {
+      console.error('Error deleting work:', error);
+      throw error;
     }
   }, []);
 
