@@ -223,7 +223,34 @@ export function SELQuest() {
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
-        setNote(prev => prev + transcript);
+        // Gemini APIを使用して漢字をひらがなに変換
+        fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: `以下の文章をひらがなだけで書き直してください。句読点は残してください。出力はひらがなの文章だけにしてください：${transcript}` }]
+              }]
+            }),
+          }
+        )
+        .then(response => response.json())
+        .then(data => {
+          if (data.candidates && data.candidates[0]?.content?.parts?.length > 0) {
+            const hiragana = data.candidates[0].content.parts[0].text;
+            setNote(prev => prev + hiragana);
+          } else {
+            setNote(prev => prev + transcript);
+          }
+        })
+        .catch(error => {
+          console.error('ひらがな変換エラー:', error);
+          setNote(prev => prev + transcript);
+        });
       };
 
       recognition.onend = () => {
@@ -307,13 +334,48 @@ export function SELQuest() {
       if (!selectedEmotionData) return;
 
       const prompt = `
-      あなたは子どもの社会情緒的発達を支援する「ものしり博士」です。
-      子どもが「${emotion}」という感情（強さ: ${selectedEmotionData.intensity}）を感じています。
-      ${note.trim() ? `その状況は「${note}」です。` : '状況の詳細は提供されていません。'}
+      あなたは子どもの気持ちに寄り添う「ものしり博士」です。
+      子どもが「${emotion}」という感情（つよさ: ${selectedEmotionData.intensity}）を感じています。
+      ${note.trim() ? `その時（とき）のようすは「${note}」です。` : 'くわしいことは書かれていません。'}
       
-      この感情と状況に応じて、子どもを励ます短いメッセージを作成してください。
-      メッセージは100文字程度で、以下のような形式で返してください：
-      「[子どもの出来事への具体的なコメント] [励ましやアドバイス]」`;
+      この感情とできごとにあわせて、子どもの気持ちに寄り添い、自信（じしん）を高め、成長（せいちょう）につながるメッセージを作成してください。
+      
+      メッセージは以下のルールに従って作成してください：
+      
+      1. 小学2年生までに習う漢字のみを使用し、必ずふりがなをつける
+          使用可能な漢字の例：
+         - 1年生：手（て）、目（め）、空（そら）、学校（がっこう）、先生（せんせい）
+         - 2年生：親（おや）、友達（ともだち）、元気（げんき）、毎日（まいにち）
+      2. それ以外の漢字は、ひらがなで書く
+      3. 感情の種類に応じた対応：
+         - うれしい感情の場合：いっしょによろこび、その気持ちをみんなとわかちあえることを伝える
+         - かなしい感情の場合：気持ちに寄り添い、まえむきになれるヒントを伝える
+         - ふつうの感情の場合：毎日（まいにち）のちいさなよいところを見つけて伝える
+      4. 必ず以下の3つの要素を含める：
+         - 気持ちへの共感
+         - よいところの発見
+         - つぎへのアドバイス
+      5. 具体的なヒントを示す：
+         - けんかの場合：「なかなおりのために、お友達（ともだち）の気持ちを聞（き）いてみよう」
+         - しっぱいの場合：「つぎは上手（じょうず）にできるように、ゆっくりちょうせんしてみよう」
+         - こまった時（とき）：「こまったときは、お友達（ともだち）や先生（せんせい）にそうだんしてみよう」
+      6. 「はい、かしこまりました」などの前置きは不要
+      7. 子どもに直接話しかける口調で書く
+      8. 2-3文で簡潔に書く
+      9. 文の最初と最後の「」（かぎかっこ）は不要
+      
+      出力形式：
+      [子どもの気持ちに寄り添い、成長（せいちょう）につながるメッセージ（ふりがな付き）]
+      
+      例：
+      ・けんかをした時（とき）の例：
+      お友達（ともだち）とけんかして悲（かな）しかったね。でも、自分（じぶん）の気持ちを伝（つた）えられたのはえらいよ。明日（あした）、やさしく話（はな）しかけてみたら、きっとなかなおりできるよ！
+      
+      ・しっぱいして落（お）ち込（こ）んだ時（とき）の例：
+      テストでうまくできなくてくやしかったね。一生けんめいに勉強（べんきょう）したあなたはすばらしいよ。つぎは先生（せんせい）にわからないところを聞（き）いてみよう！
+      
+      ・お友達（ともだち）と遊（あそ）べてうれしい時（とき）の例：
+      お友達（ともだち）と楽（たの）しく遊（あそ）べてうれしかったね！みんなと仲良（なかよ）く遊（あそ）べるあなたは素敵（すてき）だよ。明日（あした）は新（あたら）しいお友達（ともだち）もさそってみたら、もっと楽（たの）しくなるね！`;
 
       const { data, error } = await supabase
         .from('sel_ai_feedback_templates')
