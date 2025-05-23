@@ -452,13 +452,13 @@ const WorkContent = memo(({ work, onUpdate }: { work: Work, onUpdate: (updates: 
               onClick={toggleFavorite}
               whileTap={{ scale: 0.8 }}
               whileHover={{ 
-                scale: [1, 3, 2.5], 
+                scale: 3,
                 rotate: [-10, 30, -30, 40, -40, 20, -10, 0],
                 y: [0, -25, -10, -30, -5, 0]
               }}
               transition={{ 
                 rotate: { duration: 2.2, ease: "easeInOut" },
-                scale: { duration: 1.2 }
+                scale: { duration: 0.2, type: "spring", stiffness: 400 }
               }}
               className={`p-3 rounded-full shadow-md transition-all duration-300 ${
                 favorite 

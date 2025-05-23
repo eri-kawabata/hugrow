@@ -200,14 +200,14 @@ const FeedbackItem = memo(({ feedback, onLike }: FeedbackItemProps) => {
             >
               <motion.div 
                 whileHover={{ 
-                  scale: [1, 3, 2.5], 
+                  scale: 3,
                   rotate: [-5, 15, -15, 20, -20, 15, -5, 0],
                   y: [0, -20, -10, -25, -15, -5, 0]
                 }}
                 whileTap={{ scale: 0.8, rotate: 0 }}
                 transition={{ 
                   rotate: { duration: 2, ease: "easeInOut" },
-                  scale: { duration: 1 }
+                  scale: { duration: 0.2, type: "spring", stiffness: 400 }
                 }}
                 className="inline-flex items-center justify-center bg-gradient-to-r from-yellow-100 to-orange-100 w-14 h-14 rounded-full shadow-md border-2 border-white cursor-pointer z-10"
                 onClick={handleStampClick}
