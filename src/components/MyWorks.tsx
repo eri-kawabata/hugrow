@@ -269,12 +269,26 @@ const WorkCard = memo(({ work, onView }: { work: Work, onView?: () => void }) =>
       default:
         // 画像URLがある場合はそれを表示
         if (work.thumbnail_url) {
+          console.log('画像表示試行:', { 
+            title: work.title, 
+            url: work.thumbnail_url,
+            type: work.type 
+          });
+          
           return (
             <div className={`${thumbnailHeight} overflow-hidden bg-gray-100 relative`}>
               <img 
                 src={work.thumbnail_url} 
                 alt={work.title || '作品'} 
                 className={`w-full h-full object-cover transition-transform duration-300 ${isHovered ? 'scale-110' : 'scale-100'}`}
+                crossOrigin="anonymous"
+                onLoad={() => {
+                  console.log('画像読み込み成功:', work.title, work.thumbnail_url);
+                }}
+                onError={(e) => {
+                  console.error('画像読み込みエラー:', e.currentTarget.src);
+                  console.error('画像読み込みエラー詳細:', e);
+                }}
               />
               {isHovered && (
                 <div className="absolute inset-0">
@@ -983,7 +997,7 @@ const MyWorks = () => {
       console.log('MyWorks - 作品作成イベント検知:', event.detail);
       // 作品一覧を再取得
       if (selectedChildProfileId) {
-        fetchWorks(selectedChildProfileId);
+        fetchWorks(undefined, selectedChildProfileId);
       } else {
         fetchWorks();
       }

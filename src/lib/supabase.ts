@@ -22,7 +22,6 @@ export const supabase = createClient(
     global: {
       headers: {
         'Accept': '*/*',
-        'Content-Type': 'application/json',
         'X-Client-Info': 'hugrow-app'
       }
     },

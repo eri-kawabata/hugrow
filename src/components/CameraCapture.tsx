@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, RefreshCw, Save, X, Loader2, ArrowLeft, Info, Camera as CameraIcon } from 'lucide-react';
+import { Camera, RefreshCw, Save, X, Loader2, ArrowLeft, Info, Camera as CameraIcon, Upload, Image } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { handleError } from '../utils/errorHandler';
 export const CameraCapture = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export const CameraCapture = () => {
   const [description, setDescription] = useState('');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showTips, setShowTips] = useState(false);
+  const [isFromUpload, setIsFromUpload] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -90,6 +92,7 @@ export const CameraCapture = () => {
 
     context.drawImage(video, 0, 0);
     setCapturedImage(canvas.toDataURL('image/jpeg'));
+    setIsFromUpload(false);
 
     // 撮影効果音
     try {
@@ -108,6 +111,41 @@ export const CameraCapture = () => {
       icon: '📸',
       duration: 2000
     });
+  };
+
+  // ファイルアップロード処理
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // ファイルタイプをチェック
+    if (!file.type.startsWith('image/')) {
+      toast.error('がぞうファイルをえらんでね');
+      return;
+    }
+
+    // ファイルサイズをチェック（10MB制限）
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('ファイルがおおきすぎます（10MB以下にしてね）');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setCapturedImage(result);
+      setIsFromUpload(true);
+      toast.success('がぞうをえらんだよ！', {
+        icon: '🖼️',
+        duration: 2000
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // ファイル選択ボタンをクリック
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   // 写真の保存処理を改善
@@ -204,7 +242,7 @@ export const CameraCapture = () => {
             } else {
               reject(new Error('Failed to create blob from canvas'));
             }
-          }, 'image/jpeg', 0.75); // 品質を0.8から0.75に下げて最適化
+          }, 'image/jpeg', 0.85); // 画質を良くするために品質を0.85に調整
         };
         
         img.onerror = () => {
@@ -251,6 +289,12 @@ export const CameraCapture = () => {
       
       // 選択中の子供プロファイルIDを直接取得（ローカルストレージから）
       const selectedChildProfileId = localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
+      console.log('【デバッグ】ローカルストレージの値:', {
+        selectedChildProfileId: localStorage.getItem('selectedChildProfileId'),
+        selectedChildId: localStorage.getItem('selectedChildId'),
+        selectedChildUserId: localStorage.getItem('selectedChildUserId'),
+        childName: localStorage.getItem('childName')
+      });
       
       if (selectedChildProfileId) {
         // ローカルストレージに選択中の子供プロファイルIDがある場合はそれを使用
@@ -304,14 +348,26 @@ export const CameraCapture = () => {
       }
 
       console.log('データベース保存成功:', insertedData);
-      toast.success('しゃしんをほぞんしたよ！', {
+      toast.success(`「${title.trim()}」をほぞんしたよ！${isFromUpload ? '🖼️' : '📸'}`, {
         icon: '✨',
         duration: 3000
       });
+
+      // 作品作成イベントを発火して作品一覧を更新
+      window.dispatchEvent(new CustomEvent('workCreated', {
+        detail: { 
+          work: insertedData[0],
+          profileId: profileId
+        }
+      }));
       
       // URLパスに基づいて適切なナビゲーション先を決定
       const isChildRoute = location.pathname.includes('/child/');
-      navigate(isChildRoute ? '/child/works' : '/works');
+      
+      // 少し遅延を入れてユーザーが成功メッセージを確認できるようにする
+      setTimeout(() => {
+        navigate(isChildRoute ? '/child/works' : '/works');
+      }, 1500);
 
     } catch (error) {
       console.error('Save error:', error);
@@ -414,6 +470,7 @@ export const CameraCapture = () => {
               <h3 className="text-sm font-medium text-blue-800">つかいかた</h3>
               <ul className="mt-2 text-sm text-blue-700 list-disc list-inside space-y-1">
                 <li>まんなかの○ボタンをおすと、しゃしんがとれるよ</li>
+                <li>みぎしたの↑ボタンで、きそんのがぞうをえらべるよ</li>
                 <li>「カメラきりかえ」ボタンで、まえとうしろのカメラをきりかえられるよ</li>
                 <li>しゃしんをとったら「ほぞんする」ボタンでほぞんしてね</li>
               </ul>
@@ -443,10 +500,10 @@ export const CameraCapture = () => {
           <>
             <img
               src={capturedImage}
-              alt="とったしゃしん"
+              alt={isFromUpload ? "えらんだがぞう" : "とったしゃしん"}
               className="w-full object-contain max-h-[70vh]"
               style={{
-                transform: isFrontCamera ? 'scaleX(-1)' : 'none'
+                transform: (!isFromUpload && isFrontCamera) ? 'scaleX(-1)' : 'none'
               }}
             />
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4">
@@ -479,6 +536,8 @@ export const CameraCapture = () => {
             />
             <canvas ref={canvasRef} className="hidden" />
             <div className="absolute inset-0 pointer-events-none border-8 border-white/20 rounded-xl"></div>
+            
+            {/* 中央の撮影ボタン */}
             <button
               onClick={capturePhoto}
               disabled={!!cameraError}
@@ -491,6 +550,24 @@ export const CameraCapture = () => {
                 </div>
               </div>
             </button>
+
+            {/* アップロードボタン */}
+            <button
+              onClick={handleUploadClick}
+              className="absolute bottom-6 right-6 w-16 h-16 bg-white/90 hover:bg-white rounded-full shadow-lg hover:scale-105 transition-all flex items-center justify-center border border-gray-200"
+              title="がぞうをえらぶ"
+            >
+              <Upload className="h-6 w-6 text-indigo-600" />
+            </button>
+
+            {/* 隠されたファイル入力 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
           </>
         )}
       </div>
@@ -510,6 +587,20 @@ export const CameraCapture = () => {
             </div>
 
             <div className="space-y-4">
+              {/* 撮影した画像のプレビュー */}
+              {capturedImage && (
+                <div className="flex justify-center">
+                  <img
+                    src={capturedImage}
+                    alt={isFromUpload ? "えらんだがぞう" : "とったしゃしん"}
+                    className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200"
+                    style={{
+                      transform: (!isFromUpload && isFrontCamera) ? 'scaleX(-1)' : 'none'
+                    }}
+                  />
+                </div>
+              )}
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   しゃしんのなまえ <span className="text-red-500">*</span>
