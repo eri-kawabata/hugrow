@@ -210,78 +210,8 @@ const WorkContent = memo(({ work, onUpdate, onDelete }: { work: Work, onUpdate: 
 
   return (
     <div className="space-y-8">
-      <div className="bg-gradient-to-r from-[#FFF9C4] via-[#FFCCBC] to-[#BBDEFB] p-8 rounded-[32px] shadow-lg relative overflow-hidden">
-        {/* メインの背景グラデーション効果 - より鮮やかで魅力的に */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#FFD54F]/90 via-[#FF8A65]/80 to-[#64B5F6]/90 opacity-90"></div>
+      <div className="bg-gradient-to-r from-[#FFF9C4] via-[#FFCCBC] to-[#BBDEFB] p-4 rounded-[20px] shadow-md relative overflow-hidden">        {/* メインの背景グラデーション効果 - より淡く優しい色合いに */}        <div className="absolute inset-0 bg-gradient-to-br from-[#FFD54F]/60 via-[#FF8A65]/50 to-[#64B5F6]/60 opacity-70"></div>                <div className="absolute inset-0 backdrop-blur-[2px]"></div>                {/* 虹色のリム効果 - より淡く */}        <div className="absolute inset-0 rounded-[20px] p-0.5 -m-0.5 bg-gradient-to-r from-[#FFEB3B] via-[#FF4081] to-[#2979FF] opacity-40 blur-[1px]"></div>                {/* 背景の楽しい装飾 - より淡い色合いに調整 */}        <div className="absolute -top-16 -left-16 w-80 h-80 bg-gradient-to-br from-[#FFEB3B] to-[#FFA000] rounded-full opacity-40 blur-md transform rotate-12"></div>        <div className="absolute -bottom-24 -right-16 w-80 h-80 bg-gradient-to-br from-[#F48FB1] to-[#CE93D8] rounded-full opacity-35 blur-md"></div>        <div className="absolute top-1/4 -right-16 w-64 h-64 bg-gradient-to-br from-[#81D4FA] to-[#4FC3F7] rounded-full opacity-35 blur-md"></div>        <div className="absolute bottom-1/5 -left-12 w-60 h-60 bg-gradient-to-br from-[#AED581] to-[#7CB342] rounded-full opacity-30 blur-md"></div>                {/* 小さな背景の円形装飾 */}        <div className="absolute bottom-1/3 right-1/3 w-20 h-20 bg-gradient-to-br from-[#B39DDB] to-[#9575CD] rounded-full opacity-20 blur-md"></div>                {/* パーティクルアニメーション - 少し削減して洗練 */}        {[...Array(3)].map((_, i) => (          <motion.div            key={`star-title-${i}`}            className="absolute"            style={{              width: `${Math.random() * 8 + 4}px`,              height: `${Math.random() * 8 + 4}px`,              top: `${Math.random() * 100}%`,              left: `${Math.random() * 100}%`,              background: `radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)`,              borderRadius: '50%',              zIndex: 5,            }}            animate={{              scale: [0.9, 1.2, 0.9],              opacity: [0.5, 0.8, 0.5],            }}            transition={{              duration: 4 + Math.random() * 2,              repeat: Infinity,              delay: Math.random() * 2,            }}          />        ))}                {/* 浮かぶ泡 */}        {[...Array(4)].map((_, i) => (          <motion.div            key={`bubble-title-${i}`}            className="absolute rounded-full"            style={{              width: `${Math.random() * 10 + 4}px`,              height: `${Math.random() * 10 + 4}px`,              top: `${Math.random() * 100}%`,              left: `${Math.random() * 100}%`,              backgroundColor: ['rgba(255,255,255,0.6)', 'rgba(255,236,179,0.6)', 'rgba(255,204,188,0.6)', 'rgba(187,222,251,0.6)'][Math.floor(Math.random() * 4)],              zIndex: 5,            }}            animate={{              y: [0, -30, 0],              x: [0, Math.random() > 0.5 ? 8 : -8, 0],              opacity: [0.4, 0.9, 0.4]            }}            transition={{              duration: 3 + Math.random() * 3,              repeat: Infinity,              repeatType: "reverse",              delay: Math.random() * 2            }}          />        ))}
         
-        {/* キラキラ背景とパターンは削除 */}
-        
-        <div className="absolute inset-0 backdrop-blur-[3px]"></div>
-        
-        {/* 虹色のリム効果 - より洗練された効果 */}
-        <div className="absolute inset-0 rounded-[32px] p-0.5 -m-0.5 bg-gradient-to-r from-[#FFEB3B] via-[#FF4081] to-[#2979FF] opacity-70 blur-[1px]"></div>
-        
-        {/* 背景の楽しい装飾 - より鮮やかで大きな雲状の装飾 */}
-        <div className="absolute -top-20 -left-20 w-96 h-96 bg-gradient-to-br from-[#FFEB3B] to-[#FFA000] rounded-full opacity-70 blur-md transform rotate-12"></div>
-        <div className="absolute -bottom-32 -right-20 w-96 h-96 bg-gradient-to-br from-[#F48FB1] to-[#CE93D8] rounded-full opacity-60 blur-md"></div>
-        <div className="absolute top-1/4 -right-20 w-80 h-80 bg-gradient-to-br from-[#81D4FA] to-[#4FC3F7] rounded-full opacity-60 blur-md"></div>
-        <div className="absolute bottom-1/5 -left-16 w-72 h-72 bg-gradient-to-br from-[#AED581] to-[#7CB342] rounded-full opacity-50 blur-md"></div>
-        
-        {/* 小さな背景の円形装飾を削減 */}
-        <div className="absolute bottom-1/3 right-1/3 w-24 h-24 bg-gradient-to-br from-[#B39DDB] to-[#9575CD] rounded-full opacity-30 blur-md"></div>
-        
-        {/* パーティクルアニメーション - さらに削減して洗練 */}
-        {[...Array(4)].map((_, i) => (
-          <motion.div
-            key={`star-title-${i}`}
-            className="absolute"
-            style={{
-              width: `${Math.random() * 10 + 4}px`,
-              height: `${Math.random() * 10 + 4}px`,
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              background: `radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)`,
-              borderRadius: '50%',
-              zIndex: 5,
-            }}
-            animate={{
-              scale: [0.9, 1.2, 0.9],
-              opacity: [0.5, 0.8, 0.5],
-            }}
-            transition={{
-              duration: 4 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-        
-        {/* 浮かぶ泡 - さらに削減 */}
-        {[...Array(5)].map((_, i) => (
-          <motion.div
-            key={`bubble-title-${i}`}
-            className="absolute rounded-full"
-            style={{
-              width: `${Math.random() * 12 + 4}px`,
-              height: `${Math.random() * 12 + 4}px`,
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              backgroundColor: ['rgba(255,255,255,0.6)', 'rgba(255,236,179,0.6)', 'rgba(255,204,188,0.6)', 'rgba(187,222,251,0.6)'][Math.floor(Math.random() * 4)],
-              zIndex: 5,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              x: [0, Math.random() > 0.5 ? 8 : -8, 0],
-              opacity: [0.4, 0.9, 0.4]
-            }}
-            transition={{
-              duration: 3 + Math.random() * 3,
-              repeat: Infinity,
-              repeatType: "reverse",
-              delay: Math.random() * 2
-            }}
-          />
-        ))}
         
         <div className="relative z-10">
           {isEditing ? (
@@ -322,59 +252,7 @@ const WorkContent = memo(({ work, onUpdate, onDelete }: { work: Work, onUpdate: 
               </div>
             </div>
           ) : (
-            <div className="group relative">
-              <motion.h1 
-                className="text-3xl font-bold text-center mb-2 relative z-10 py-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 15 }}
-              >
-                <div className="flex justify-center items-center relative px-4">
-                  <span className="relative inline-block text-white px-5 py-1 font-extrabold text-3xl"
-                    style={{
-                      textShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                      letterSpacing: '1.5px',
-                      lineHeight: '1.05'
-                    }}>
-                    {work.title}
-                  </span>
-                  <button
-                    onClick={onDelete}
-                    className="absolute right-4 text-white hover:text-red-500 p-2 rounded-full hover:bg-white/20 transition-all duration-300"
-                    aria-label="作品を削除"
-                  >
-                    <TrashIcon className="w-6 h-6" />
-                  </button>
-                </div>
-              </motion.h1>
-              {work.description && (
-                <motion.p 
-                  className="text-[#4A154B] text-center mt-4 text-lg font-medium px-7 py-2.5 rounded-xl bg-white/50 backdrop-blur-sm shadow-inner max-w-[85%] mx-auto border border-white/30"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
-                >
-                  {work.description}
-                </motion.p>
-              )}
-              <motion.button
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 0, scale: 0 }}
-                whileHover={{ opacity: 1, scale: 1, rotate: [0, -5, 5, 0] }}
-                transition={{ duration: 0.3, rotate: { repeat: Infinity, duration: 1 } }}
-                onClick={() => setIsEditing(true)}
-                className="absolute -right-2 -top-2 p-2 bg-white/90 rounded-full shadow-md hover:bg-white"
-              >
-                <Edit2 className="h-4 w-4 text-[#5d7799]" />
-              </motion.button>
-            </div>
-          )}
-          <div className="flex items-center justify-center gap-2 text-white mt-5 bg-white/30 rounded-full py-2 px-5 w-fit mx-auto backdrop-blur-sm border border-white/40 shadow-sm">
-            <Calendar className="h-4 w-4 text-white" />
-            <p className="text-sm font-bold text-white">
-              {new Date(work.created_at).toLocaleDateString('ja-JP')}
-            </p>
-          </div>
+            <div className="group relative">              {/* タイトル（中央） */}              <motion.h1                 className="text-2xl font-bold text-center mb-3 relative z-10 py-1"                initial={{ opacity: 0, y: 20 }}                animate={{ opacity: 1, y: 0 }}                transition={{ type: "spring", stiffness: 300, damping: 15 }}              >                <div className="flex justify-center items-center relative px-4">                  <span className="relative inline-block text-white px-3 py-1 font-black text-2xl"                    style={{                      textShadow: '0 2px 4px rgba(0,0,0,0.3)',                      letterSpacing: '1.5px',                      lineHeight: '1.2'                    }}>                    {work.title}                  </span>                  <motion.button                    onClick={onDelete}                    className="absolute right-2 text-white hover:text-red-400 p-1.5 rounded-full hover:bg-white/20 transition-all duration-300"                    aria-label="作品を削除"                    whileHover={{ scale: 1.1 }}                    whileTap={{ scale: 0.9 }}                  >                    <TrashIcon className="w-5 h-5" />                  </motion.button>                </div>              </motion.h1>              {/* 日付（下部中央） */}              <motion.div                 className="flex items-center justify-center gap-2 text-white bg-white/40 rounded-full py-1.5 px-4 w-fit mx-auto backdrop-blur-sm border border-white/50 shadow-sm"                initial={{ opacity: 0, y: 10 }}                animate={{ opacity: 1, y: 0 }}                transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.2 }}              >                <Calendar className="h-4 w-4 text-white" />                <p className="text-sm font-medium text-white">                  {new Date(work.created_at).toLocaleDateString('ja-JP')}                </p>              </motion.div>              {/* 説明文（中央寄せ） */}              {work.description && (                <motion.p                   className="text-[#4A154B] text-center mt-3 text-base font-medium px-4 py-1.5 rounded-lg bg-white/50 backdrop-blur-sm shadow-inner max-w-[85%] mx-auto border border-white/30"                  initial={{ opacity: 0, y: 10 }}                  animate={{ opacity: 1, y: 0 }}                  transition={{ delay: 0.7 }}                >                  {work.description}                </motion.p>              )}              <motion.button                initial={{ opacity: 0, scale: 0 }}                animate={{ opacity: 0, scale: 0 }}                whileHover={{ opacity: 1, scale: 1, rotate: [0, -5, 5, 0] }}                transition={{ duration: 0.3, rotate: { repeat: Infinity, duration: 1 } }}                onClick={() => setIsEditing(true)}                className="absolute -right-2 -top-2 p-2 bg-white/90 rounded-full shadow-md hover:bg-white"              >                <Edit2 className="h-4 w-4 text-[#5d7799]" />              </motion.button>            </div>          )}
         </div>
       </div>
 
