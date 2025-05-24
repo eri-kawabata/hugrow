@@ -112,6 +112,8 @@ export function useWorks(prefetch = false): UseWorksReturn {
 
       // 使用するプロファイルIDを決定
       const profileIdToUse = specificProfileId || selectedChildProfileId;
+      console.log('fetchWorks - 引数specificProfileId:', specificProfileId);
+      console.log('fetchWorks - selectedChildProfileId:', selectedChildProfileId);
       console.log('fetchWorks - 使用するプロファイルID:', profileIdToUse);
       console.log('fetchWorks - 現在のユーザーロール:', profile?.role);
 

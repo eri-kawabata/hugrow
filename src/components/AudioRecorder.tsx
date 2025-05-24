@@ -203,19 +203,20 @@ export function AudioRecorder() {
       // プロファイルIDを取得
       let profileId = null;
       
-      // 選択中の子供プロファイルIDを取得（ローカルストレージから）
-      const selectedChildProfileId = localStorage.getItem('selectedChildProfileId');
+      // 選択中の子供プロファイルIDを直接取得（ローカルストレージから）
+      const selectedChildProfileId = localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
       
       if (selectedChildProfileId) {
         // ローカルストレージに選択中の子供プロファイルIDがある場合はそれを使用
         profileId = selectedChildProfileId;
         console.log('【デバッグ】ローカルストレージから取得したプロファイルID:', profileId);
       } else {
-        // ローカルストレージにない場合はデータベースから取得
+        // ローカルストレージにない場合はデータベースから取得（フォールバック）
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('id')
           .eq('user_id', effectiveUserId)
+          .eq('role', 'child')
           .single();
           
         if (profileError) {
@@ -258,6 +259,11 @@ export function AudioRecorder() {
         icon: '🎵',
         duration: 3000
       });
+      
+      // 作品保存イベントを発火（作品一覧の更新をトリガー）
+      window.dispatchEvent(new CustomEvent('workCreated', {
+        detail: { work: insertData[0] }
+      }));
       
       // URLパスに基づいて適切なナビゲーション先を決定
       const isChildRoute = location.pathname.includes('/child/');

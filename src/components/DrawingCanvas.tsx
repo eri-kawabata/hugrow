@@ -380,18 +380,32 @@ export function DrawingCanvas() {
       // プロファイルIDを取得
       let profileId = null;
       
-      // 子供のプロファイルIDを取得
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', effectiveUserId)
-        .single();
-        
-      if (profileError) {
-        console.error('プロファイル取得エラー:', profileError);
-      } else if (profileData) {
-        profileId = profileData.id;
-        console.log('【デバッグ】取得したプロファイルID:', profileId);
+      // 選択中の子供プロファイルIDを直接取得（ローカルストレージから）
+      const selectedChildProfileId = localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
+      
+      if (selectedChildProfileId) {
+        // ローカルストレージに選択中の子供プロファイルIDがある場合はそれを使用
+        profileId = selectedChildProfileId;
+        console.log('【デバッグ】ローカルストレージから取得したプロファイルID:', profileId);
+      } else {
+        // ローカルストレージにない場合はデータベースから取得（フォールバック）
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', effectiveUserId)
+          .eq('role', 'child')
+          .single();
+          
+        if (profileError) {
+          console.error('プロファイル取得エラー:', profileError);
+        } else if (profileData) {
+          profileId = profileData.id;
+          console.log('【デバッグ】データベースから取得したプロファイルID:', profileId);
+        }
+      }
+      
+      if (!profileId) {
+        throw new Error('プロファイルIDが取得できませんでした。子供を選択してください。');
       }
       
       // データベースに作品情報を保存
@@ -404,7 +418,7 @@ export function DrawingCanvas() {
             content_url: publicUrl,
             type: 'drawing',
             user_id: effectiveUserId,
-            profile_id: profileId, // プロファイルIDを設定
+            profile_id: profileId,
           },
         ])
         .select();
@@ -413,7 +427,13 @@ export function DrawingCanvas() {
         throw workError;
       }
       
+      console.log('作品保存成功:', workData);
       toast.success('絵を保存しました！');
+      
+      // 作品保存イベントを発火（作品一覧の更新をトリガー）
+      window.dispatchEvent(new CustomEvent('workCreated', {
+        detail: { work: workData[0] }
+      }));
       
       // 保存後に新しいキャンバスを用意
       resetCanvas();

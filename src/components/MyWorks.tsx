@@ -961,13 +961,39 @@ const MyWorks = () => {
 
   // プロファイルIDが変更されたら作品を再取得
   useEffect(() => {
+    console.log('MyWorks - useEffect実行 - selectedChildProfileId:', selectedChildProfileId);
+    console.log('MyWorks - localStorage values:', {
+      selectedChildProfileId: localStorage.getItem('selectedChildProfileId'),
+      selectedChildId: localStorage.getItem('selectedChildId'),
+      childName: localStorage.getItem('childName')
+    });
+    
     if (selectedChildProfileId) {
       console.log('MyWorks - 作品を取得します - profileId:', selectedChildProfileId);
       fetchWorks(undefined, selectedChildProfileId);
     } else {
-      console.log('MyWorks - プロファイルIDが設定されていないため、作品を取得しません');
-      fetchWorks(undefined, undefined);  // プロファイルIDがない場合は空の配列を返すように修正
+      console.log('MyWorks - プロファイルIDが設定されていないため、全ての作品を取得します');
+      fetchWorks(undefined, undefined);  // プロファイルIDがない場合は全ての作品を取得
     }
+  }, [selectedChildProfileId, fetchWorks]);
+
+  // 作品作成イベントを監視して作品一覧を更新
+  useEffect(() => {
+    const handleWorkCreated = (event: CustomEvent) => {
+      console.log('MyWorks - 作品作成イベント検知:', event.detail);
+      // 作品一覧を再取得
+      if (selectedChildProfileId) {
+        fetchWorks(selectedChildProfileId);
+      } else {
+        fetchWorks();
+      }
+    };
+
+    window.addEventListener('workCreated', handleWorkCreated as EventListener);
+    
+    return () => {
+      window.removeEventListener('workCreated', handleWorkCreated as EventListener);
+    };
   }, [selectedChildProfileId, fetchWorks]);
 
   // 作品を種類でフィルタリング
@@ -978,7 +1004,24 @@ const MyWorks = () => {
 
   // 選択中の子供のプロファイルIDに一致する作品のみをフィルタリング
   const childFilteredWorks = useMemo(() => {
-    if (!selectedChildProfileId) return filteredWorks;
+    console.log('MyWorks - childFilteredWorks計算開始');
+    console.log('MyWorks - selectedChildProfileId:', selectedChildProfileId);
+    console.log('MyWorks - filteredWorks.length:', filteredWorks.length);
+    
+    // 全ての作品のプロファイルIDをログ出力
+    if (filteredWorks.length > 0) {
+      console.log('MyWorks - 全作品のプロファイルID:', filteredWorks.map(work => ({
+        id: work.id,
+        title: work.title,
+        profile_id: work.profile_id,
+        user_id: work.user_id
+      })));
+    }
+    
+    if (!selectedChildProfileId) {
+      console.log('MyWorks - プロファイルIDが未設定のため、全作品を表示');
+      return filteredWorks;
+    }
     
     // プロファイルIDによるフィルタリングを有効化
     const filtered = filteredWorks.filter(work => work.profile_id === selectedChildProfileId);
@@ -988,6 +1031,8 @@ const MyWorks = () => {
     // フィルタリングされた作品のプロファイルIDをログに出力（デバッグ用）
     if (filtered.length > 0) {
       console.log('MyWorks - フィルタリング後の作品のプロファイルID:', filtered.map(work => work.profile_id));
+    } else {
+      console.log('MyWorks - フィルタリング後の作品が0件です。プロファイルIDが一致しない可能性があります。');
     }
     
     return filtered;

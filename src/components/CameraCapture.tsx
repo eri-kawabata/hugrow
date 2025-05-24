@@ -249,19 +249,20 @@ export const CameraCapture = () => {
       // プロファイルIDを取得
       let profileId = null;
       
-      // 選択中の子供プロファイルIDを取得（ローカルストレージから）
-      const selectedChildProfileId = localStorage.getItem('selectedChildProfileId');
+      // 選択中の子供プロファイルIDを直接取得（ローカルストレージから）
+      const selectedChildProfileId = localStorage.getItem('selectedChildProfileId') || localStorage.getItem('selectedChildId');
       
       if (selectedChildProfileId) {
         // ローカルストレージに選択中の子供プロファイルIDがある場合はそれを使用
         profileId = selectedChildProfileId;
         console.log('【デバッグ】ローカルストレージから取得したプロファイルID:', profileId);
       } else {
-        // ローカルストレージにない場合はデータベースから取得
+        // ローカルストレージにない場合はデータベースから取得（フォールバック）
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('id')
           .eq('user_id', effectiveUserId)
+          .eq('role', 'child')
           .single();
           
         if (profileError) {
