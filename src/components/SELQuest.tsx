@@ -294,7 +294,7 @@ export function SELQuest() {
 
       console.log('fetchResponses: 使用するprofile_id:', targetProfileId);
 
-      // 直接プロファイルIDで感情データを取得
+      // 直接プロファイルIDで感情データを取得（すべての記録を取得）
       const { data, error } = await supabase
         .from('sel_responses')
         .select(`
@@ -308,8 +308,7 @@ export function SELQuest() {
           )
         `)
         .eq('profile_id', targetProfileId)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       
